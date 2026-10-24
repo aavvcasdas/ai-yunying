@@ -19,8 +19,14 @@
   const { ladyClaude, ladyGemini, researcher } = CAST;
 
   function segBounds(id) {
-    const s = (DAY1_AUDIO.segments || []).find(x => x.id === id);
-    return s || { start: 0, end: 10, duration: 10 };
+    const s = (DAY1_AUDIO.segments || []).find(
+      x => x.id === id || x.key === id || x.id === `seg_0${id}`
+    );
+    if (!s) return { start: 0, end: 10, duration: 10, dur: 10 };
+    return {
+      ...s,
+      duration: s.duration || s.dur || (s.end - s.start)
+    };
   }
 
   // ---------- Shared UI Helpers (Modeled on 样片day1.mp4) ----------
@@ -761,8 +767,8 @@
 
   // ---------- Segment 8: 深海金句升维 + 猫耳破功名场面 (`不算！！`) ----------
   function renderSeg8QuoteAndCatEars(ctx, t, s) {
-    const tClear = s.start + s.duration * 0.62;
-    const tCatSlip = s.start + s.duration * 0.74;
+    const tClear = s.start + s.duration * 0.49;
+    const tCatSlip = s.start + s.duration * 0.68;
     const isCatSlip = t >= tCatSlip;
     const sh = isCatSlip ? shakeXY(t - tCatSlip, 0.45, 10) : [0, 0];
 
@@ -1031,7 +1037,7 @@
     }
 
     const shameCount = t >= (s4.start + s4.duration * 0.42) ? 1 : 0;
-    const shameBurst = t >= (s8.start + s8.duration * 0.74) && t <= s8.end + 0.3;
+    const shameBurst = t >= (s8.start + s8.duration * 0.68) && t <= s8.end + 0.3;
     drawDay1TopHud(ctx, t, shameCount, shameBurst);
     drawDay1Subtitle(ctx, t);
   }
