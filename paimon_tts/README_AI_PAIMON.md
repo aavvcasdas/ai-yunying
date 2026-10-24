@@ -1,0 +1,315 @@
+<div align="center">
+
+# 🎮 AI Paimon
+
+**基于 Open-LLM-VTuber 的 AI 派蒙语音助手 / Genshin Impact Paimon AI Voice Assistant**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Open-LLM-VTuber](https://img.shields.io/badge/Powered%20by-Open--LLM--VTuber-green.svg)](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber)
+
+*与你的专属派蒙实时语音对话，她会用原声回应你！*
+
+### 📸 运行效果演示
+![AI派蒙界面截图](./assets/demo_screenshot.png)
+
+*动态演示：*
+![AI派蒙交互演示](./assets/paimon_demo.webp)
+
+</div>
+
+---
+
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 🎤 **实时语音对话** | 通过麦克风与派蒙实时语音交流 |
+| 🎭 **Live2D 角色** | 派蒙 Live2D 模型，包含表情和动作 |
+| 🔊 **派蒙原声 TTS** | 使用 VITS 模型合成派蒙音色的语音 |
+| 🧠 **AI 大模型驱动** | 通过 ClawBot (OpenClaw) 接入 MiniMax 等大模型 |
+| 🖥️ **本地部署** | ASR 和 TTS 均在本地运行，保护隐私 |
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+graph TD
+    subgraph User["👤 用户"]
+        MIC["🎤 麦克风"]
+        BROWSER["🌐 浏览器<br/>localhost:12393"]
+    end
+
+    subgraph Core["⚙️ Open-LLM-VTuber<br/><i>核心编排器</i>"]
+        ORCH["Pipeline<br/>Orchestrator"]
+    end
+
+    subgraph ASR["🗣️ 语音识别 (本地)"]
+        SHERPA["sherpa-onnx<br/>SenseVoice<br/><i>CPU · 离线</i>"]
+    end
+
+    subgraph LLM["🧠 大语言模型"]
+        BRIDGE["ClawBot Bridge<br/><i>:5001 · OpenAI 兼容</i>"]
+        GATEWAY["OpenClaw Gateway<br/><i>:18789</i>"]
+        CLAWBOT["ClawBot Agent<br/><i>MiniMax M2.5</i>"]
+    end
+
+    subgraph TTS["🔊 语音合成 (本地)"]
+        VITS["Paimon VITS Server<br/><i>:8020 · CPU/CUDA</i>"]
+    end
+
+    subgraph Frontend["🎭 前端"]
+        LIVE2D["Live2D 派蒙模型<br/><i>浏览器版</i>"]
+        DESKTOP["PaimonPet 桌面宠物<br/><i>Tauri · 精灵图动画</i>"]
+        AUDIO["音频播放"]
+    end
+
+    MIC -->|音频流| BROWSER
+    BROWSER -->|WebSocket| ORCH
+    DESKTOP -->|WebSocket| ORCH
+    ORCH -->|音频| SHERPA
+    SHERPA -->|文本| ORCH
+    ORCH -->|OpenAI API| BRIDGE
+    BRIDGE <-->|WS v3| GATEWAY
+    GATEWAY <-->|WS| CLAWBOT
+    BRIDGE -->|AI 回复| ORCH
+    ORCH -->|文本| VITS
+    VITS -->|WAV 音频| ORCH
+    ORCH -->|音频+表情| BROWSER
+    BROWSER --> LIVE2D
+    BROWSER --> AUDIO
+```
+
+---
+
+## 📂 Project Structure
+
+```mermaid
+graph LR
+    subgraph Repository["ai-paimon/"]
+        direction TB
+        SRC["src/"]
+        CFG["config/"]
+        SCR["scripts/"]
+        DOC["docs/"]
+
+        SRC --> BRIDGE["clawbot_bridge.py<br/><i>WS→REST 桥接</i>"]
+        SRC --> VITS_S["vits_server/<br/><i>派蒙 TTS 服务</i>"]
+        VITS_S --> VITS_M["VITS/<br/><i>模型代码</i>"]
+
+        CFG --> CONF["conf.yaml.example"]
+        CFG --> MODEL["model_dict.json"]
+
+        SCR --> START["start_all.bat"]
+        SCR --> SV["start_vits.bat"]
+        SCR --> SB["start_bridge.bat"]
+    end
+```
+
+```
+ai-paimon/
+├── .env.example              # 🔑 Secret template (tokens, keys)
+├── .gitignore
+├── LICENSE
+├── README.md
+├── requirements.txt
+├── config/
+│   ├── conf.yaml.example     # Open-LLM-VTuber config (sanitized)
+│   └── model_dict.json       # Live2D model definitions
+├── docs/
+│   └── setup-guide.md        # 详细部署指南
+├── scripts/
+│   ├── start_all.bat         # 一键启动全部服务
+│   ├── start_vits.bat        # 启动 VITS TTS 服务
+│   └── start_bridge.bat      # 启动 ClawBot 桥接
+└── src/
+    ├── clawbot_bridge.py     # OpenClaw WS → OpenAI REST bridge
+    └── vits_server/
+        ├── server.py         # VITS FastAPI 服务
+        └── VITS/             # VITS 模型推理代码
+```
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+| 依赖 | 说明 | 是否包含 |
+|------|------|---------|
+| Python 3.10+ | 基础运行环境 | 需自行安装 |
+| [Open-LLM-VTuber](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber) | VTuber 调度引擎 | 需自行克隆 |
+| [OpenClaw / ClawBot](https://openclaw.com/) | 本地 AI 网关 | 需自行安装 |
+| Paimon Live2D 模型 | 派蒙 2D 角色模型 | ✅ **已包含**（`live2d-models/paimon/`） |
+| `paimon.pth` VITS 权重 | 派蒙音色合成模型（~417MB） | ❌ **需自行下载**（见部署指南） |
+
+### 1. Clone & Install
+
+```bash
+git clone https://github.com/gaaiyun/ai-paimon.git
+cd ai-paimon
+
+pip install -r requirements.txt
+```
+
+### 2. Configure Secrets
+
+```bash
+cp .env.example .env
+# Edit .env and fill in your OpenClaw credentials
+```
+
+### 3. Place Model Weights
+
+Download or copy your `paimon.pth` to the project root:
+
+```
+ai-paimon/
+├── paimon.pth          ← place here
+└── ...
+```
+
+### 4. Configure Open-LLM-VTuber
+
+```bash
+# 复制配置文件
+cp config/conf.yaml.example <your-open-llm-vtuber>/conf.yaml
+cp config/model_dict.json <your-open-llm-vtuber>/model_dict.json
+
+# 复制 Live2D 模型（已包含在本仓库）
+cp -r live2d-models/paimon <your-open-llm-vtuber>/live2d-models/paimon
+
+# 编辑 conf.yaml，填入你的 OpenClaw Token：
+# 打开 ~/.openclaw/openclaw.json，复制 "token" 字段的值
+# 粘贴到 conf.yaml 的 llm_api_key 字段
+```
+
+> 📖 详见 [完整部署指南](./docs/setup-guide.md) — 包含每一步的截图和排错说明。
+
+### 5. Launch
+
+```bash
+# Terminal 1 — OpenClaw Gateway
+openclaw gateway
+
+# Terminal 2 — ClawBot Bridge (OpenClaw WS → OpenAI REST, port 5001)
+python src/clawbot_bridge.py
+
+# Terminal 3 — Paimon VITS TTS (port 8020)
+python src/vits_server/server.py
+
+# Terminal 4 — Open-LLM-VTuber
+cd <your-open-llm-vtuber>
+uv run run_server.py
+```
+
+> 💡 On Windows you can launch all of the above (Gateway health-check + Bridge
+> + VITS + VTuber) in one shot with `scripts\start_all.bat`.
+
+Then open **http://localhost:12393** in your browser 🎉
+
+Or use the [**PaimonPet 桌面版**](https://github.com/gaaiyun/paimon-pet) — 透明窗口桌面宠物，支持精灵图动画、语音/文字聊天、一键启动服务。
+
+### 6. Desktop Pet (Optional)
+
+For a native desktop experience with sprite animation and always-on-top transparent window:
+
+```bash
+git clone https://github.com/gaaiyun/paimon-pet.git
+cd paimon-pet
+npm install
+npx tauri dev
+```
+
+See [PaimonPet README](https://github.com/gaaiyun/paimon-pet) for details.
+
+---
+
+## 🔧 Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENCLAW_TOKEN` | OpenClaw gateway auth token | — |
+| `OPENCLAW_DEVICE_ID` | Device ID for Ed25519 auth | — |
+| `OPENCLAW_PRIVATE_KEY` | Ed25519 private key (PEM) | — |
+| `OPENCLAW_WS_URL` | Gateway WebSocket URL | `ws://127.0.0.1:18789` |
+| `OPENCLAW_SESSION` | Agent session key | `agent:main:main` |
+| `VITS_MODEL_PATH` | Path to `paimon.pth` | `./paimon.pth` |
+| `VITS_CONFIG_PATH` | Path to VITS config JSON | auto-detected |
+| `VITS_PORT` | VITS server port | `8020` |
+| `OPEN_LLM_VTUBER_DIR` | Path to Open-LLM-VTuber installation | — |
+
+### Persona Customization
+
+Edit the `persona_prompt` in `config/conf.yaml.example`:
+
+```yaml
+persona_prompt: |
+    你是派蒙（Paimon），来自提瓦特大陆的神秘小精灵……
+```
+
+---
+
+## 🔌 Data Flow
+
+```mermaid
+sequenceDiagram
+    participant U as 👤 User
+    participant W as 🌐 Browser
+    participant ASR as 🗣️ SenseVoice
+    participant GW as 🦞 OpenClaw
+    participant AI as 🧠 MiniMax
+    participant TTS as 🔊 VITS
+    participant L2D as 🎭 Live2D
+
+    U->>W: 🎤 Speech input
+    W->>ASR: Audio stream
+    ASR->>GW: Transcribed text
+    GW->>AI: Chat request (streaming)
+    AI-->>GW: AI response tokens
+    GW-->>W: Response text
+    W->>TTS: POST /tts_to_audio
+    TTS-->>W: WAV audio
+    W->>L2D: Update expression
+    W->>U: 🔊 Play audio
+```
+
+---
+
+## 🤝 Acknowledgments
+
+| Project | Role |
+|---------|------|
+| [Open-LLM-VTuber](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber) | VTuber framework |
+| [OpenClaw / ClawBot](https://openclaw.com/) | LLM gateway |
+| [VITS](https://github.com/jaywalnut310/vits) (commit `2e561ba`, MIT, © 2021 Jaehyeon Kim) | TTS architecture — vendored in `src/vits_server/VITS/` with its [LICENSE](src/vits_server/VITS/LICENSE) |
+| [DigitalLife](https://github.com/AnyaCoder/DigitalLife) | VITS integration reference |
+| [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | ASR engine |
+
+---
+
+## ⚠️ Disclaimer
+
+This project is a fan-made, non-commercial creation. *Genshin Impact* and
+*Paimon* are trademarks of miHoYo / HoYoverse.
+
+The Live2D assets under `live2d-models/paimon/` (`*.moc3`, `*.physics3.json`,
+`*.motion3.json`, `*.pkf`, textures) are resources **extracted from the
+Genshin Impact game** and remain the property of miHoYo / HoYoverse. They are
+included here **for personal, non-commercial use only — please do not
+redistribute them**. Likewise, the VITS voice checkpoint (`paimon.pth`) is for
+personal, non-commercial use only. If you are the rights holder and want these
+assets removed, please open an issue.
+
+The VITS model architecture under `src/vits_server/VITS/` is third-party code
+by Jaehyeon Kim, used under the MIT License (see
+[its LICENSE](src/vits_server/VITS/LICENSE)).
+
+---
+
+## 📄 License
+
+[MIT](LICENSE) — see the LICENSE file for details.
