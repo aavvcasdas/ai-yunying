@@ -22,9 +22,9 @@
 - ✅ 首版结构片文件：`day1视频_Piper结构片（非晓伊占位）.mp4`（97.49s，1280×720，30fps，H.264/AAC 48kHz，11,725,141 bytes，SHA-256 `69c052bc17af9719ab15b993c543e29f81827903fe40873b06eececc0aea8659`）。
 - ✅ 已移植到 `video-fx` 最新 HEAD `82bede5`；其中连续骨架与 pose/view 平滑过渡来自 `c2fc00a`。同一批 27 条 Piper measured 音频复算后，逐条时长偏差全部 **0.0%**，按 8% 规则复用原卡点（`timing_reused=true`），总时长仍为 97.49s。
 - ✅ 已修复最新共享 `drawTopHud` 写死 `Day 0` 的标注回归：只在 Day1 专用 `render_day1.mjs` 内覆盖为 `Day 1 · AI 接管中`，不改上游 `props.js`，避免影响 Day0/MV。
-- ✅ 已对齐更新版 MV 的主角口径：Day1 内统一 `showActionBadge=false`、`tailScale=0.68`，去掉像素缓冲放大后不可读的 12px 动作小徽章，并减少新骨架尾巴对道具的抢占。
-- ✅ 更新版已重新检查 17 张关键静帧、成片关键帧及 27 个 cue 起点后 0.06s/0.18s 的 54 张边界帧，未见明显双影、错位或字幕遮挡回归。
-- ✅ 当前结构片文件：`day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`（97.49s，1280×720，30fps，H.264/AAC-LC 48kHz stereo，12,992,688 bytes，SHA-256 `217dc7b07a08d37d7f53d084905869f6e66826dff5374a56f3fb3dd36ade78cf`）。首版文件保留作上一基线留档。
+- ✅ 已对齐更新版 MV 的叙事口径：Day1 内统一 `showActionBadge=false`，去掉像素缓冲放大后不可读的 12px 动作小徽章。尾巴没有照搬 MV 单人近景的 0.68：该值在 Day1 的小主角与 wink 后发层级下会让整段尾巴藏进头发/裙摆，现已恢复骨架默认 `tailScale=1.0` 并重新渲染。
+- ✅ 更新版已重新检查 17 张关键静帧、成片关键帧及 27 个 cue 起点后 0.06s/0.18s 的 54 张边界帧；尾巴修复版另从最终 MP4 抽取 27 个 cue 在 25%/55%/85% 处的 81 张帧逐张复核，并对用户截图对应的 L05 做四个时刻新旧同帧对照，未再发现整段尾巴消失。
+- ✅ 当前结构片文件：`day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`（97.49s，1280×720，30fps，H.264/AAC-LC 48kHz stereo，13,207,508 bytes，SHA-256 `4fe1d20a2f683f96ef3c72fc6a071bf9f6e19a17391f2b13a396ad442c0fa9cb`）。首版 Piper 文件保留作上一基线留档；同名 82bede5 文件已由尾巴修复版覆盖。
 
 逐句数字见 `day1制作/Piper结构片验收表.md`，机器报告见 `day1制作/day1_audio_piper/tts_report.json`。
 
@@ -120,6 +120,19 @@ node render_day1.mjs --out day1_rerender_82bede5_piper.mp4
 
 结果：27/27 cue 与上一版 Piper timing 的时长偏差均为 0.0%，因此合法复用卡点；渲染日志明确为 `voice_engine=piper/zh_CN-huayan-medium final=false placeholder=true`。更新版 MP4 解码音频为 97.493s、48kHz stereo，峰值 **0.894073**，≥0.999 与满幅样本均为 **0**。克隆内输出 `day1_rerender_82bede5_piper.mp4` 已原样归档为本仓库的 `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`。
 
+### 3.2 尾巴可见性修复重渲（2026-10-25）
+
+用户截图指出 L05 等镜头看起来没有尾巴。定位结果：第一版 82bede5 适配曾把 Day1 的 `tailScale` 设为更新版 MV 的 0.68；MV 主角约为 `u=36` 的单人近景，而 Day1 主角多为 `u=20–25`，且 `wink` 姿势在像素骨架中后画后发。0.68 时尾巴向左髋锚点收缩后，整段容易藏到后发与裙摆之后，只剩一点暗色，视觉上等于消失。
+
+已对同一 L05 帧比较 0.68 / 0.85 / 1.0 / 1.1：0.85 仅勉强露出，1.0 恢复完整尾形，因此把 Day1 包装层明确改为骨架默认 `tailScale=1.0`，不改台词、timing、音轨和分镜位置。随后重新执行：
+
+```bash
+node render_day1.mjs --stills
+node render_day1.mjs --out day1_rerender_82bede5_piper_tailfix.mp4
+```
+
+修复版已覆盖本仓库同名的 `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`：13,207,508 bytes，SHA-256 `4fe1d20a2f683f96ef3c72fc6a071bf9f6e19a17391f2b13a396ad442c0fa9cb`。最终 MP4 仍为 97.493s，解码峰值 0.894073、削顶 0；已抽取 27 个 cue 的 25%/55%/85% 共 81 张编码帧逐张检查，坐姿的大 U 形尾巴坐垫与站立姿势的外伸尾巴均可见。
+
 ## 四、复现命令
 
 前提：`ai-yunying` 与 `video-fx` 两个仓库同级放置，在 `video-fx` 根目录运行；`~/tools/say.py` 与本仓库版本一致。复现本次更新版时，`video-fx` 应检出 `arena/8be4c8f8-video-fx@82bede5`，并把本仓库快照中的 `render_day1.mjs` 放回仓库根目录、`day1_all.js` 放回 `src/ch/day1_all.js`、三份 Python 工具放回 `day1_tools/`；不要用手改生成文件代替 `gen_all.py` 的实测门禁。
@@ -164,14 +177,14 @@ Azure 路径已留接口，但需要用户自己的 Speech 资源环境变量（
 |---|---|
 | `Day1文案.md` | 27-cue 连读版、Cue/分镜表与数据出处 |
 | `Day1配音台词.txt` | 27 行纯台词，一行一条 |
-| `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` | 当前 27-cue / 97.49s 结构片；基于 `video-fx@82bede5` 连续骨架重渲，非终版 |
+| `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` | 当前 27-cue / 97.49s 结构片；基于 `video-fx@82bede5` 连续骨架重渲，含尾巴可见性修复，非终版 |
 | `day1视频_Piper结构片（非晓伊占位）.mp4` | 上一基线 27-cue / 97.49s 结构片；保留对照，非终版 |
 | `day1制作/Piper结构片验收表.md` | 每 cue 的时长、F0、峰值、削顶与片中起止时间 |
 | `day1制作/day1_audio_piper/` | 27 条后处理 WAV + schema 2 `tts_report.json` |
 | `tools/say.py` | `edge` / `piper` / `azure` 可切换合成 + 时长/F0/峰值/削顶回读 |
 | `day1制作/gen_all.py` | engine/manifest 实测门禁、8% 卡点规则、字幕/混音/口型生成器 |
 | `day1制作/synth_voice.py` | video-fx 内按引擎调用 `say.py` 的批量入口 |
-| `day1制作/video-fx源码快照/day1_all.js` | 27-cue 四章分镜；含六个新增镜头、删“官方”、L16 红章避让，以及更新版 MV 同口径的动作徽章关闭与尾巴 0.68 适配 |
+| `day1制作/video-fx源码快照/day1_all.js` | 27-cue 四章分镜；含六个新增镜头、删“官方”、L16 红章避让、动作徽章关闭，以及针对 Day1 小主角明确设置的 `tailScale=1.0` |
 | `day1制作/video-fx源码快照/render_day1.mjs` | Day 1 渲染器；含 placeholder 终版文件名保护，并仅在 Day1 内把共享 HUD 从误写的 Day 0 覆盖为 Day 1 |
 | `day1制作/video-fx源码快照/day1_timing_piper_measured.js` | 本次 Piper 实测时间轴留档；27 条偏差全 0.0%，`timing_reused=true`；文件名已标明 Piper，不可当晓伊 timing |
 
