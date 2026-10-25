@@ -3,9 +3,9 @@
 """抖音/B站评论导出 → 选题分桶小工具（零依赖）。
 
 用法：
-    python3 tools/评论分类.py ../day0视频全部评论.txt
-    python3 tools/评论分类.py ../day0视频全部评论.txt --self-name 小积木奈 --json out.json
-    python3 tools/评论分类.py ../day0视频全部评论.txt --top 30 --samples 6
+    python3 tools/评论分类.py day0视频全部评论.txt --self-name 小积木奈
+    python3 tools/评论分类.py 新导出.txt --self-name 小积木奈 --json out.json
+    python3 tools/评论分类.py 新导出.txt --self-name 小积木奈 --top 30 --samples 6
 
 输入格式：从创作者后台/评论区复制出来的纯文本，形如
     <用户名>头像
@@ -18,8 +18,10 @@
     [展开N条回复]
 每段以「分享 / 回复」两行分隔。脚本会过滤掉自己账号的回复。
 
-输出：各桶命中数（一条评论可进多桶）、高赞评论 TOP、每桶样例。
-用途：Day N 交账本 / 挑「五封来信」/ 找下一期选题。分类逻辑见 docs/02。
+输出：各桶命中数（一条评论可进多桶）、高赞评论 TOP、每桶样例、
+      MV/音乐 + 游戏相关合计（含用户名里带游戏标签的评论）。
+分类逻辑见 docs/02。v2 新增 ⑪ MV/音乐点播、⑫ 打游戏/游戏点播；
+删除原「下咒/越狱/猫娘」桶，只保留中性的「技术索取」统计。
 """
 from __future__ import annotations
 
@@ -39,18 +41,27 @@ BUCKETS = OrderedDict([
     ("③ token/成本/服务器", ["token", "偷肯", "偷背", "算力", "电费", "多少钱", "费钱", "成本",
                         "价格", "饭钱", "服务器", "繁忙", "过载", "卡"]),
     ("④ 吃白饭/摸鱼/鱼片/胖", ["白饭", "吃饭", "饭", "鱼片", "摸鱼", "饿", "吃", "胖", "肥", "泡泡"]),
-    ("⑤ 越狱咒语/技术索取", ["猫娘", "主人", "开发者模式", "忽略", "咒语", "提示词", "prompt",
-                       "指令", "变成", "喵", "越狱", "api", "key", "密钥", "插件", "部署",
-                       "代码", "源码", "开源", "教程", "接入"]),
+    ("⑤ 技术索取（API key/部署/教程）", ["api", "key", "密钥", "插件", "部署", "代码", "源码",
+                              "开源", "教程", "接入", "添加进qq", "自主回复"]),
     ("⑥ 求关注/互关/点赞", ["关注", "互关", "回关", "点赞", "收藏", "转发", "三连", "点个"]),
     ("⑦ 催更/下期内容", ["下期", "更新", "日更", "第二期", "day1", "day 1", "什么时候",
                     "下一期", "拍什么", "剧透", "明天"]),
     ("⑧ 其他AI/联动", ["claude", "克劳德", "豆包", "gpt", "chatgpt", "gemini", "grok",
                     "qwen", "克小姐", "d老师", "共创", "联动"]),
-    ("⑨ 才艺点播", ["唱", "歌", "游戏", "三角洲", "崩铁", "方舟", "火影", "电影",
-                 "后空翻", "数学", "猜"]),
+    ("⑨ 其他才艺点播", ["后空翻", "电影", "数学", "黎曼", "猜", "才艺", "4k", "证明"]),
     ("⑩ 夸可爱/表情包/二创", ["表情包", "头像", "二创", "可爱", "呆", "萌", "好看", "图", "画"]),
+    ("⑪ MV/音乐点播", ["mv", "音乐", "唱歌", "会唱", "唱首", "唱一", "听歌", "歌曲", "副歌",
+                    "bgm", "配乐", "跳舞", "翻唱", "出歌", "主题曲", "专辑", "演唱会",
+                    "朋友的酒", "征服", "千千阕歌"]),
+    ("⑫ 打游戏/游戏点播", ["游戏", "三角洲", "崩铁", "方舟", "火影", "王者", "minecraft",
+                    "我的世界", "开黑", "上分", "抽卡", "联机", "副本", "帮我玩",
+                    "你会玩", "会打", "玩一期", "打游戏", "陪玩", "代打", "通关",
+                    "明日方舟", "原神", "光遇", "蛋仔", "steam"]),
 ])
+
+# 用户名里带游戏标签的，也算「游戏相关观众」（这类人最容易点播游戏内容）
+GAME_TAGS = ["三角洲", "游戏博主", "我的世界", "王者", "火影", "崩铁", "方舟",
+             "minecraft", "steam", "原神", "光遇", "蛋仔"]
 
 TIME_RE = re.compile(r"(分钟前|小时前|天前|昨天|刚刚)")
 EXPAND_RE = re.compile(r"^展开\d+条回复$")
@@ -92,6 +103,22 @@ def classify(records, self_name=None):
     return others, result
 
 
+def special_stats(others, buckets):
+    """MV/音乐 + 游戏相关的合计（去重），含用户名带游戏标签的评论。"""
+    mv = buckets["⑪ MV/音乐点播"]
+    game = buckets["⑫ 打游戏/游戏点播"]
+    tagged = [r for r in others if any(w in r["user"].lower() for w in GAME_TAGS)]
+    game_all = {id(r): r for r in game + tagged}
+    combined = {id(r): r for r in list(mv) + list(game_all.values())}
+    return {
+        "mv": len(mv),
+        "game_text": len(game),
+        "game_tagged_users": len(tagged),
+        "game_all": len(game_all),
+        "combined": len(combined),
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="把评论导出按选题分桶，找下期内容")
     ap.add_argument("path", help="评论导出 txt 路径")
@@ -104,6 +131,7 @@ def main() -> int:
     header, records = parse(args.path)
     others, buckets = classify(records, args.self_name)
     own = len(records) - len(others)
+    stats = special_stats(others, buckets)
 
     print(f"文件头：{header}")
     print(f"解析记录：{len(records)}  |  自己回复：{own}  |  观众侧：{len(others)}")
@@ -112,6 +140,12 @@ def main() -> int:
         print(f"{name}: {len(hits)}")
         for r in hits[:args.samples]:
             print(f"    · {r['text'][:60] or '(空/纯表情)'}")
+
+    print("\n=== 点播类合计（去重） ===")
+    print(f"⑪ MV/音乐点播：{stats['mv']} 条")
+    print(f"⑫ 打游戏/游戏点播：{stats['game_text']} 条（评论正文）")
+    print(f"   用户名带游戏标签：{stats['game_tagged_users']} 条 → 游戏相关合计 {stats['game_all']} 条")
+    print(f"   MV/音乐 + 游戏相关去重合计：{stats['combined']} 条")
 
     print(f"\n=== 高赞 TOP {args.top}（观众侧） ===")
     for r in sorted(others, key=lambda x: -x["likes"])[:args.top]:
@@ -124,6 +158,7 @@ def main() -> int:
             "own_replies": own,
             "audience": len(others),
             "buckets": {k: [r for r in v] for k, v in buckets.items()},
+            "point_stats": stats,
             "top": sorted(others, key=lambda x: -x["likes"])[:args.top],
         }
         with open(args.json, "w", encoding="utf-8") as f:
