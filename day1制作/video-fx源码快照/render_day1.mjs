@@ -29,9 +29,35 @@ require('./src/whale_girl.js');
 require('./src/clawd.js');
 require('./src/cast.js');
 require('./src/lyrics.js');
-require('./src/props.js');
+const PROPS = require('./src/props.js');
 const TIMELINE = require('./src/timeline.js');
 const DAY1_TIMING = require('./src/day1_timing.js');
+
+// video-fx arena/8be4c8f8-video-fx@82bede5 的共享 HUD 仍写死 Day 0。
+// Day1 只在自己的渲染器内覆盖左上角标签，不改上游 props.js，避免影响 Day0/MV。
+const drawTopHudBase = PROPS.drawTopHud;
+PROPS.drawTopHud = (ctx, t, style = 'pixel') => {
+  drawTopHudBase(ctx, t, style);
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(18, 16, 296, 36, 10);
+  ctx.fillStyle = '#152C5B';
+  ctx.fill();
+  ctx.strokeStyle = '#48C8FF';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.font = 'bold 15px "ZCOOLKuaiLe", "NotoSansSC", sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = CORE.PAL.gold;
+  ctx.fillText('Day 1 · AI 接管中', 32, 34);
+  ctx.fillStyle = '#64748B';
+  ctx.fillText('|', 154, 34);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText('鲸鱼娘运营日志', 168, 34);
+  ctx.restore();
+};
+
 require('./src/ch/day1_all.js');
 
 const FPS = 30;

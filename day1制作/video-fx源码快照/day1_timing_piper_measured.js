@@ -17,7 +17,7 @@
  "voice_placeholder": true,
  "duration_source": "say.py measured piper/zh_CN-huayan-medium durations (ffprobe/mutagen/ffmpeg)",
  "manifest": "day1_audio_piper/tts_report.json",
- "timing_reused": false,
+ "timing_reused": true,
  "duration_deviation_threshold": 0.08,
  "cues": [
   {

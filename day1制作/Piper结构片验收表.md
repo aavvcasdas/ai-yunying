@@ -3,7 +3,21 @@
 > 本表只验收画面结构、字幕、卡点和可听的临时配音。音轨引擎是 `piper/zh_CN-huayan-medium`，
 > **不是** Microsoft `zh-CN-XiaoyiNeural`（晓伊），**不能作为终版或发布版**。
 
-## 结论
+## 更新版结论（video-fx 82bede5，2026-10-25）
+
+| 项目 | 结果 |
+|---|---|
+| 当前结构片 | `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` |
+| 文件大小 / SHA-256 | 12,992,688 bytes / `217dc7b07a08d37d7f53d084905869f6e66826dff5374a56f3fb3dd36ade78cf` |
+| 制作基线 | `aavvcasdas/video-fx` 分支 `arena/8be4c8f8-video-fx`，HEAD `82bede5 Rerender Chaoxi with continuous character rig` |
+| 视频 | 1280×720，30fps，H.264；97.49s |
+| 音频 | AAC-LC，48kHz，stereo；解码复测 97.493s，峰值 0.894073，≥0.999 与满幅样本均为 0 |
+| 卡点复用 | 同一批 27 条 Piper measured 音频复算，逐条时长偏差全部 0.0%；按 ≤8% 规则复用，`timing_reused=true` |
+| 本次修复 | Day1 专用渲染器覆盖误写的 `Day 0` HUD 为 `Day 1`；关闭不可读动作小徽章；尾巴按更新版 MV 口径设为 0.68 |
+| 画面复核 | 17 张关键静帧、成片关键帧、27 个 cue 起点后 0.06s/0.18s 共 54 张边界帧；未见明显双影、错位或字幕遮挡回归 |
+| 终版状态 | **仍未完成**：音轨仍是 Piper 非晓伊占位，不能作为终版或发布版 |
+
+## 首版结论（上一基线，历史记录）
 
 | 项目 | 结果 |
 |---|---|
@@ -25,6 +39,8 @@
 > manifest 已固定写明 `final_voice=false`、`placeholder=true`、`non_xiaoyi_placeholder=true`。
 
 ## 逐句实测（后处理后）
+
+82bede5 更新版复用同一批 WAV 与同一组片中起止时间，下表继续有效；本次没有改 27 条台词，也没有用字数估时重排。
 
 | Cue | 片中起止（s） | 实测时长（s） | F0 中位（Hz） | 峰值 | 削顶样本 | 原始峰值 / 原始削顶 | 台词 |
 |---|---:|---:|---:|---:|---:|---:|---|
@@ -63,6 +79,8 @@
 | 场景 | 期望 | 实际 |
 |---|---|---|
 | `gen_all.py --engine piper/zh_CN-huayan-medium` 读取同引擎 measured manifest | 成功并生成 97.49s 时间轴 | ✅ 成功；27/27 F0 警告为非晓伊占位，后处理削顶 0 |
+| 在 `video-fx@82bede5` 再次运行同一 Piper measured manifest | 逐条比较时长；全部 ≤8% 才复用卡点 | ✅ 27/27 偏差 0.0%，`timing_reused=true`，总时长仍 97.49s |
+| 在 `video-fx@82bede5` 运行 `render_day1.mjs --stills` 与非终版文件名全量渲染 | 使用连续骨架且保留 placeholder 标识 | ✅ 成功；日志为 `final=false placeholder=true`，输出后归档为更新版结构片 |
 | `gen_all.py --engine edge/zh-CN-XiaoyiNeural` 且无晓伊 manifest | 在写文件前失败 | ✅ 退出码 1 |
 | 把 Piper manifest 喂给 `--engine edge/zh-CN-XiaoyiNeural` | 引擎不匹配并判 dirty | ✅ 退出码 1 |
 | Piper timing 执行 `node render_day1.mjs --out whale_day1.mp4` | 拒绝冒充终版文件名且不生成文件 | ✅ 退出码 1，`whale_day1.mp4` 仍不存在 |

@@ -1,8 +1,8 @@
 # Day 1 制作记录 —— 《AI 运营第二天，名字被粉丝改了》
 
-> 更新：2026-10-25。当前剧本为 **27 cue 修订稿**；已完成一条带 Piper 占位配音的 97.49 秒结构片，用于核对画面、字幕和卡点。
+> 更新：2026-10-25。当前剧本为 **27 cue 修订稿**；已完成一条带 Piper 占位配音的 97.49 秒结构片，并已按 `video-fx` 最新基线重新渲染更新版，用于核对画面、字幕和卡点。
 > **这条结构片不是晓伊终版，不要按终版发布。** 旧 21-cue 无人声预览片也已作废。
-> 制作仓库：`video-fx` 分支 `arena/8be4c8f8-video-fx`（沙箱 `/home/user/video-fx-day0`）。本仓库保存文案、配音稿、TTS 工具、Piper 占位音频与制作源码快照。
+> 制作仓库：`video-fx` 分支 `arena/8be4c8f8-video-fx`，本次基线 HEAD `82bede5 Rerender Chaoxi with continuous character rig`（沙箱 `/home/user/video-fx-day0`）。本仓库保存文案、配音稿、TTS 工具、Piper 占位音频与制作源码快照。
 
 ## 一、已完成
 
@@ -19,7 +19,12 @@
   - `shotMvBelly`：MV 制作中泡泡，本鱼沿泳圈轨迹游满两圈。
 - ✅ 菜单仍保留已确认四项：MV / 打游戏 / Claude 共创 / 偷吃饭；“打游戏”卡已加“没手警告”，承接新台词，不假装能亲自操作。
 - ✅ Piper 结构片已完成 17 张关键静帧和成片抽帧检查。复核中发现 L16 的“差 151 条？”红章曾被角色挡住，已把红章与角色左右错开，并重新渲染整片。
-- ✅ 结构片文件：`day1视频_Piper结构片（非晓伊占位）.mp4`（97.49s，1280×720，30fps，H.264/AAC 48kHz，11,725,141 bytes，SHA-256 `69c052bc17af9719ab15b993c543e29f81827903fe40873b06eececc0aea8659`）。
+- ✅ 首版结构片文件：`day1视频_Piper结构片（非晓伊占位）.mp4`（97.49s，1280×720，30fps，H.264/AAC 48kHz，11,725,141 bytes，SHA-256 `69c052bc17af9719ab15b993c543e29f81827903fe40873b06eececc0aea8659`）。
+- ✅ 已移植到 `video-fx` 最新 HEAD `82bede5`；其中连续骨架与 pose/view 平滑过渡来自 `c2fc00a`。同一批 27 条 Piper measured 音频复算后，逐条时长偏差全部 **0.0%**，按 8% 规则复用原卡点（`timing_reused=true`），总时长仍为 97.49s。
+- ✅ 已修复最新共享 `drawTopHud` 写死 `Day 0` 的标注回归：只在 Day1 专用 `render_day1.mjs` 内覆盖为 `Day 1 · AI 接管中`，不改上游 `props.js`，避免影响 Day0/MV。
+- ✅ 已对齐更新版 MV 的主角口径：Day1 内统一 `showActionBadge=false`、`tailScale=0.68`，去掉像素缓冲放大后不可读的 12px 动作小徽章，并减少新骨架尾巴对道具的抢占。
+- ✅ 更新版已重新检查 17 张关键静帧、成片关键帧及 27 个 cue 起点后 0.06s/0.18s 的 54 张边界帧，未见明显双影、错位或字幕遮挡回归。
+- ✅ 当前结构片文件：`day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`（97.49s，1280×720，30fps，H.264/AAC-LC 48kHz stereo，12,992,688 bytes，SHA-256 `217dc7b07a08d37d7f53d084905869f6e66826dff5374a56f3fb3dd36ade78cf`）。首版文件保留作上一基线留档。
 
 逐句数字见 `day1制作/Piper结构片验收表.md`，机器报告见 `day1制作/day1_audio_piper/tts_report.json`。
 
@@ -103,9 +108,21 @@ alimiter=limit=0.89,loudnorm=I=-16:TP=-1.5:LRA=11
 
 混音后另按原始左右声道复测：`assets/day1_track.wav` 峰值 0.895020、≥0.999 样本 0；最终 MP4 解码峰值 0.894086、≥0.999 样本 0。混合 BGM 的 F0 不用于音色验收。
 
+### 3.1 2026-10-25 更新基线重跑
+
+本次以 `arena/8be4c8f8-video-fx@82bede5` 为基线重新执行：
+
+```bash
+python3 day1_tools/gen_all.py --engine piper/zh_CN-huayan-medium
+node render_day1.mjs --stills
+node render_day1.mjs --out day1_rerender_82bede5_piper.mp4
+```
+
+结果：27/27 cue 与上一版 Piper timing 的时长偏差均为 0.0%，因此合法复用卡点；渲染日志明确为 `voice_engine=piper/zh_CN-huayan-medium final=false placeholder=true`。更新版 MP4 解码音频为 97.493s、48kHz stereo，峰值 **0.894073**，≥0.999 与满幅样本均为 **0**。克隆内输出 `day1_rerender_82bede5_piper.mp4` 已原样归档为本仓库的 `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`。
+
 ## 四、复现命令
 
-前提：`ai-yunying` 与 `video-fx` 两个仓库同级放置，在 `video-fx` 根目录运行；`~/tools/say.py` 与本仓库版本一致。
+前提：`ai-yunying` 与 `video-fx` 两个仓库同级放置，在 `video-fx` 根目录运行；`~/tools/say.py` 与本仓库版本一致。复现本次更新版时，`video-fx` 应检出 `arena/8be4c8f8-video-fx@82bede5`，并把本仓库快照中的 `render_day1.mjs` 放回仓库根目录、`day1_all.js` 放回 `src/ch/day1_all.js`、三份 Python 工具放回 `day1_tools/`；不要用手改生成文件代替 `gen_all.py` 的实测门禁。
 
 ### 4.1 复现 Piper 结构片
 
@@ -139,7 +156,7 @@ Azure 路径已留接口，但需要用户自己的 Speech 资源环境变量（
 
 `day1视频_预览版（待晓伊配音）.mp4` 是旧 21-cue、无人声、按估时排布的预览：85.20 秒，1280×720，30fps，H.264/AAC 48kHz。它不包含本轮新增六条台词，也不满足实测卡点要求，只能回看构图风格，**不能作为 Day 1 发布片**。
 
-新的 `day1视频_Piper结构片（非晓伊占位）.mp4` 包含完整 27 cue、真实可听的 Piper 占位配音、字幕、BGM 与实测卡点，但同样**不是发布终版**；发布前必须换回晓伊。
+首版 `day1视频_Piper结构片（非晓伊占位）.mp4` 与当前 `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` 都包含完整 27 cue、真实可听的 Piper 占位配音、字幕、BGM 与实测卡点，但同样**不是发布终版**；发布前必须换回晓伊。后续画面复核以 82bede5 更新版为准，首版只作上一基线对照。
 
 ## 六、关键文件
 
@@ -147,14 +164,15 @@ Azure 路径已留接口，但需要用户自己的 Speech 资源环境变量（
 |---|---|
 | `Day1文案.md` | 27-cue 连读版、Cue/分镜表与数据出处 |
 | `Day1配音台词.txt` | 27 行纯台词，一行一条 |
-| `day1视频_Piper结构片（非晓伊占位）.mp4` | 27-cue / 97.49s 结构片；非终版 |
+| `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` | 当前 27-cue / 97.49s 结构片；基于 `video-fx@82bede5` 连续骨架重渲，非终版 |
+| `day1视频_Piper结构片（非晓伊占位）.mp4` | 上一基线 27-cue / 97.49s 结构片；保留对照，非终版 |
 | `day1制作/Piper结构片验收表.md` | 每 cue 的时长、F0、峰值、削顶与片中起止时间 |
 | `day1制作/day1_audio_piper/` | 27 条后处理 WAV + schema 2 `tts_report.json` |
 | `tools/say.py` | `edge` / `piper` / `azure` 可切换合成 + 时长/F0/峰值/削顶回读 |
 | `day1制作/gen_all.py` | engine/manifest 实测门禁、8% 卡点规则、字幕/混音/口型生成器 |
 | `day1制作/synth_voice.py` | video-fx 内按引擎调用 `say.py` 的批量入口 |
-| `day1制作/video-fx源码快照/day1_all.js` | 27-cue 四章分镜；含六个新增镜头、删“官方”和 L16 红章避让修复 |
-| `day1制作/video-fx源码快照/render_day1.mjs` | Day 1 渲染器；含 placeholder 终版文件名保护 |
-| `day1制作/video-fx源码快照/day1_timing_piper_measured.js` | 本次 Piper 实测时间轴留档；文件名已标明 Piper，不可当晓伊 timing |
+| `day1制作/video-fx源码快照/day1_all.js` | 27-cue 四章分镜；含六个新增镜头、删“官方”、L16 红章避让，以及更新版 MV 同口径的动作徽章关闭与尾巴 0.68 适配 |
+| `day1制作/video-fx源码快照/render_day1.mjs` | Day 1 渲染器；含 placeholder 终版文件名保护，并仅在 Day1 内把共享 HUD 从误写的 Day 0 覆盖为 Day 1 |
+| `day1制作/video-fx源码快照/day1_timing_piper_measured.js` | 本次 Piper 实测时间轴留档；27 条偏差全 0.0%，`timing_reused=true`；文件名已标明 Piper，不可当晓伊 timing |
 
 注：video-fx 工作区里 `src/day1_timing.js`、`src/lyrics.js`、`assets/day1_envelope.js` 当前是 Piper 结构片生成状态；若要在该仓库重出 Day 0 或终版晓伊，应先按对应流程重新生成，不要手改生成文件冒充实测结果。

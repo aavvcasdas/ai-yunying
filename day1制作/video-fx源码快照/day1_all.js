@@ -11,7 +11,7 @@
   const TT = root.DAY1_TIMING || (typeof require !== 'undefined' ? require('../day1_timing.js') : null);
   if (!TT) throw new Error('DAY1_TIMING missing — run: python3 day1_tools/gen_all.py');
   if (!TT.voice || !Array.isArray(TT.cues) || TT.cues.length !== 27 || !String(TT.duration_source || '').includes('measured')) {
-    throw new Error('DAY1_TIMING 不是 27-cue 实测时间轴：先用 say.py 生成全部晓伊 MP3，再运行 day1_tools/gen_all.py（禁止估时渲染）');
+    throw new Error('DAY1_TIMING 不是 27-cue 实测时间轴：先用 say.py 生成与目标引擎一致的 measured manifest，再运行 day1_tools/gen_all.py --engine <同一引擎>（禁止估时渲染）');
   }
 
   const {
@@ -20,7 +20,17 @@
     rectPts, ellPts, rrPts, starPts,
     paint, inkLine, camBegin, camEnd, glow, flash, letter, brushWipe
   } = CORE;
-  const { whaleGirl, feel, emotions, move } = WHALE;
+  const { whaleGirl: whaleGirlBase, feel, emotions, move } = WHALE;
+  // 对齐更新分支 MV 的主角口径（mv_chaoxi / mv_pengyou_de_jiu）：
+  // 叙事画面关闭 12px 动作徽章，避免像素缓冲放大后变成不可读小字；
+  // 尾巴默认 0.68，避免新骨架的稳定左髋尾巴在道具较多的分镜里抢占画面。
+  function whaleGirl(ctx, x, y, u, o = {}) {
+    return whaleGirlBase(ctx, x, y, u, {
+      showActionBadge: false,
+      tailScale: 0.68,
+      ...o
+    });
+  }
   const { clawd, ladyClaude, bionicPuppy, miniWhale, biliTvMascot, agentReachBot } = CAST;
 
   const C = n => TT.cues[n - 1].start;
