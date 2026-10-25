@@ -14,3 +14,6 @@ tools/video-fx/**/*.mp3
 tools/video-fx/**/*.png
 tools/video-fx/**/*.ttf
 tools/video-fx/**/*.woff2
+
+# 渲染中间产物（最终成片用 git add -f 显式推送）
+out/
