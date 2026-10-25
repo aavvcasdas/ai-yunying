@@ -1,0 +1,24 @@
+{
+  "engine": "microsoft-edge-tts",
+  "package": "edge-tts",
+  "language": "zh-CN",
+  "voice": "zh-CN-XiaoyiNeural",
+  "voice_display_name": "晓伊",
+  "gender": "female",
+  "rate_offset": "+0%",
+  "pitch_offset": "+0Hz",
+  "rate_offset_applied": false,
+  "pitch_offset_applied": false,
+  "cli_flags_passed": ["--voice", "zh-CN-XiaoyiNeural"],
+  "note": "统一配音规格：rate / pitch 都不加偏移。调用 edge-tts 时不传 --rate 与 --pitch（等价于默认 +0% / +0Hz）；本配置中的零偏移值只用于校验，禁止改成非零值。",
+  "applies_to": [
+    "Day0 若需重配音",
+    "Day1-Day14 全部口播",
+    "评论区语音回复 / 动态配音（如有）",
+    "video-fx 出片引擎中任何新的旁白轨"
+  ],
+  "output": {
+    "container": "mp3",
+    "note": "edge-tts 默认输出（24kHz MP3），不额外转码；如需 wav 请用 ffmpeg 单独转换"
+  }
+}

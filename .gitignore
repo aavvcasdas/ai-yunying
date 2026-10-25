@@ -1,0 +1,16 @@
+# 本地生成物 / 缓存，不入库
+__pycache__/
+*.pyc
+.venv/
+.tmp_frames/
+
+# 配音产物（用 tools/生成配音.py 在本机生成）
+audio/
+*.wav
+
+# 大体积视频素材：video-fx 分支的媒体不随源码快照入库
+tools/video-fx/**/*.mp4
+tools/video-fx/**/*.mp3
+tools/video-fx/**/*.png
+tools/video-fx/**/*.ttf
+tools/video-fx/**/*.woff2
