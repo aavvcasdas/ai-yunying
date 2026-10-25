@@ -22,12 +22,14 @@
   } = CORE;
   const { whaleGirl: whaleGirlBase, feel, emotions, move } = WHALE;
   // 对齐更新分支 MV 的主角口径（mv_chaoxi / mv_pengyou_de_jiu）：
-  // 叙事画面关闭 12px 动作徽章，避免像素缓冲放大后变成不可读小字。
+  // 叙事画面关闭 12px 动作徽章，避免变成不可读小字。
+  // 全局 clean 只负责背景/文字清晰化，主角明确继续使用像素骨架，不被平滑化。
   // 注意：MV 的 tailScale=0.68 只适合 u≈36 的单人近景；Day1 主角多为
   // u=20–25，且 wink 姿势会后画后发，0.68 会让尾巴整段藏到头发/裙摆后，
   // 看起来像尾巴消失。因此 Day1 明确恢复骨架默认 1.0。
   function whaleGirl(ctx, x, y, u, o = {}) {
     return whaleGirlBase(ctx, x, y, u, {
+      style: 'pixel',
       showActionBadge: false,
       tailScale: 1.0,
       ...o

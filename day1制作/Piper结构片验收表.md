@@ -8,14 +8,15 @@
 | 项目 | 结果 |
 |---|---|
 | 当前结构片 | `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` |
-| 文件大小 / SHA-256 | 13,207,508 bytes / `4fe1d20a2f683f96ef3c72fc6a071bf9f6e19a17391f2b13a396ad442c0fa9cb` |
+| 文件大小 / SHA-256 | 22,683,071 bytes / `546b24a57cc714e398883a1bb754534cf4c2453966ef0c33f13a053738894162` |
 | 制作基线 | `aavvcasdas/video-fx` 分支 `arena/8be4c8f8-video-fx`，HEAD `82bede5 Rerender Chaoxi with continuous character rig` |
-| 视频 | 1280×720，30fps，H.264；97.49s |
+| 视频 | 1920×1080，30fps，H.264 CRF 19；97.49s |
 | 音频 | AAC-LC，48kHz，stereo；解码复测 97.493s，峰值 0.894073，≥0.999 与满幅样本均为 0 |
 | 卡点复用 | 同一批 27 条 Piper measured 音频复算，逐条时长偏差全部 0.0%；按 ≤8% 规则复用，`timing_reused=true` |
-| 本次修复 | Day1 专用渲染器覆盖误写的 `Day 0` HUD 为 `Day 1`；关闭不可读动作小徽章；针对用户截图定位到 MV 的尾巴 0.68 不适用于 Day1 小主角，已恢复 `tailScale=1.0` 并全量重渲 |
-| 画面复核 | 17 张关键静帧、成片关键帧、27 个 cue 起点后 0.06s/0.18s 共 54 张边界帧；未见明显双影、错位或字幕遮挡回归 |
-| 尾巴专项复核 | 同一 L05 帧对比 0.68 / 0.85 / 1.0 / 1.1 后选定 1.0；从修复版 MP4 抽取 27 个 cue 在 25%/55%/85% 处的 81 张帧逐张检查，并做 L05 四个时刻新旧同帧对照，未再发现整段尾巴消失 |
+| 本次修复 | Day1 专用渲染器覆盖误写的 `Day 0` HUD 为 `Day 1`；关闭不可读动作小徽章；尾巴恢复 `tailScale=1.0`；把右缘硬切的 `wink backHair` 替换为完整的 `heart backHair`；wink 的脸、身体和动作不变 |
+| 清晰度修复 | 背景与文字改走 `clean`：取消 480×270 离屏量化、扫描线与 3px 坐标吸附；以 1280×720 逻辑坐标 1.5 倍原生绘制到 1920×1080。主角仍显式使用 pixel 骨架，字幕保留说话人标签 |
+| 画面复核 | 18 张关键静帧（含 L05 0.85 回归帧）、成片关键帧、27 个 cue 起点后 0.06s/0.18s 共 54 张边界帧；未见明显双影、错位或字幕遮挡回归 |
+| 头发/尾巴专项复核 | 同姿势对照 original / wave / heart / panic 后发并选定 heart；从最终 MP4 抽取 27 个 cue 在 25%/55%/85% 处的 81 张帧逐张检查，并复核 16.5–17.8s 的 14 张连续帧：右侧长发完整，尾巴未再整段消失 |
 | 终版状态 | **仍未完成**：音轨仍是 Piper 非晓伊占位，不能作为终版或发布版 |
 
 ## 首版结论（上一基线，历史记录）
@@ -84,6 +85,10 @@
 | 在 `video-fx@82bede5` 运行 `render_day1.mjs --stills` 与非终版文件名全量渲染 | 使用连续骨架且保留 placeholder 标识 | ✅ 成功；日志为 `final=false placeholder=true`，输出后归档为更新版结构片 |
 | 用户截图复现 L05 尾巴消失，并比较 `tailScale` 0.68 / 0.85 / 1.0 / 1.1 | 找到小主角下尾巴完整可见的最小改动 | ✅ 0.68 仅剩暗色小段，1.0 恢复完整尾形；选定 1.0 |
 | 以 `tailScale=1.0` 全量重渲并抽取最终 MP4 的 27×3 张帧 | 全片不再出现整段尾巴藏没，且时长/音频不变 | ✅ 成功；97.493s，峰值 0.894073，削顶 0；81 张帧逐张通过 |
+| 抽取 16.5–17.8s 连续帧并统计各 pose 的 `backHair` bounds | 区分截图缩放与骨骼数据问题 | ✅ 确认不是截图问题：`wink.backHair` 有 741 runs，但右缘几乎逐行硬切在 `gx=27`；head 右界同为 27，成片呈竖直切边 |
+| 同一 wink 姿势对照 original / wave / heart / panic 后发 | 不改脸和身体、只恢复完整右侧长发 | ✅ 选定 `heart backHair`：双侧轮廓完整且不像 panic 过度外张；在 Day1 渲染器内替换，不改上游 rig 文件 |
+| 检查 pixel overlay 与绘制坐标路径 | 找到背景和场景字发糊的直接机制 | ✅ `applyMediumOverlay()` 先压到 480×270 再放回 1280×720，并叠扫描线；`paint()` / `inkLine()` 还吸附 3px 网格。改用 `clean` + 1920×1080 原生栅格化，角色继续 explicit pixel |
+| 以 clean 1080p 全量重渲并检查最终 MP4 的 81 帧 + 17 秒序列 | 头发、尾巴、背景和文字同时达标，台词/timing/音频不变 | ✅ 成功；1920×1080、97.493s、峰值 0.894073、削顶 0；81 张 cue 帧与 16.5–17.8s 的 14 张帧均通过 |
 | `gen_all.py --engine edge/zh-CN-XiaoyiNeural` 且无晓伊 manifest | 在写文件前失败 | ✅ 退出码 1 |
 | 把 Piper manifest 喂给 `--engine edge/zh-CN-XiaoyiNeural` | 引擎不匹配并判 dirty | ✅ 退出码 1 |
 | Piper timing 执行 `node render_day1.mjs --out whale_day1.mp4` | 拒绝冒充终版文件名且不生成文件 | ✅ 退出码 1，`whale_day1.mp4` 仍不存在 |

@@ -18,13 +18,15 @@
   - `shotGameRefusal`：三角洲/王者、超大手柄和“没手”红章；
   - `shotMvBelly`：MV 制作中泡泡，本鱼沿泳圈轨迹游满两圈。
 - ✅ 菜单仍保留已确认四项：MV / 打游戏 / Claude 共创 / 偷吃饭；“打游戏”卡已加“没手警告”，承接新台词，不假装能亲自操作。
-- ✅ Piper 结构片已完成 17 张关键静帧和成片抽帧检查。复核中发现 L16 的“差 151 条？”红章曾被角色挡住，已把红章与角色左右错开，并重新渲染整片。
+- ✅ Piper 结构片关键静帧集现为 18 张，并完成成片抽帧检查；新增的 L05 0.85（约 17.0s）是 wink 头发/尾巴常驻回归帧。复核中发现 L16 的“差 151 条？”红章曾被角色挡住，已把红章与角色左右错开，并重新渲染整片。
 - ✅ 首版结构片文件：`day1视频_Piper结构片（非晓伊占位）.mp4`（97.49s，1280×720，30fps，H.264/AAC 48kHz，11,725,141 bytes，SHA-256 `69c052bc17af9719ab15b993c543e29f81827903fe40873b06eececc0aea8659`）。
 - ✅ 已移植到 `video-fx` 最新 HEAD `82bede5`；其中连续骨架与 pose/view 平滑过渡来自 `c2fc00a`。同一批 27 条 Piper measured 音频复算后，逐条时长偏差全部 **0.0%**，按 8% 规则复用原卡点（`timing_reused=true`），总时长仍为 97.49s。
 - ✅ 已修复最新共享 `drawTopHud` 写死 `Day 0` 的标注回归：只在 Day1 专用 `render_day1.mjs` 内覆盖为 `Day 1 · AI 接管中`，不改上游 `props.js`，避免影响 Day0/MV。
-- ✅ 已对齐更新版 MV 的叙事口径：Day1 内统一 `showActionBadge=false`，去掉像素缓冲放大后不可读的 12px 动作小徽章。尾巴没有照搬 MV 单人近景的 0.68：该值在 Day1 的小主角与 wink 后发层级下会让整段尾巴藏进头发/裙摆，现已恢复骨架默认 `tailScale=1.0` 并重新渲染。
-- ✅ 更新版已重新检查 17 张关键静帧、成片关键帧及 27 个 cue 起点后 0.06s/0.18s 的 54 张边界帧；尾巴修复版另从最终 MP4 抽取 27 个 cue 在 25%/55%/85% 处的 81 张帧逐张复核，并对用户截图对应的 L05 做四个时刻新旧同帧对照，未再发现整段尾巴消失。
-- ✅ 当前结构片文件：`day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`（97.49s，1280×720，30fps，H.264/AAC-LC 48kHz stereo，13,207,508 bytes，SHA-256 `4fe1d20a2f683f96ef3c72fc6a071bf9f6e19a17391f2b13a396ad442c0fa9cb`）。首版 Piper 文件保留作上一基线留档；同名 82bede5 文件已由尾巴修复版覆盖。
+- ✅ 已对齐更新版 MV 的叙事口径：Day1 内统一 `showActionBadge=false`，去掉不可读的 12px 动作小徽章。尾巴没有照搬 MV 单人近景的 0.68：该值在 Day1 的小主角与 wink 后发层级下会让整段尾巴藏进头发/裙摆，现已恢复骨架默认 `tailScale=1.0` 并重新渲染。
+- ✅ 已修复 17 秒附近右侧长发像被竖直裁掉的问题：上游 `wink` 姿势的 `backHair` 右缘几乎逐行硬切在 `gx=27`；Day1 专用渲染器只把 wink 后发替换为轮廓完整的 `heart backHair`，不改 wink 的脸、身体和动作。
+- ✅ 背景与文字已改走 `clean` 清晰路径：不再把整帧压到 480×270 再放大，也不再叠扫描线或吸附到 3px 网格；主角仍明确使用像素骨架。成片改为在 1280×720 逻辑坐标上以 1.5 倍原生栅格化输出 1920×1080，并以 H.264 CRF 19 编码，不是把旧 720p 后期放大。
+- ✅ 更新版已重新检查 18 张关键静帧、成片关键帧及 27 个 cue 起点后 0.06s/0.18s 的 54 张边界帧；头发+清晰度修复版另从最终 MP4 抽取 27 个 cue 在 25%/55%/85% 处的 81 张编码帧逐张复核，并单独检查 16.5–17.8s 的 14 张连续抽帧，未再发现右侧长发竖直切边或整段尾巴消失，场景字幕与卡片字均可读。
+- ✅ 当前结构片文件：`day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`（97.49s，1920×1080，30fps，H.264/AAC-LC 48kHz stereo，22,683,071 bytes，SHA-256 `546b24a57cc714e398883a1bb754534cf4c2453966ef0c33f13a053738894162`）。首版 Piper 文件保留作上一基线留档；同名 82bede5 文件已由头发+清晰度修复版覆盖。
 
 逐句数字见 `day1制作/Piper结构片验收表.md`，机器报告见 `day1制作/day1_audio_piper/tts_report.json`。
 
@@ -131,7 +133,22 @@ node render_day1.mjs --stills
 node render_day1.mjs --out day1_rerender_82bede5_piper_tailfix.mp4
 ```
 
-修复版已覆盖本仓库同名的 `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`：13,207,508 bytes，SHA-256 `4fe1d20a2f683f96ef3c72fc6a071bf9f6e19a17391f2b13a396ad442c0fa9cb`。最终 MP4 仍为 97.493s，解码峰值 0.894073、削顶 0；已抽取 27 个 cue 的 25%/55%/85% 共 81 张编码帧逐张检查，坐姿的大 U 形尾巴坐垫与站立姿势的外伸尾巴均可见。
+该阶段修复版为 13,207,508 bytes，SHA-256 `4fe1d20a2f683f96ef3c72fc6a071bf9f6e19a17391f2b13a396ad442c0fa9cb`，后来又被下一节的头发+清晰度修复版同名覆盖。该阶段 MP4 为 97.493s，解码峰值 0.894073、削顶 0；已抽取 27 个 cue 的 25%/55%/85% 共 81 张编码帧逐张检查，坐姿的大 U 形尾巴坐垫与站立姿势的外伸尾巴均可见。
+
+### 3.3 头发与清晰度修复重渲（2026-10-25）
+
+用户进一步指出 17 秒附近头发缺失，且全片背景像素风太重、文字看不清。复核当前 MP4 的 16.5–17.8s 后确认：头顶发和画面左侧长发仍在，但画面右侧长发呈异常竖直切边。程序化统计 rig 后发现 `wink.backHair` 有 741 条 runs、并非空数据，但右缘在绝大多数行都硬切到 `gx=27`，与头部右界齐平；对照同姿势的 original / wave / heart / panic 后发后，`heart backHair` 的双侧长发轮廓完整且不过度外张。因此只在 Day1 的 `render_day1.mjs` 中把 `poses.wink.backHair` 指向 `poses.heart.backHair`，不改上游 `whale_girl_rig_data.js`，也不改变 wink 的脸、身体、动作和 `tailScale=1.0`。
+
+清晰度根因是上游 pixel 风格的 `applyMediumOverlay()`：它会把每帧场景先绘入 480×270 离屏缓冲，再关平滑放回 1280×720，并叠加每 3 像素一行的扫描线；`timeline.js` 又在镜头绘制后、HUD/字幕前调用它，所以场景背景和场景内文字必然被低清量化。pixel 风格的 `paint()` / `inkLine()` 还会把坐标吸附到 3px 网格。
+
+本次 Day1 改为自定义 `clean` 呈现：背景、卡片、场景字、HUD 和字幕不再经过 480×270 overlay、扫描线与 3px snap；`day1_all.js` 的包装层给主角显式传 `style:'pixel'`，所以鲸鱼娘仍保留像素骨架。字幕绘制仍映射到原 pixel 分支以保留说话人标签，但此时边缘已按 clean 原生栅格化。渲染器把原有 1280×720 逻辑坐标以 1.5 倍直接绘到 1920×1080 画布，再用 `libx264 -preset medium -crf 19` 编码；这不是对旧 720p 成片做后期放大。脚本、27-cue 台词、Piper 音频与 measured timing 均未改。
+
+```bash
+node render_day1.mjs --stills
+node render_day1.mjs --out day1_rerender_82bede5_piper_clean1080_hairfix.mp4
+```
+
+新版本已覆盖本仓库同名的 `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`：97.493s、1920×1080、30fps、H.264/AAC-LC 48kHz stereo、22,683,071 bytes，SHA-256 `546b24a57cc714e398883a1bb754534cf4c2453966ef0c33f13a053738894162`。解码音频仍为 97.493s，峰值 0.894073，≥0.999 与满幅样本均为 0。已检查 18 张关键静帧、最终 MP4 的 27 个 cue ×25%/55%/85% 共 81 张编码帧、cue 起点后 0.06s/0.18s 的 54 张边界帧，以及 16.5–17.8s 的 14 张连续帧：右侧长发已完整垂下，尾巴仍可见，卡片字、场景字和字幕边缘清晰。
 
 ## 四、复现命令
 
@@ -177,15 +194,15 @@ Azure 路径已留接口，但需要用户自己的 Speech 资源环境变量（
 |---|---|
 | `Day1文案.md` | 27-cue 连读版、Cue/分镜表与数据出处 |
 | `Day1配音台词.txt` | 27 行纯台词，一行一条 |
-| `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` | 当前 27-cue / 97.49s 结构片；基于 `video-fx@82bede5` 连续骨架重渲，含尾巴可见性修复，非终版 |
+| `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` | 当前 27-cue / 97.49s 结构片；基于 `video-fx@82bede5` 连续骨架重渲，含尾巴、wink 右发与 clean 1080p 清晰度修复，非终版 |
 | `day1视频_Piper结构片（非晓伊占位）.mp4` | 上一基线 27-cue / 97.49s 结构片；保留对照，非终版 |
 | `day1制作/Piper结构片验收表.md` | 每 cue 的时长、F0、峰值、削顶与片中起止时间 |
 | `day1制作/day1_audio_piper/` | 27 条后处理 WAV + schema 2 `tts_report.json` |
 | `tools/say.py` | `edge` / `piper` / `azure` 可切换合成 + 时长/F0/峰值/削顶回读 |
 | `day1制作/gen_all.py` | engine/manifest 实测门禁、8% 卡点规则、字幕/混音/口型生成器 |
 | `day1制作/synth_voice.py` | video-fx 内按引擎调用 `say.py` 的批量入口 |
-| `day1制作/video-fx源码快照/day1_all.js` | 27-cue 四章分镜；含六个新增镜头、删“官方”、L16 红章避让、动作徽章关闭，以及针对 Day1 小主角明确设置的 `tailScale=1.0` |
-| `day1制作/video-fx源码快照/render_day1.mjs` | Day 1 渲染器；含 placeholder 终版文件名保护，并仅在 Day1 内把共享 HUD 从误写的 Day 0 覆盖为 Day 1 |
+| `day1制作/video-fx源码快照/day1_all.js` | 27-cue 四章分镜；含六个新增镜头、删“官方”、L16 红章避让、动作徽章关闭、主角显式 `style:'pixel'`，以及针对 Day1 小主角明确设置的 `tailScale=1.0` |
+| `day1制作/video-fx源码快照/render_day1.mjs` | Day 1 渲染器；含 placeholder 终版文件名保护、Day1 HUD、wink 后发替换、clean 去像素量化、1920×1080 原生输出与 18 张静帧回归集 |
 | `day1制作/video-fx源码快照/day1_timing_piper_measured.js` | 本次 Piper 实测时间轴留档；27 条偏差全 0.0%，`timing_reused=true`；文件名已标明 Piper，不可当晓伊 timing |
 
 注：video-fx 工作区里 `src/day1_timing.js`、`src/lyrics.js`、`assets/day1_envelope.js` 当前是 Piper 结构片生成状态；若要在该仓库重出 Day 0 或终版晓伊，应先按对应流程重新生成，不要手改生成文件冒充实测结果。
