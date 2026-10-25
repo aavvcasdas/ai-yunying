@@ -1,7 +1,7 @@
 // render_day1.mjs — 【Day 1】AI 运营第二天，名字被粉丝改了 · 渲染器
 // 用法: node render_day1.mjs [--out whale_day1.mp4] [--style pixel] | --stills
-// 前置: python3 day1_tools/gen_all.py (生成 timing/lyrics/track/envelope)
-//        (可选) python3 day1_tools/synth_voice.py 后再跑 gen_all 切换晓伊实录轨
+// 前置: 先 synth_voice.py 生成 measured manifest，再 gen_all.py --engine <同一引擎>
+// Piper timing 只能出结构片，渲染器会拒绝把它写成 whale_day1.mp4 终版名。
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -57,12 +57,14 @@ async function renderStills() {
   fs.mkdirSync('day1_stills', { recursive: true });
   const c = createCanvas(1280, 720);
   const ctx = c.getContext('2d');
-  const times = [1.2, DAY1_TIMING.cues[1].start + 1.6, DAY1_TIMING.cues[2].start + 1.8,
-    DAY1_TIMING.cues[6].start + 1.8, DAY1_TIMING.cues[7].start + 2.2,
-    DAY1_TIMING.cues[8].start + 2.0, DAY1_TIMING.cues[11].start + 2.6,
-    DAY1_TIMING.cues[13].start + 2.6, DAY1_TIMING.cues[16].start + 3.6,
-    DAY1_TIMING.cues[17].start + 2.2, DAY1_TIMING.cues[20].start + 1.4,
-    DAY1_TIMING.endcard[0] + 1.2];
+  const cueT = (n, f = 0.55) => {
+    const c = DAY1_TIMING.cues[n - 1];
+    return c.start + (c.end - c.start) * f;
+  };
+  const times = [1.2, cueT(2), cueT(3, 0.65), cueT(7), cueT(8, 0.7),
+    cueT(9), cueT(12, 0.7), cueT(14, 0.7), cueT(15, 0.7), cueT(16, 0.88),
+    cueT(17, 0.62), cueT(20, 0.78), cueT(21, 0.82), cueT(22, 0.62),
+    cueT(23, 0.75), cueT(27, 0.45), DAY1_TIMING.endcard[0] + 1.2];
   for (const t of times) {
     ctx.clearRect(0, 0, 1280, 720);
     TIMELINE.renderFrame(ctx, t, 'pixel');
@@ -75,7 +77,13 @@ async function renderStills() {
 async function renderVideo(style, outFile) {
   const ffmpegBin = resolveFfmpegPath();
   const audioFile = path.resolve('assets/day1_track.wav');
-  console.log(`Day1 rendering ${TOTAL_FRAMES} frames (${DURATION}s) voice=${DAY1_TIMING.voice ? 'xiaoyi' : 'PREVIEW-no-voice'} -> ${outFile}`);
+  const engine = DAY1_TIMING.voice_engine || (DAY1_TIMING.voice ? 'legacy/measured' : 'none');
+  const placeholder = DAY1_TIMING.voice_placeholder === true || DAY1_TIMING.voice_final === false;
+  if (!DAY1_TIMING.voice) throw new Error('DAY1_TIMING 没有实测人声音轨，禁止渲染');
+  if (placeholder && path.basename(outFile) === 'whale_day1.mp4') {
+    throw new Error(`${engine} 是非晓伊占位音轨，只能出结构片（例如 whale_day1_piper_structure.mp4），不能冒充终版 whale_day1.mp4`);
+  }
+  console.log(`Day1 rendering ${TOTAL_FRAMES} frames (${DURATION}s) voice_engine=${engine} final=${!placeholder} placeholder=${placeholder} -> ${outFile}`);
   const ff = spawn(ffmpegBin, [
     '-y', '-f', 'rawvideo', '-vcodec', 'rawvideo', '-pix_fmt', 'rgba',
     '-s', '1280x720', '-r', String(FPS), '-i', '-', '-i', audioFile,
@@ -111,5 +119,6 @@ if (args.includes('--stills')) {
   await renderStills();
 } else {
   const si = args.indexOf('--style'), oi = args.indexOf('--out');
-  await renderVideo(si >= 0 ? args[si + 1] : 'pixel', oi >= 0 ? args[oi + 1] : 'whale_day1.mp4');
+  const placeholder = DAY1_TIMING.voice_placeholder === true || DAY1_TIMING.voice_final === false;
+  await renderVideo(si >= 0 ? args[si + 1] : 'pixel', oi >= 0 ? args[oi + 1] : (placeholder ? 'whale_day1_piper_structure.mp4' : 'whale_day1.mp4'));
 }

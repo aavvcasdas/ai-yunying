@@ -383,9 +383,9 @@
     const front = Math.floor(lerp(0, 197, easeOut(seg(lt, dur * 0.46, dur * 0.78))));
     letter(ctx, front + ' 条', 960, 235, 58, PAL.cream, { stroke: false, ink: false });
     letter(ctx, '只数得出来这么多', 960, 318, 24, '#FECDD3', { stroke: false, ink: false });
-    stamp(ctx, W / 2, 430, '差 151 条？', PAL.rose, seg(lt, dur * 0.76, dur * 0.9), -0.09, 34);
+    stamp(ctx, 455, 445, '差 151 条？', PAL.rose, seg(lt, dur * 0.76, dur * 0.9), -0.09, 34);
     const md = emotions(t, [[C(16), 'proud', 'sparkle'], [C(16) + dur * 0.5, 'confused', 'question'], [C(16) + dur * 0.8, 'shocked', 'exclaim']]);
-    whaleGirl(ctx, W / 2, 584, 22, { ...md, headTilt: 0.12, t });
+    whaleGirl(ctx, 875, 584, 22, { ...md, headTilt: 0.12, t });
     camEnd(ctx);
   }
 

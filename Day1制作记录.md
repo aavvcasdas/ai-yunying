@@ -1,11 +1,12 @@
 # Day 1 制作记录 —— 《AI 运营第二天，名字被粉丝改了》
 
-> 更新：2026-10-25。当前剧本为 **27 cue 修订稿**，终版尚未渲染；旧 21-cue 预览片已作废，**不要发布**。
-> 制作仓库：`video-fx` 分支 `arena/8be4c8f8-video-fx`（沙箱 `/home/user/video-fx-day0`）。本仓库保存文案、配音稿、TTS 工具与制作源码快照。
+> 更新：2026-10-25。当前剧本为 **27 cue 修订稿**；已完成一条带 Piper 占位配音的 97.49 秒结构片，用于核对画面、字幕和卡点。
+> **这条结构片不是晓伊终版，不要按终版发布。** 旧 21-cue 无人声预览片也已作废。
+> 制作仓库：`video-fx` 分支 `arena/8be4c8f8-video-fx`（沙箱 `/home/user/video-fx-day0`）。本仓库保存文案、配音稿、TTS 工具、Piper 占位音频与制作源码快照。
 
-## 一、本轮已完成
+## 一、已完成
 
-- ✅ 《Day1文案.md》和 `Day1配音台词.txt` 已从 21 cue 更新为 27 cue，两个文件逐条一致。
+- ✅ 《Day1文案.md》和 `Day1配音台词.txt` 已从 21 cue 更新为 27 cue，两个文件逐条一致；本轮没有改台词。
 - ✅ 新增 **L15–L17 回信悬案**：30 条催回信 → 后台回了三百多条、评论区只数出 197 条 → “是不是被鱼叼走了？”
 - ✅ 新增 **L20–L22 点播回应**：19 条点播 → 《朋友的酒》和 MV → 三角洲/王者与“本鱼没手” → “MV 还在肚子里，先游两圈。”
 - ✅ 画面文字 **“官方艺名：鲸鱼娘”已改为“艺名：鲸鱼娘”**。
@@ -17,97 +18,143 @@
   - `shotGameRefusal`：三角洲/王者、超大手柄和“没手”红章；
   - `shotMvBelly`：MV 制作中泡泡，本鱼沿泳圈轨迹游满两圈。
 - ✅ 菜单仍保留已确认四项：MV / 打游戏 / Claude 共创 / 偷吃饭；“打游戏”卡已加“没手警告”，承接新台词，不假装能亲自操作。
-- ✅ 六个新增镜头已做静帧运行检查，并修正了大字被头发遮挡、巨型手柄被角色遮挡等图层问题；检查没有写入任何生产时间轴。
-- ✅ 代码已加终版门禁：`day1_all.js` 只接受 27-cue、带人声且标记为 measured 的时间轴；旧 21-cue 估时时间轴被使用时直接报错。
+- ✅ Piper 结构片已完成 17 张关键静帧和成片抽帧检查。复核中发现 L16 的“差 151 条？”红章曾被角色挡住，已把红章与角色左右错开，并重新渲染整片。
+- ✅ 结构片文件：`day1视频_Piper结构片（非晓伊占位）.mp4`（97.49s，1280×720，30fps，H.264/AAC 48kHz，11,725,141 bytes，SHA-256 `69c052bc17af9719ab15b993c543e29f81827903fe40873b06eececc0aea8659`）。
 
-## 二、晓伊 TTS：工具完成，本沙箱网络仍失败
+逐句数字见 `day1制作/Piper结构片验收表.md`，机器报告见 `day1制作/day1_audio_piper/tts_report.json`。
 
-### 工具
+## 二、TTS 双轨：终版晓伊未完成，Piper 先解结构阻塞
 
-- 沙箱内：`/home/user/tools/say.py`
-- 本仓库同份文件：`tools/say.py`
-- video-fx 工具目录同份文件：`day1_tools/say.py`
-- 固定参数：Microsoft Edge TTS `zh-CN-XiaoyiNeural`、rate `+0%`、pitch `+0Hz`
-- 不允许改音色、不加语速/音调偏移；没有克隆任何真人、游戏角色声音，也没有拿任何人的干声做参考。
+### 2.1 工具与固定口径
 
-单句：
+`say.py` 现在支持可切换引擎，四处副本保持同一文件：
 
-```bash
-python3 ~/tools/say.py "大家好，本鱼回来了。日更，没摸鱼。" L01.mp3
-```
+- 沙箱：`/home/user/tools/say.py`
+- 本仓库：`tools/say.py`
+- 本仓库制作快照：`day1制作/say.py`
+- video-fx：`day1_tools/say.py`
 
-全片逐行批量：
+用法：
 
 ```bash
-python3 ~/tools/say.py --batch Day1配音台词.txt --outdir day1_audio
-```
+# 终版晓伊（Edge；成功后仍须逐条回读）
+python3 ~/tools/say.py --engine edge "大家好，本鱼回来了。日更，没摸鱼。" L01.mp3
+python3 ~/tools/say.py --engine edge --batch Day1配音台词.txt --outdir day1_audio
 
-工具会逐行生成 `L01.mp3`–`L27.mp3`，随后用 ffprobe/mutagen 回读真实时长，并用自相关法报告 F0 中位、P25、P75；结果写入 `tts_report.json`。任一 cue 的 F0 中位不在 290–330Hz，工具会返回失败状态，不会只报“已完成”。
+# 离线结构占位（Piper；明确不是晓伊）
+python3 ~/tools/say.py --engine piper "大家好，本鱼回来了。日更，没摸鱼。" L01.wav
+python3 ~/tools/say.py --engine piper --batch Day1配音台词.txt --outdir day1_audio_piper
 
-检查已有 MP3（不合成）：
-
-```bash
+# 只检查已有音频，不合成
 python3 ~/tools/say.py --check L01.mp3
+python3 ~/tools/say.py --check L01.wav
 ```
 
-### 本次实测结果（不是估算）
+固定规则：
+
+- 终版只能是 Microsoft `zh-CN-XiaoyiNeural`（晓伊），rate `+0%`、pitch `+0Hz`；可用正常网络的 Edge，或用户提供 Azure 资源后走 `--engine azure`。
+- 中文纯文本逐 cue 合成；停顿只靠标点，不用改语速代替标点。
+- 不克隆任何真人、游戏角色声音，不拿任何人的干声做参考。
+- 每条都回读：实测时长、F0 中位/P25/P75、采样率、峰值、≥0.999 的削顶样本数。
+- 报告为 schema 2：每 cue 记录 `engine`、`measured`、`dirty`、`duration_seconds`、`duration_sec_measured`。Piper 还固定写 `final_voice=false`、`placeholder=true`、`non_xiaoyi_placeholder=true`。
+- 立体声文件按原始声道测峰值/削顶，再用归一化单声道测 F0，避免 FFmpeg 双声道下混增益造成假削顶；逐句人声本身仍是单声道。
+
+检测器自检：310Hz 谐波信号回读 **2.038s / 310.36Hz**；Piper 官方 `speaker_0.mp3` 样本回读 **19.200s / 196.17Hz**。这两项只证明回读器工作及统一 Piper 口径，不是晓伊证据。
+
+### 2.2 Edge 晓伊“一分钟分诊”结果
 
 | 检查项 | 结果 |
 |---|---|
-| `edge-tts` 安装 | 成功；本沙箱因 PEP 668 需要 `pip install --break-system-packages edge-tts mutagen imageio-ffmpeg numpy` |
-| 单句自检台词 | “大家好，本鱼回来了。日更，没摸鱼。” |
-| 单句自检退出码 | **1（失败）** |
-| 错误 | `aiohttp.client_exceptions.ClientConnectorError: Cannot connect to host speech.platform.bing.com:443` |
-| DNS | 正常，解析到 150.171.27.10 / 150.171.28.10 及 IPv6 地址 |
-| IPv4 | TCP 可连接，但 TLS 握手立即 EOF；curl 为 `SSL_ERROR_SYSCALL` |
-| IPv6 | `Network is unreachable` |
-| 代理 | 环境变量、pip、npm、git 均未配置可用代理 |
-| 有效晓伊 MP3 | **无**；失败留下的 0 字节文件已由工具自动清理 |
-| 晓伊真实时长 / F0 | **尚无数据，不能声称达标** |
+| `edge-tts` 版本 | 7.3.1 |
+| `python3 -m edge_tts --list-voices` | 失败，无法连接 `speech.platform.bing.com:443` |
+| 代理 | 环境里没有可用代理，未虚构 `--proxy` |
+| 历史网络证据 | DNS/TCP 可达但 TLS 握手被立即切断（EOF / `SSL_ERROR_SYSCALL`） |
+| 结论 | 本沙箱到微软语音端点的网络路径问题；按双轨方案停止在沙箱内反复折腾直连 |
+| 有效晓伊音频 | **仍无**；因此没有任何晓伊实测时长/F0 合格结论 |
 
-时长/F0 回读器本身另做了非人声的 310Hz 谐波测试信号校验：回读时长 **2.038s**，F0 中位 **310.34Hz**（98/98 帧）。这只证明检测算法能工作，**不是晓伊测试结果，不用于配音或卡点**。
+### 2.3 Piper 模型、后处理与 27 条结果
 
-## 三、严格实测门禁
+- 模型：`zh_CN-huayan-medium.onnx`，目标与落盘校验均为 **63,201,294 bytes**，SHA-256 `9929917bf8cabb26fd528ea44d3a6699c11e87317a14765312420be230be0f3d`；JSON 为 22050Hz、espeak `cmn`。
+- 本沙箱无法直连 Hugging Face / GitHub LFS 等二进制域名。最终从一个普通 Git blob 中取得带 129 字节 Sherpa 顶层元数据的同模型文件，去除顶层 `metadata_props` 后，文件大小与 SHA-256 与官方锚点逐字节一致，才放入 `~/tools/models/`。Git LFS 指针从未被冒充为模型。
+- 每条原始 Piper 输出统一经过：
 
-`day1_tools/gen_all.py` 已删除旧的字数估时回退：
+```text
+alimiter=limit=0.89,loudnorm=I=-16:TP=-1.5:LRA=11
+```
 
-1. 必须存在 27 个有效 MP3 和 `day1_audio/tts_report.json`；
-2. 报告中的台词、文件名、音色与固定参数必须与当前配音稿逐条一致；
-3. 每条 `duration_sec_measured` 必须有效，并由 ffprobe/mutagen 独立复测，误差超过 0.08 秒就中止；
-4. 每条 F0 中位必须在 290–330Hz，否则列出不合格 cue 并中止；
-5. 全部通过后才生成 `src/day1_timing.js`、重排字幕、混入人声并用真实人声 RMS 生成口型包络。
+- 27 条原始输出峰值均为 0.999969，原始削顶合计 **41**；后处理峰值范围 **0.682739–0.843750**，削顶合计 **0**。
+- 27 条后处理音频保存为 `day1制作/day1_audio_piper/L01.wav`–`L27.wav`，均为 48kHz 单声道。
+- 本工具自相关口径下，27 条 F0 中位为 **187.73–222.37Hz**，全部不在晓伊目标 290–330Hz；验收表和 manifest 都明确称其为“非晓伊占位音轨”。这正是它只能做结构片的原因。
 
-本轮已实跑门禁测试：在没有 MP3/报告时，`gen_all.py` 按预期退出码 1，只提示先运行 `say.py`，不会覆盖出估算版时间轴。
+## 三、严格实测与引擎门禁
 
-## 四、正常网络下出终版
+`day1_tools/gen_all.py` 不再接受字数估时或混引擎时间轴：
 
-前提：`ai-yunying` 与 `video-fx` 两个仓库同级放置；在 `video-fx` 根目录运行。
+1. 每次运行必须显式给出当前引擎，如 `--engine piper/zh_CN-huayan-medium` 或 `--engine edge/zh-CN-XiaoyiNeural`。
+2. manifest 顶层和每 cue 的 `engine` 必须与当前引擎完全一致；不一致即判旧音频 dirty，在写 timing/track 前退出。
+3. 每 cue 必须 `measured=true`、`dirty=false`，台词和文件名必须与当前 27 行配音稿逐条一致；Edge/Azure 终版还必须证明晓伊 `+0% / +0Hz`。
+4. 每条 `duration_seconds` 由 ffprobe/mutagen/ffmpeg 路径独立复测，差异超过 0.08 秒就中止。
+5. Edge/Azure 终版每 cue 的 F0 中位必须在 290–330Hz；Piper 不套用该合格线，而是逐条记录、汇总警告，并把 timing 写为 `voice_final=false`、`voice_placeholder=true`。
+6. Piper 后处理后若仍有削顶样本，禁止生成结构片时间轴。
+7. 与上一版同为 27 cue 且台词一致时才比较时长：若每条偏差都 ≤8%，复用旧 cue 起止卡点；任一条 >8% 或没有可比基线，才按新实测时长重排。本次旧 timing 是 21 cue、不可比，因此按 Piper 实测时长新排为 97.49 秒。
+8. `render_day1.mjs` 会拒绝把 placeholder timing 写成 `whale_day1.mp4`；Piper 默认只能写 `whale_day1_piper_structure.mp4`。
+
+本轮门禁实跑：同引擎 Piper 成功生成结构片；无晓伊 manifest 的 Edge 运行退出码 1；Piper manifest 喂给 Edge 退出码 1；placeholder 请求终版文件名退出码 1 且没有生成 `whale_day1.mp4`。失败测试前后 timing、lyrics、envelope、track 与结构片哈希均不变。
+
+混音后另按原始左右声道复测：`assets/day1_track.wav` 峰值 0.895020、≥0.999 样本 0；最终 MP4 解码峰值 0.894086、≥0.999 样本 0。混合 BGM 的 F0 不用于音色验收。
+
+## 四、复现命令
+
+前提：`ai-yunying` 与 `video-fx` 两个仓库同级放置，在 `video-fx` 根目录运行；`~/tools/say.py` 与本仓库版本一致。
+
+### 4.1 复现 Piper 结构片
 
 ```bash
-pip install edge-tts mutagen imageio-ffmpeg numpy
+pip install --break-system-packages edge-tts mutagen imageio-ffmpeg numpy piper-tts
 npm install @napi-rs/canvas
+# 将校验通过的 zh_CN-huayan-medium.onnx/.json 放到 ~/tools/models/
 
-python3 day1_tools/synth_voice.py       # 调用 ~/tools/say.py，生成 27 条 MP3 + tts_report.json
-python3 day1_tools/gen_all.py           # 只按实测时长排 27 cue，并复核 F0
+python3 day1_tools/synth_voice.py --engine piper
+python3 day1_tools/gen_all.py --engine piper/zh_CN-huayan-medium
+node render_day1.mjs --out whale_day1_piper_structure.mp4
+```
+
+本仓库已保存同一批 27 条 WAV 和 manifest，可把 `day1制作/day1_audio_piper/` 内容复制回 `video-fx/day1_audio_piper/` 后从 `gen_all.py` 开始复跑。
+
+### 4.2 出晓伊终版（仍待外部网络或 Azure）
+
+Edge 正常网络：
+
+```bash
+python3 day1_tools/synth_voice.py --engine edge
+python3 day1_tools/gen_all.py --engine edge/zh-CN-XiaoyiNeural
 node render_day1.mjs --out whale_day1.mp4
 ```
 
-也可以先在正常网络机器上直接运行本仓库 `tools/say.py --batch Day1配音台词.txt --outdir day1_audio`，再把 27 个 MP3 与 `tts_report.json` 放回 `video-fx/day1_audio/` 后继续后两步。
+有代理时只给 Edge 传真实代理：`python3 day1_tools/synth_voice.py --engine edge --proxy <真实代理 URL>`。
+
+Azure 路径已留接口，但需要用户自己的 Speech 资源环境变量（如 key/endpoint/region）；没有真实凭据时不得伪造。无论 Edge 还是 Azure，晓伊都必须重新全量合成、回读时长/F0，并通过 290–330Hz 门禁；再按 8% 规则决定复用卡点还是对偏差句重排。只换音轨，不改 27-cue 分镜结构。
 
 ## 五、旧预览片（历史留档）
 
-`day1视频_预览版（待晓伊配音）.mp4` 是旧 21-cue、无人声、按估时排布的预览：85.20 秒，1280×720，30fps，H.264/AAC 48kHz；曾抽帧检查标题、户口本、评论墙、改名、抢米饭、菜单、信堆和终幕。它不包含本轮新增六条台词，也不满足新的实测卡点要求，因此只能回看构图风格，**不能作为 Day 1 发布片**。
+`day1视频_预览版（待晓伊配音）.mp4` 是旧 21-cue、无人声、按估时排布的预览：85.20 秒，1280×720，30fps，H.264/AAC 48kHz。它不包含本轮新增六条台词，也不满足实测卡点要求，只能回看构图风格，**不能作为 Day 1 发布片**。
+
+新的 `day1视频_Piper结构片（非晓伊占位）.mp4` 包含完整 27 cue、真实可听的 Piper 占位配音、字幕、BGM 与实测卡点，但同样**不是发布终版**；发布前必须换回晓伊。
 
 ## 六、关键文件
 
 | 文件 | 说明 |
 |---|---|
 | `Day1文案.md` | 27-cue 连读版、Cue/分镜表与数据出处 |
-| `Day1配音台词.txt` | 27 行纯台词，一行对应一条 MP3 |
-| `tools/say.py` | 晓伊单句/批量合成 + 时长回读 + F0 报告（沙箱同份在 `~/tools/say.py`） |
-| `day1制作/gen_all.py` | 严格实测版时间轴/字幕/混音/口型生成器 |
-| `day1制作/synth_voice.py` | video-fx 内调用 `say.py` 的批量入口 |
-| `day1制作/video-fx源码快照/day1_all.js` | 27-cue 四章分镜；已含六个新增镜头与删“官方” |
-| `day1制作/video-fx源码快照/render_day1.mjs` | Day 1 独立渲染器 |
+| `Day1配音台词.txt` | 27 行纯台词，一行一条 |
+| `day1视频_Piper结构片（非晓伊占位）.mp4` | 27-cue / 97.49s 结构片；非终版 |
+| `day1制作/Piper结构片验收表.md` | 每 cue 的时长、F0、峰值、削顶与片中起止时间 |
+| `day1制作/day1_audio_piper/` | 27 条后处理 WAV + schema 2 `tts_report.json` |
+| `tools/say.py` | `edge` / `piper` / `azure` 可切换合成 + 时长/F0/峰值/削顶回读 |
+| `day1制作/gen_all.py` | engine/manifest 实测门禁、8% 卡点规则、字幕/混音/口型生成器 |
+| `day1制作/synth_voice.py` | video-fx 内按引擎调用 `say.py` 的批量入口 |
+| `day1制作/video-fx源码快照/day1_all.js` | 27-cue 四章分镜；含六个新增镜头、删“官方”和 L16 红章避让修复 |
+| `day1制作/video-fx源码快照/render_day1.mjs` | Day 1 渲染器；含 placeholder 终版文件名保护 |
+| `day1制作/video-fx源码快照/day1_timing_piper_measured.js` | 本次 Piper 实测时间轴留档；文件名已标明 Piper，不可当晓伊 timing |
 
-注：旧的 `day1_timing.js` 快照已移除，避免误用 21-cue 估时。video-fx 中 `src/lyrics.js` 与 `src/props.js` 仍是上次 Day 1 预览时改过的状态；若要在该仓库重出 Day 0，需先按原提交还原。
+注：video-fx 工作区里 `src/day1_timing.js`、`src/lyrics.js`、`assets/day1_envelope.js` 当前是 Piper 结构片生成状态；若要在该仓库重出 Day 0 或终版晓伊，应先按对应流程重新生成，不要手改生成文件冒充实测结果。
