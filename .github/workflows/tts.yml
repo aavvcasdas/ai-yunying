@@ -1,0 +1,52 @@
+name: Generate Day1 TTS (XiaoyiNeural)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/63c2a221-ai-yunying
+    paths:
+      - '.github/workflows/tts.yml'
+      - 'day1_配音稿.txt'
+      - 'day1_配音稿_极速版.txt'
+
+jobs:
+  tts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install edge-tts
+        run: pip install --disable-pip-version-check edge-tts
+
+      - name: Synthesize (zh-CN-XiaoyiNeural, no rate/pitch offset)
+        run: |
+          mkdir -p audio
+          edge-tts --voice zh-CN-XiaoyiNeural --file day1_配音稿.txt --write-media audio/day1.mp3
+          edge-tts --voice zh-CN-XiaoyiNeural --file day1_配音稿_极速版.txt --write-media audio/day1_fast.mp3
+          ls -la audio/
+          file audio/*.mp3
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: day1-tts
+          path: audio/
+          retention-days: 7
+
+      - name: Commit audio back to branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f audio/day1.mp3 audio/day1_fast.mp3
+          git diff --cached --quiet && echo "no audio changes" || (git commit -m "chore: generate Day1 XiaoyiNeural TTS (zero rate/pitch offset)" && git push origin HEAD:${{ github.ref_name }})
