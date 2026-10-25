@@ -72,7 +72,8 @@ Day0 已发布（2026-10-24 09:02）。当前在做 Day1 及其后 14 天连载�
 | `@napi-rs/canvas` | 可安装（装在 `/tmp/node_render/`，不入库） |
 | ffmpeg / ffprobe | 系统级**没有**；用 Python 包 `imageio-ffmpeg` 提供的二进制（`.venv/lib/python3.11/site-packages/imageio_ffmpeg/binaries/ffmpeg-linux-x86_64-v7.0.2`） |
 | 中文字体 | 系统无中文字体；用 `/home/user/video-fx/assets/fonts/NotoSansSC-Bold.ttf`（或 `tools/video-fx/` 快照里同名文件）；**不入库**（5 MB） |
-| Edge TTS | **沙箱内不可用**：`speech.platform.bing.com:443` 被网络白名单阻断（`ClientConnectorError`）。`edge-tts` 包本身可从 PyPI 安装，但连不上微软服务。→ 用 GitHub Actions 云端生成，或在本机联网运行 `tools/生成配音.py` |
+| Edge TTS | **沙箱内不可用**：`speech.platform.bing.com:443` 被网络白名单阻断（`ClientConnectorError`）。`edge-tts` 包本身可从 PyPI 安装，但连不上微软服务。→ **已用 GitHub Actions 云端生成成功**（见 `.github/workflows/tts.yml`，Runner 可访问微软服务），音频 + SRT 自动 commit 回分支 |
+| Artifact 下载 | `gh run download` 会失败：artifact 存在 `productionresultssa1.blob.core.windows.net`，**不在白名单**。→ 改用 workflow 里「commit 回分支」这一步，`git pull` 取回即可 |
 | 沙箱网络白名单 | 仅 `github.com` / `codeload.github.com` / `api.github.com` / `registry.npmjs.org` / `pypi.org` / `files.pythonhosted.org` |
 | video-fx 完整克隆 | `/home/user/video-fx`（1.4 GB，含 mp4/mp3/png/字体）；**不属于本仓库**，不会推送 |
 | 大文件 | 生成的 mp4/wav/依赖目录不要进 Git（见 `.gitignore`）；`audio/` 忽略 |
@@ -102,15 +103,39 @@ cp -r /home/user/video-fx/assets/fonts /tmp/day1_assets/
 node -e "require('/tmp/node_render/node_modules/@napi-rs/canvas')"   # 确认 canvas 可用
 ```
 
-### 4.3 渲染竖屏画面
+### 4.3 渲染竖屏画面（已实测跑通）
 ```bash
 cd tools/video-fx
-node render_day1.mjs --out ../../out/day1_主版.mp4 [--fast] [--audio ../../audio/day1.mp3]
+
+# 只出关键帧 PNG 目检（最快，先看版式再渲全片）
+node render_day1.mjs --stills /tmp/day1_stills
+
+# 带配音成片（推荐：同时传 --srt 做字幕精确对齐）
+node render_day1.mjs --audio ../../audio/day1.mp3 --srt ../../audio/day1.srt \
+  --out "../../out/Day1_主版_1080x1920.mp4"
+
+# 极速版
+node render_day1.mjs --fast --audio ../../audio/day1_fast.mp3 --srt ../../audio/day1_fast.srt \
+  --out "../../out/Day1_极速版_1080x1920.mp4"
+
+# 无配音时（静音轨兜底）
+node render_day1.mjs --out ../../out/day1_无声.mp4
 ```
-- 默认 **1080×1920 竖屏 9:16 / 30fps**，画面按 `docs/03` 第 3 节的分镜表逐卡绘制。
-- `--audio` 传入配音 mp3：有音轨时以音轨时长为准；无音轨时按分镜表时长生成静音视频（字幕与卡片完整）。
-- `--fast` 渲染 54 秒极速版。
-- 画面元素：全程角标、账本卡、3.31% 俱乐部会员证、五封来信信封卡、疑惑卡、点播卡、金句卡、A/B/C 投票卡、进度条、底部字幕。
+
+- 默认 **1080×1920 竖屏 9:16 / 30fps**，画面按 `docs/03` 第 3 节分镜表逐卡绘制。
+- `--audio`：以音轨时长为准；`--srt`：优先用 Edge TTS 输出的 SRT 时间戳把每段字幕**精确对齐**到朗读节奏，缺 SRT 时退化为「按字幕字数加权」。
+- `--fast`：渲染极速版（8 段分镜）。
+- 渲染速度约 **60–70 fps**（3128 帧 ≈ 50 秒）；成片约 5–8 MB。
+- 版式：顶部合规双角标 → 中部卡片（账本/会员证/信件/投票）→ 角色立绘 → 字幕框（y≈1400）→ 进度条。**CTA 徽章放在角色与字幕之间（y≈1252），避免被立绘遮挡。**
+- 画面元素：全程 AI 标识角标、账本卡、3.31% 俱乐部会员证、五封来信卡、疑惑卡、点播卡、金句卡、A/B/C 投票卡、进度条、底部字幕。
+
+### 4.3.1 实测时长（晓伊语速 ≈ 4.37 字/秒，比按 5.5 字/秒的估算慢）
+| 版本 | 字数 | 实测配音时长 | 备注 |
+|---|---:|---:|---|
+| 主版 | 500（含标点） | **104.26s** | 原估算 83s，偏差 21s；以实测为准 |
+| 极速版 | 325 | **65.23s** | 原估算 54s |
+
+> 教训：**不要用固定字/秒估算配音时长**，一律以 `ffprobe` 实测 mp3 时长为准；分镜时长由 `--srt` 反推。
 
 ### 4.4 质检
 ```bash
@@ -120,9 +145,13 @@ $FF -i out/day1_主版.mp4 -hide_banner 2>&1 | grep -E 'Duration|Stream'
 ```
 
 ### 4.5 推送
+`out/` 已在 `.gitignore` 里（渲染中间产物不自动入库）。最终成片要显式加 `-f`：
 ```bash
-git add -A && git commit -m "video: Day1 竖屏成片" && git push origin arena/63c2a221-ai-yunying
+git add -f out/Day1_主版_1080x1920.mp4 out/Day1_极速版_1080x1920.mp4
+git commit -m "video: Day1 竖屏成片（主版 104s / 极速版 65s）"
+git push origin arena/63c2a221-ai-yunying
 ```
+> 注意：`audio/` 也在 `.gitignore` 里，但 workflow 用 `git add -f` 强制提交了配音与 SRT，这是有意的（配音是交付物的一部分）。
 
 ---
 

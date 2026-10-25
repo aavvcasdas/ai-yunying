@@ -288,11 +288,15 @@ function drawFrame(ctx, t, scenes, duration, bg, sprites) {
     ctx.restore();
     ctx.font = `bold 42px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = CYAN; ctx.fillText(s.small, W / 2, 730);
+    // CTA 徽章放在角色下方、字幕上方的空档（角色约 852–1212，字幕从 1400 起）
     if (s.kind === 'club' || s.kind === 'end') {
+      ctx.fillStyle = 'rgba(7,19,39,0.72)';
+      rr(ctx, 300, 1252, 480, 104, 18); ctx.fill();
       ctx.strokeStyle = GOLD; ctx.lineWidth = 5;
-      rr(ctx, 280, 810, 520, 130, 20); ctx.stroke();
-      ctx.font = `bold 46px ${FONT}`; ctx.fillStyle = CREAM; ctx.textAlign = 'center';
-      ctx.fillText(s.kind === 'club' ? '评论区扣泡泡领证' : '点赞 · 收藏 · 关注', W / 2, 875);
+      rr(ctx, 300, 1252, 480, 104, 18); ctx.stroke();
+      ctx.font = `bold 44px ${FONT}`; ctx.fillStyle = CREAM;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(s.kind === 'club' ? '评论区扣泡泡领证' : '点赞 · 收藏 · 关注', W / 2, 1304);
     }
   } else if (s.kind === 'alert') {
     ctx.fillStyle = 'rgba(255,93,108,0.14)';
@@ -357,11 +361,47 @@ function probeDuration(audio, ff) {
   if (!m) return null;
   return (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]);
 }
-function scaleScenes(scenes, target) {
-  // 按「字幕字数」加权分配音轨时长：晓伊语速近似恒定，比等比缩放更贴合朗读节奏。
-  // 每段至少 2.6 秒，避免一闪而过；剩余时长按字数线性分配。
-  const MIN = 2.6;
+function scaleScenes(scenes, target, cues) {
+  // 优先用 Edge TTS 输出的 SRT 做精确对齐：把每一段字幕落到真实朗读时间上。
+  // 没有 SRT 时退化为「按字幕字数加权」的近似分配。
+  const MIN = 1.6;
   const n = scenes.length;
+
+  if (Array.isArray(cues) && cues.length) {
+    // cues: [{start, end, text}]，按顺序把每个分镜的 sub 字符数映射到 cue 时间轴
+    const totalChars = cues.reduce((a, c) => a + c.text.length, 0) || 1;
+    const totalDur = cues[cues.length - 1].end;
+    const sceneChars = scenes.map(s => Math.max(1, (s.sub || '').length));
+    const sceneSum = sceneChars.reduce((a, b) => a + b, 0);
+
+    // 在 cue 时间轴上按字符比例插值：给定字符偏移 → 时间
+    const toTime = (charOffset) => {
+      let acc = 0;
+      for (const c of cues) {
+        const len = c.text.length;
+        if (charOffset <= acc + len) {
+          const k = (charOffset - acc) / Math.max(1, len);
+          return c.start + (c.end - c.start) * Math.min(1, Math.max(0, k));
+        }
+        acc += len;
+      }
+      return totalDur;
+    };
+
+    let cursorChar = 0;
+    const out = scenes.map((s, i) => {
+      const a = toTime(cursorChar);
+      cursorChar += sceneChars[i];
+      let b = toTime(cursorChar);
+      if (b - a < MIN) b = Math.min(totalDur, a + MIN);
+      return { ...s, a, b };
+    });
+    // 收尾对齐到音轨结尾
+    out[out.length - 1].b = Math.max(out[out.length - 1].b, totalDur);
+    console.log(`SRT 对齐：${cues.length} 条字幕 / ${totalChars} 字 / ${totalDur.toFixed(2)}s`);
+    return out;
+  }
+
   const reserve = MIN * n;
   const flexible = Math.max(0.001, target - reserve);
   const weights = scenes.map(s => Math.max(1, (s.sub || '').length));
@@ -373,6 +413,27 @@ function scaleScenes(scenes, target) {
     cursor += dur;
     return out;
   });
+}
+
+function parseSrt(file) {
+  const raw = fs.readFileSync(file, 'utf8').replace(/\r/g, '');
+  const toSec = (h, m, s, ms) => (+h) * 3600 + (+m) * 60 + (+s) + (+ms) / 1000;
+  const cues = [];
+  for (const block of raw.split(/\n\n+/)) {
+    const lines = block.split('\n').filter(Boolean);
+    const ti = lines.findIndex(l => l.includes('-->'));
+    if (ti < 0) continue;
+    const m = /(\d+):(\d+):(\d+)[,.](\d+)\s*-->\s*(\d+):(\d+):(\d+)[,.](\d+)/.exec(lines[ti]);
+    if (!m) continue;
+    const text = lines.slice(ti + 1).join(' ').trim();
+    if (!text) continue;
+    cues.push({
+      start: toSec(m[1], m[2], m[3], m[4]),
+      end: toSec(m[5], m[6], m[7], m[8]),
+      text
+    });
+  }
+  return cues;
 }
 
 // ---------- main ----------
@@ -389,7 +450,17 @@ let duration = scenes[scenes.length - 1].b;
 if (audio) {
   if (!fs.existsSync(audio)) throw new Error(`音频不存在：${audio}`);
   const d = probeDuration(audio, ff);
-  if (d) { console.log(`音轨时长 ${d.toFixed(2)}s → 分镜按比例对齐`); scenes = scaleScenes(scenes, d); duration = d; }
+  // 同名 .srt 存在时用精确时间戳对齐，否则按字数加权近似
+  const srtPath = argOf('--srt', audio.replace(/\.(mp3|wav|m4a|aac)$/i, '.srt'));
+  let cues = null;
+  if (srtPath && fs.existsSync(srtPath)) {
+    try { cues = parseSrt(srtPath); } catch (e) { console.log('SRT 解析失败，回退近似对齐：', e.message); }
+  }
+  if (d) {
+    console.log(`音轨时长 ${d.toFixed(2)}s → ${cues ? 'SRT 精确对齐' : '字数加权近似对齐'}`);
+    scenes = scaleScenes(scenes, d, cues);
+    duration = cues && cues.length ? Math.max(d, cues[cues.length - 1].end) : d;
+  }
 }
 const bg = makeBackground();
 const sprites = makeSprites();
