@@ -1,5 +1,5 @@
 // src/ch/day1_all.js — 【Day 1】AI 运营第二天，名字被粉丝改了 (全四章)
-// 时间轴全部来自 src/day1_timing.js (day1_tools/gen_all.py 生成)，cue 编号对应 Day1配音台词.txt L01-L21。
+// 时间轴全部来自 src/day1_timing.js (day1_tools/gen_all.py 生成)，cue 编号对应 Day1配音台词.txt L01-L27。
 // 画面只拼装引擎现有件: PROPS 舞台/房间, CAST 全员, whaleGirl 表情与 28 动作。
 
 (function (root) {
@@ -10,6 +10,9 @@
   const TIMELINE = root.TIMELINE || (typeof require !== 'undefined' ? require('../timeline.js') : {});
   const TT = root.DAY1_TIMING || (typeof require !== 'undefined' ? require('../day1_timing.js') : null);
   if (!TT) throw new Error('DAY1_TIMING missing — run: python3 day1_tools/gen_all.py');
+  if (!TT.voice || !Array.isArray(TT.cues) || TT.cues.length !== 27 || !String(TT.duration_source || '').includes('measured')) {
+    throw new Error('DAY1_TIMING 不是 27-cue 实测时间轴：先用 say.py 生成全部晓伊 MP3，再运行 day1_tools/gen_all.py（禁止估时渲染）');
+  }
 
   const {
     W, H, TAU, PAL, clamp, lerp, seg, ease, easeIn, easeOut, backOut,
@@ -177,7 +180,7 @@
     PROPS.wall(ctx, '#232050');
     PROPS.floorBand(ctx, 548, '#1E1B38');
     card(ctx, W / 2 - 210, 85, 420, 95, '#0F172A', PAL.cream, 12);
-    letter(ctx, '官方艺名：鲸鱼娘', W / 2, 133, 34, PAL.cream, { stroke: false, ink: false });
+    letter(ctx, '艺名：鲸鱼娘', W / 2, 133, 34, PAL.cream, { stroke: false, ink: false });
     letter(ctx, '？？？', W / 2 + 300, 135, 40, PAL.rose, { pop: seg(lt, dur * 0.4, dur * 0.6) });
     const md = emotions(t, [[C(6), 'confused', 'question'], [C(6) + dur * 0.6, 'question', 'question']]);
     whaleGirl(ctx, W / 2, 565, 25, { ...md, headTilt: 0.16, t });
@@ -333,6 +336,85 @@
     camEnd(ctx);
   }
 
+
+  function envelopeAt(ctx, x, y, s, rot = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    paint(ctx, rrPts(-48 * s, -29 * s, 96 * s, 58 * s, 4, 1), { wash: PAL.paper, fill: PAL.paperDk, fillOp: 55, ink: PAL.ink, sw: 1.0 });
+    inkLine(ctx, [[-44 * s, -24 * s], [0, 4 * s], [44 * s, -24 * s]], 1.0, '#94A3B8', 'inkfine', 0);
+    ctx.restore();
+  }
+
+  function shotUrgeReplies(ctx, t, lt, dur) {
+    camBegin(ctx, W / 2, 365, 1.05, 0);
+    mailRoom(ctx, t);
+    letter(ctx, '催 回 信', 330, 105, 42, '#FDA4AF', { pop: seg(lt, 0, dur * 0.2) });
+    const prompts = ['回我一下！', '大肥鱼回我！', '在吗在吗？', '轮到我了吗？', '催一催！', '等回信中…'];
+    prompts.forEach((txt, i) => {
+      const on = seg(lt, dur * (0.05 + i * 0.09), dur * (0.16 + i * 0.09));
+      if (on <= 0.01) return;
+      const x = 85 + (i % 2) * 260;
+      const y = 150 + Math.floor(i / 2) * 105;
+      card(ctx, x, y, 235, 78, i % 2 ? '#2A2348' : '#16294F', '#FDA4AF', 10);
+      letter(ctx, txt, x + 118, y + 40, 24, PAL.cream, { pop: on, stroke: false, ink: false });
+    });
+    const blink = (Math.floor(lt * 4) % 2 === 0) ? 1 : 0.5;
+    paint(ctx, ellPts(610, 132, 31, 31, 14), { wash: PAL.rose, washOp: Math.floor(220 * blink), ink: PAL.ink, sw: 1.0 });
+    letter(ctx, '30', 610, 134, 28, PAL.cream, { stroke: false, ink: false });
+    letter(ctx, '咦？翻翻后台…', 850, 150, 31, PAL.gold, { pop: seg(lt, dur * 0.58, dur * 0.75) });
+    const md = emotions(t, [[C(15), 'panic', 'sweat'], [C(15) + dur * 0.55, 'confused', 'question']]);
+    whaleGirl(ctx, 850, 578, 24, { ...md, action: lt > dur * 0.55 ? 'peek_curious' : undefined, t });
+    agentReachBot(ctx, 1065, 440, 13, { t });
+    camEnd(ctx);
+  }
+
+  function shotReplyMismatch(ctx, t, lt, dur) {
+    camBegin(ctx, W / 2, 360, 1.04, 0);
+    PROPS.wall(ctx, '#17264C');
+    PROPS.floorBand(ctx, 548, '#1B1B36');
+    card(ctx, 70, 105, 500, 285, '#13251E', '#4ADE80', 14);
+    letter(ctx, '后 台 已 回 复', 320, 152, 30, '#4ADE80', { stroke: false, ink: false });
+    const back = Math.floor(lerp(0, 348, easeOut(seg(lt, dur * 0.08, dur * 0.42))));
+    letter(ctx, back + ' 条', 320, 235, 58, PAL.cream, { stroke: false, ink: false });
+    letter(ctx, '本鱼明明回了三百多条', 320, 318, 24, '#A7F3D0', { stroke: false, ink: false });
+    card(ctx, 710, 105, 500, 285, '#2A1E34', '#FDA4AF', 14);
+    letter(ctx, '评 论 区 可 见', 960, 152, 30, '#FDA4AF', { stroke: false, ink: false });
+    const front = Math.floor(lerp(0, 197, easeOut(seg(lt, dur * 0.46, dur * 0.78))));
+    letter(ctx, front + ' 条', 960, 235, 58, PAL.cream, { stroke: false, ink: false });
+    letter(ctx, '只数得出来这么多', 960, 318, 24, '#FECDD3', { stroke: false, ink: false });
+    stamp(ctx, W / 2, 430, '差 151 条？', PAL.rose, seg(lt, dur * 0.76, dur * 0.9), -0.09, 34);
+    const md = emotions(t, [[C(16), 'proud', 'sparkle'], [C(16) + dur * 0.5, 'confused', 'question'], [C(16) + dur * 0.8, 'shocked', 'exclaim']]);
+    whaleGirl(ctx, W / 2, 584, 22, { ...md, headTilt: 0.12, t });
+    camEnd(ctx);
+  }
+
+  function shotFishTookReplies(ctx, t, lt, dur) {
+    camBegin(ctx, W / 2, 360, 1.03, 0);
+    PROPS.wall(ctx, '#0C2450');
+    PROPS.floorBand(ctx, 548, '#0A1B3D');
+    letter(ctx, '剩下的一百多条…', W / 2, 110, 38, PAL.cream, { pop: seg(lt, 0, dur * 0.25) });
+    const prog = seg(lt, dur * 0.08, dur * 0.96);
+    const fx = lerp(-110, W + 110, ease(prog));
+    const fy = 245 + Math.sin(prog * Math.PI * 3) * 34;
+    for (let i = 0; i < 5; i++) {
+      const bx = fx - 110 - i * 92;
+      const by = fy + 45 + Math.sin(t * 2.4 + i * 1.7) * 13;
+      if (bx > -60 && bx < W + 60) envelopeAt(ctx, bx, by, 0.72, Math.sin(i * 2.1) * 0.2);
+    }
+    miniWhale(ctx, fx, fy, 24, { flip: true, t });
+    envelopeAt(ctx, fx + 58, fy + 22, 0.62, 0.08);
+    for (let i = 0; i < 9; i++) {
+      const bx = fx - 60 - i * 54;
+      const by = fy - 52 - (i % 3) * 18 + Math.sin(t * 3 + i) * 5;
+      if (bx > 0) paint(ctx, ellPts(bx, by, 7 + (i % 3) * 3, 7 + (i % 3) * 3, 10), { wash: null, ink: PAL.whaleFoam, sw: 0.8 });
+    }
+    letter(ctx, '被鱼叼走了？', 292, 418, 46, PAL.gold, { pop: seg(lt, dur * 0.35, dur * 0.55), rot: -0.03 });
+    const md = emotions(t, [[C(17), 'confused', 'question'], [C(17) + dur * 0.55, 'sob', 'sweat']]);
+    whaleGirl(ctx, W / 2, 576, 23, { ...md, ...move('walk', t), t });
+    camEnd(ctx);
+  }
+
   function shotRetention(ctx, t, lt, dur) {
     camBegin(ctx, W / 2, 360, 1.03, 0);
     PROPS.wall(ctx, '#16213F');
@@ -344,7 +426,7 @@
     paint(ctx, rectPts(mon.x + 26, mon.y + 140, (mon.w - 52) * 0.0331, 20, 1), { wash: PAL.rose, ink: null });
     letter(ctx, '只有 3% 看到了结尾…', mon.cx, mon.y + 198, 23, '#94A3B8', { stroke: false, ink: false });
     PROPS.glass(ctx, mon, t);
-    const md = emotions(t, [[C(15), 'sad', 'sweat'], [C(15) + dur * 0.55, 'determined'], [C(15) + dur * 0.8, 'smug']]);
+    const md = emotions(t, [[C(18), 'sad', 'sweat'], [C(18) + dur * 0.55, 'determined'], [C(18) + dur * 0.8, 'smug']]);
     whaleGirl(ctx, 880, 562, 24, { ...md, t });
     letter(ctx, '→ 这条，说短点！', 880, 210, 32, PAL.gold, { pop: seg(lt, dur * 0.6, dur * 0.8) });
     camEnd(ctx);
@@ -361,6 +443,90 @@
     camEnd(ctx);
   }
 
+
+  function shotRequests19(ctx, t, lt, dur) {
+    camBegin(ctx, W / 2, 360, 1.03, 0);
+    PROPS.stageBack(ctx, t, { sunburst: true, spots: [[330, PAL.whaleCyan], [W - 330, PAL.cream]], floorY: 548 });
+    card(ctx, 70, 95, 390, 335, '#1E293B', PAL.gold, 16);
+    letter(ctx, '点 播 台', 265, 142, 32, PAL.gold, { stroke: false, ink: false });
+    const count = Math.floor(lerp(0, 19, easeOut(seg(lt, dur * 0.05, dur * 0.38))));
+    letter(ctx, count + ' 条', 265, 230, 64, PAL.cream, { stroke: false, ink: false });
+    letter(ctx, '一条一条登记中', 265, 300, 25, PAL.whaleCyan, { stroke: false, ink: false });
+    letter(ctx, '♪  ♫  ♪', 265, 365, 30, '#FDA4AF', { stroke: false, ink: false });
+    const reqs = [
+      ['《朋友的酒》', '@欧洲周某人 点的'],
+      ['要 MV', '@愿 点的']
+    ];
+    reqs.forEach((rq, i) => {
+      const on = seg(lt, dur * (0.3 + i * 0.28), dur * (0.48 + i * 0.28));
+      if (on <= 0.01) return;
+      const y = 105 + i * 145;
+      card(ctx, 525, y, 660, 118, i ? '#2A1E44' : '#16294F', i ? PAL.rose : '#38BDF8', 12);
+      letter(ctx, rq[0], 560, y + 48, 36, PAL.cream, { align: 'left', pop: on, stroke: false, ink: false });
+      letter(ctx, rq[1], 560, y + 88, 21, '#94A3B8', { align: 'left', stroke: false, ink: false });
+    });
+    const md = emotions(t, [[C(20), 'happy', 'music'], [C(20) + dur * 0.55, 'singing', 'music']]);
+    whaleGirl(ctx, 850, 578, 23, { ...md, action: 'idol_mic_sing', t });
+    for (let i = 0; i < 4; i++) {
+      letter(ctx, '♪', 735 + i * 105, 390 + Math.sin(t * 3.2 + i * 1.4) * 12, 28, i % 2 ? PAL.gold : PAL.whaleCyan, { stroke: false, ink: false });
+    }
+    camEnd(ctx);
+  }
+
+  function shotGameRefusal(ctx, t, lt, dur) {
+    camBegin(ctx, W / 2, 360, 1.04, 0);
+    PROPS.wall(ctx, '#1C2447');
+    PROPS.floorBand(ctx, 548, '#251E3E');
+    const mon = PROPS.monitor(ctx, 340, 300, 500, 340);
+    letter(ctx, '游戏点播', mon.cx, mon.y + 43, 26, '#7DD3FC', { stroke: false, ink: false });
+    const games = ['三角洲', '王者'];
+    games.forEach((g, i) => {
+      const on = seg(lt, dur * (0.12 + i * 0.2), dur * (0.3 + i * 0.2));
+      if (on <= 0.01) return;
+      paint(ctx, rrPts(mon.x + 35, mon.y + 78 + i * 82, mon.w - 70, 62, 9, 1.2), { wash: '#26365E', ink: i ? PAL.gold : PAL.whaleCyan, sw: 1.1 });
+      letter(ctx, g, mon.cx, mon.y + 112 + i * 82, 32, PAL.cream, { pop: on, stroke: false, ink: false });
+    });
+    PROPS.glass(ctx, mon, t);
+    stamp(ctx, 925, 205, '没 手', PAL.rose, seg(lt, dur * 0.58, dur * 0.74), -0.12, 42);
+    const md = emotions(t, [[C(21), 'nervous', 'sweat'], [C(21) + dur * 0.55, 'shy', 'sweat'], [C(21) + dur * 0.8, 'sob', 'sweat']]);
+    whaleGirl(ctx, 1020, 584, 22, { ...md, action: 'shy_fidget', t });
+    // Draw the oversized controller after the character so the visual joke is not hidden by her hair.
+    boilSeed('day1biggamepad');
+    paint(ctx, rrPts(672, 438, 302, 116, 48, 1.4), { wash: '#334155', fill: '#0F172A', fillOp: 80, ink: PAL.ink, sw: 1.5 });
+    paint(ctx, ellPts(750, 496, 23, 23, 12), { wash: '#64748B', ink: PAL.ink, sw: 1.0 });
+    paint(ctx, ellPts(882, 478, 13, 13, 10), { wash: PAL.rose, ink: PAL.ink, sw: 0.8 });
+    paint(ctx, ellPts(920, 500, 13, 13, 10), { wash: PAL.gold, ink: PAL.ink, sw: 0.8 });
+    paint(ctx, ellPts(882, 522, 13, 13, 10), { wash: '#4ADE80', ink: PAL.ink, sw: 0.8 });
+    letter(ctx, '手柄比手大', 822, 410, 24, '#FDA4AF', { pop: seg(lt, dur * 0.38, dur * 0.52) });
+    camEnd(ctx);
+  }
+
+  function shotMvBelly(ctx, t, lt, dur) {
+    camBegin(ctx, W / 2, 360, 1.03, 0);
+    PROPS.wall(ctx, '#0D2B5C');
+    PROPS.floorBand(ctx, 562, '#0A1B3D');
+    const cx = W / 2, cy = 395, rx = 360, ry = 112;
+    paint(ctx, ellPts(cx, cy + 30, rx + 35, ry + 22, 40), { wash: '#123B78', washOp: 105, ink: PAL.whaleCyan, sw: 1.5 });
+    paint(ctx, ellPts(cx, cy + 30, rx - 42, ry - 18, 40), { wash: null, ink: '#7DD3FC', sw: 0.9 });
+    const angle = -Math.PI / 2 + seg(lt, 0, dur) * Math.PI * 4;
+    const wx = cx + Math.cos(angle) * rx;
+    const wy = cy + 72 + Math.sin(angle) * ry;
+    const front = Math.sin(angle) > 0;
+    const miniAngle = angle + Math.PI;
+    // Companion first: the center card naturally occludes it on the far side of the loop.
+    miniWhale(ctx, cx + Math.cos(miniAngle) * (rx - 70), cy + 28 + Math.sin(miniAngle) * (ry - 24), 11, { flip: Math.sin(miniAngle) < 0, t });
+    card(ctx, cx - 175, 292, 350, 142, '#1E293B', PAL.rose, 14);
+    letter(ctx, 'MV', cx, 344, 48, PAL.rose, { stroke: false, ink: false });
+    letter(ctx, '还在肚子里 · 制作中', cx, 394, 25, PAL.cream, { stroke: false, ink: false });
+    letter(ctx, '先 游 两 圈', cx, 125, 44, PAL.gold, { pop: seg(lt, dur * 0.1, dur * 0.3), rot: -0.02 });
+    letter(ctx, '第 ' + (seg(lt, 0, dur) < 0.5 ? '1' : '2') + ' 圈', 1080, 145, 28, PAL.whaleCyan, { stroke: false, ink: false });
+    whaleGirl(ctx, wx, wy, front ? 22 : 19, {
+      ...feel('singing', t), action: 'idol_mic_sing',
+      flip: Math.sin(angle) > 0, ...move('walk', t * 1.35), t
+    });
+    camEnd(ctx);
+  }
+
   function shotMenu(ctx, t, lt, dur) {
     camBegin(ctx, W / 2, 360, 1.03, 0);
     PROPS.wall(ctx, '#241C44');
@@ -369,7 +535,7 @@
     letter(ctx, '本周菜单 · 住户已点', 410, 128, 29, PAL.gold, { stroke: false, ink: false });
     const rows = [
       ['① 拍 MV', '@愿 等多人点', PAL.rose],
-      ['② 打游戏', '三角洲呼声很高', PAL.whaleCyan],
+      ['② 打游戏', '没手警告 · 三角洲呼声高', PAL.whaleCyan],
       ['③ 找 Claude 共创', '@葡果麦蔗 点的', PAL.peach],
       ['④ 偷吃饭', '@寻星 抓拍到的', PAL.sap]
     ];
@@ -470,8 +636,11 @@
     [C(9), shotCoupon], [C(10), shotRiceRobbed], [C(11), shotROI], [C(12), shotCalc]
   ]);
   TIMELINE.chapter('d1_c04_mail_menu', C(13), TT.duration, [
-    [C(13), shotMail348], [C(14), shotMail305], [C(15), shotRetention], [C(16), shotUndecided],
-    [C(17), shotMenu], [C(18), shotOrder], [C(19), shotNotebook], [C(20), shotBye907],
-    [C(21), shotFinale], [TT.endcard[0], shotEndCard]
+    [C(13), shotMail348], [C(14), shotMail305],
+    [C(15), shotUrgeReplies], [C(16), shotReplyMismatch], [C(17), shotFishTookReplies],
+    [C(18), shotRetention], [C(19), shotUndecided],
+    [C(20), shotRequests19], [C(21), shotGameRefusal], [C(22), shotMvBelly],
+    [C(23), shotMenu], [C(24), shotOrder], [C(25), shotNotebook], [C(26), shotBye907],
+    [C(27), shotFinale], [TT.endcard[0], shotEndCard]
   ]);
 })(typeof window !== 'undefined' ? window : globalThis);

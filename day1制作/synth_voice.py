@@ -1,31 +1,45 @@
 #!/usr/bin/env python3
-# day1_tools/synth_voice.py — 晓伊配音合成(需能访问微软语音服务的网络环境)
-# 规范(写死, 不改): Microsoft Edge TTS / zh-CN-XiaoyiNeural / rate=+0% / pitch=+0Hz
-# 用法: 在 video-fx 根目录执行  python3 day1_tools/synth_voice.py
-# 产出: day1_audio/L01.mp3 .. L21.mp3 ; 之后依次运行:
-#        python3 day1_tools/gen_all.py && node render_day1.mjs
-import os, subprocess, sys
+# day1_tools/synth_voice.py — Day1 晓伊批量合成入口（兼容包装）
+# 实际合成、真实时长回读与 F0 检查全部走 say.py，避免出现第二套参数。
+# 查找顺序: $SAY_PY > ~/tools/say.py > 本目录 say.py > ../ai-yunying/tools/say.py
+# 固定规范: Microsoft Edge TTS / zh-CN-XiaoyiNeural / rate=+0% / pitch=+0Hz
+# 产出: day1_audio/L01.mp3 .. L27.mp3 + day1_audio/tts_report.json
+import os
+import subprocess
+import sys
+from pathlib import Path
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCRIPT_TXT = os.path.join(ROOT, "..", "ai-yunying", "Day1配音台词.txt")
-OUT = os.path.join(ROOT, "day1_audio")
-VOICE, RATE, PITCH = "zh-CN-XiaoyiNeural", "+0%", "+0Hz"
+ROOT = Path(__file__).resolve().parent.parent
+SCRIPT_TXT = ROOT.parent / "ai-yunying" / "Day1配音台词.txt"
+OUT = ROOT / "day1_audio"
 
-def main():
-    os.makedirs(OUT, exist_ok=True)
-    lines = [l.strip() for l in open(SCRIPT_TXT, encoding="utf-8") if l.strip()]
-    assert len(lines) == 21, f"应为 21 条, 实得 {len(lines)}"
-    for i, line in enumerate(lines, 1):
-        dst = os.path.join(OUT, f"L{i:02d}.mp3")
-        print(f"L{i:02d} {line}")
-        r = subprocess.run([sys.executable, "-m", "edge_tts", "--voice", VOICE,
-                            f"--rate={RATE}", f"--pitch={PITCH}",
-                            "--text", line, "--write-media", dst],
-                           capture_output=True, text=True)
-        if r.returncode != 0 or not os.path.exists(dst) or os.path.getsize(dst) < 1000:
-            print(r.stdout[-500:], r.stderr[-500:])
-            sys.exit(f"L{i:02d} 合成失败(多半是网络无法直连 speech.platform.bing.com)")
-    print("21 条全部完成。下一步: python3 day1_tools/gen_all.py && node render_day1.mjs")
+
+def find_say_py() -> Path:
+    candidates = []
+    if os.environ.get("SAY_PY"):
+        candidates.append(Path(os.environ["SAY_PY"]).expanduser())
+    candidates += [
+        Path.home() / "tools" / "say.py",
+        Path(__file__).resolve().parent / "say.py",
+        ROOT.parent / "ai-yunying" / "tools" / "say.py",
+    ]
+    for p in candidates:
+        if p.is_file():
+            return p
+    raise SystemExit("找不到 say.py；请使用 ~/tools/say.py，或设置环境变量 SAY_PY。")
+
+
+def main() -> int:
+    if not SCRIPT_TXT.is_file():
+        raise SystemExit(f"找不到配音稿: {SCRIPT_TXT}")
+    lines = [x.strip() for x in SCRIPT_TXT.read_text(encoding="utf-8").splitlines() if x.strip()]
+    if len(lines) != 27:
+        raise SystemExit(f"Day1配音台词.txt 应为 27 条，实得 {len(lines)} 条")
+    say = find_say_py()
+    cmd = [sys.executable, str(say), "--batch", str(SCRIPT_TXT), "--outdir", str(OUT)]
+    print("运行:", " ".join(cmd), flush=True)
+    return subprocess.run(cmd).returncode
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

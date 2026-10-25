@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 # day1_tools/gen_all.py — Day1 数据生成器（timing / lyrics / BGM+人声轨 / 音频包络）
 # 用法: 在 video-fx 根目录执行  python3 day1_tools/gen_all.py
-# 逻辑:
-#   1) 读 ../ai-yunying/Day1配音台词.txt (21 条, 一行一条)
-#   2) 若 day1_audio/L01..L21.mp3 存在(晓伊实录), 用其实测时长排时间轴并混入人声轨;
-#      若不存在, 按 4.6 字/秒预估时长, 人声轨留空(预览版), 口型包络用确定性合成曲线。
-#   3) 输出: src/day1_timing.js, 重写 src/lyrics.js 的 LY 数组,
+# 逻辑（严格实测，禁止估时）:
+#   1) 读 ../ai-yunying/Day1配音台词.txt (27 条, 一行一条)
+#   2) 必须已有 day1_audio/L01..L27.mp3 与 day1_audio/tts_report.json
+#      （由 ~/tools/say.py 或 day1_tools/synth_voice.py 生成）；
+#   3) 逐条核对 say.py 回读时长并独立用 ffprobe/mutagen 复测，核对 F0 中位 290–330Hz；
+#      任一条缺失/不一致/不合格立即中止，绝不按字数估算 cue 时长；
+#   4) 输出: src/day1_timing.js, 重写 src/lyrics.js 的 LY 数组,
 #            assets/day1_track.wav (BGM 128BPM chiptune + 人声), assets/day1_envelope.js
-import json, math, os, re, subprocess, sys, wave
+import json, math, os, re, shutil, subprocess, sys, wave
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT_TXT = os.path.join(ROOT, "..", "ai-yunying", "Day1配音台词.txt")
 AUDIO_DIR = os.path.join(ROOT, "day1_audio")
+TTS_REPORT = os.path.join(AUDIO_DIR, "tts_report.json")
+F0_MIN_HZ, F0_MAX_HZ = 290.0, 330.0
+DURATION_TOLERANCE_SEC = 0.08
 SR = 48000
 BPM = 128.0
 BEAT = 60.0 / BPM
@@ -37,8 +42,14 @@ SUBS = [
     "本鱼算了……算不明白。反正饭够吃。",
     "653 条评论，回了 348 条。",
     "还剩 305 封没拆。不是不回，是手短。",
+    "30 条催回信。咦？本鱼自己翻了翻后台。",
+    "明明回了 300 多条，评论区只数出 197 条。",
+    "剩下的一百多条，是不是被鱼叼走了？",
     "上一条只有 3% 看到最后，这条说短点。",
     "第一周做什么，本鱼还没定下来。",
+    "19 条点播。有人点《朋友的酒》，有人要 MV。",
+    "还有人问我打不打三角洲、王者。本鱼没手，游戏真打不了。",
+    "MV 还在肚子里，先游两圈。",
     "拍 MV、打游戏、找 Claude 共创，还有偷吃饭。",
     "明天先上哪道菜？把菜名留在评论区。",
     "本鱼一条一条，记在小本本上。",
@@ -56,10 +67,70 @@ def ffmpeg_bin():
 FF = ffmpeg_bin()
 
 def mp3_duration(path):
+    """独立复测 MP3 时长：ffprobe 优先，其次 mutagen，最后 ffmpeg。"""
+    ffprobe = shutil.which("ffprobe")
+    if ffprobe:
+        r = subprocess.run([ffprobe, "-v", "error", "-show_entries", "format=duration",
+                            "-of", "default=noprint_wrappers=1:nokey=1", path],
+                           capture_output=True, text=True)
+        try:
+            return float(r.stdout.strip())
+        except (TypeError, ValueError):
+            pass
+    try:
+        from mutagen.mp3 import MP3
+        audio = MP3(path)
+        if audio is not None and audio.info is not None and audio.info.length:
+            return float(audio.info.length)
+    except Exception:
+        pass
     out = subprocess.run([FF, "-i", path], capture_output=True, text=True).stderr
     m = re.search(r"Duration: (\d+):(\d+):([\d.]+)", out)
     if not m: return None
     return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3))
+
+def load_tts_report(lines):
+    """只接受 say.py 的逐 cue 实测报告；缺一项就停，不提供估时回退。"""
+    if not os.path.isfile(TTS_REPORT):
+        raise SystemExit(
+            "缺少 day1_audio/tts_report.json。先在能访问微软语音服务的网络运行：\n"
+            "  python3 ~/tools/say.py --batch ../ai-yunying/Day1配音台词.txt --outdir day1_audio\n"
+            "或：python3 day1_tools/synth_voice.py"
+        )
+    with open(TTS_REPORT, encoding="utf-8") as f:
+        report = json.load(f)
+    # Current say.py writes {voice, rate, pitch, items:[...]}. Accept the older
+    # bare-list form too, but only after checking every item's fixed parameters.
+    if isinstance(report, list):
+        items = report
+        header = {}
+    elif isinstance(report, dict):
+        items = report.get("items") or []
+        header = report
+    else:
+        raise SystemExit("tts_report.json 格式错误：应为 say.py 生成的对象或数组")
+    if header and (header.get("voice") != "zh-CN-XiaoyiNeural" or header.get("rate") != "+0%" or header.get("pitch") != "+0Hz"):
+        raise SystemExit(f"tts_report.json 参数不符（必须晓伊 +0% / +0Hz）: {header.get('voice')} {header.get('rate')} {header.get('pitch')}")
+    if len(items) != len(lines):
+        raise SystemExit(f"tts_report.json 应有 {len(lines)} 条，实得 {len(items)} 条")
+    checked = {}
+    bad_f0 = []
+    for i, (line, item) in enumerate(zip(lines, items), 1):
+        expected = f"L{i:02d}.mp3"
+        if item.get("voice") != "zh-CN-XiaoyiNeural" or item.get("rate") != "+0%" or item.get("pitch") != "+0Hz":
+            raise SystemExit(f"tts_report.json 第 {i} 条参数不符（必须晓伊 +0% / +0Hz）")
+        if item.get("cue") != i or item.get("text") != line or os.path.basename(str(item.get("file", ""))) != expected:
+            raise SystemExit(f"tts_report.json 第 {i} 条与当前配音稿不一致，请重新批量合成")
+        d = item.get("duration_sec_measured")
+        if not isinstance(d, (int, float)) or float(d) <= 0:
+            raise SystemExit(f"L{i:02d} 缺少有效实测时长")
+        f0 = item.get("f0_median_hz")
+        if not isinstance(f0, (int, float)) or not (F0_MIN_HZ <= float(f0) <= F0_MAX_HZ):
+            bad_f0.append(f"L{i:02d}={f0}")
+        checked[i] = item
+    if bad_f0:
+        raise SystemExit("以下 cue 的 F0 中位不在 290–330Hz，先处理再排时间轴: " + ", ".join(bad_f0))
+    return checked
 
 def decode_mono(path):
     raw = subprocess.run([FF, "-v", "error", "-i", path, "-f", "f32le", "-ac", "1", "-ar", str(SR), "-"],
@@ -68,20 +139,29 @@ def decode_mono(path):
 
 def main():
     lines = [l.strip() for l in open(SCRIPT_TXT, encoding="utf-8") if l.strip()]
-    assert len(lines) == 21, f"配音台词应为 21 条, 实得 {len(lines)}"
-    assert len(SUBS) == 21
+    assert len(lines) == 27, f"配音台词应为 27 条, 实得 {len(lines)}"
+    assert len(SUBS) == 27
+    measured = load_tts_report(lines)
 
     cues, voices, have_voice = [], [], True
     for i, line in enumerate(lines, 1):
         mp3 = os.path.join(AUDIO_DIR, f"L{i:02d}.mp3")
-        if os.path.exists(mp3) and os.path.getsize(mp3) > 1000:
-            d = mp3_duration(mp3)
-            v = decode_mono(mp3)
-        else:
-            have_voice = False
-            d = max(1.6, len(line.replace(" ", "")) / 4.6)
-            v = None
-        cues.append({"id": i, "tts": line, "sub": SUBS[i - 1], "dur": round(float(d), 3)})
+        if not os.path.exists(mp3) or os.path.getsize(mp3) <= 1000:
+            raise SystemExit(f"缺少有效 MP3: {mp3}；禁止用字数估算补齐，请先运行 say.py/synth_voice.py")
+        reported = float(measured[i]["duration_sec_measured"])
+        independent = mp3_duration(mp3)
+        if independent is None:
+            raise SystemExit(f"L{i:02d}.mp3 无法回读时长")
+        if abs(float(independent) - reported) > DURATION_TOLERANCE_SEC:
+            raise SystemExit(
+                f"L{i:02d} 时长复测不一致: say.py={reported:.3f}s, ffprobe/mutagen={independent:.3f}s；请重新合成并生成报告"
+            )
+        d = reported
+        v = decode_mono(mp3)
+        if len(v) == 0:
+            raise SystemExit(f"L{i:02d}.mp3 解码为空")
+        cues.append({"id": i, "tts": line, "sub": SUBS[i - 1], "dur": round(float(d), 3),
+                     "f0_median_hz": measured[i].get("f0_median_hz")})
         voices.append(v)
 
     t = TITLE_LEN
@@ -91,12 +171,11 @@ def main():
         t = c["end"] + GAP
     endcard = [round(t - GAP + TAIL, 3), round(t - GAP + TAIL + END_LEN, 3)]
     duration = round(endcard[1] + 0.2, 3)
-    mode = "晓伊实录" if have_voice else "预览(无人声, 时长预估)"
-    print(f"[{mode}] 总时长 {duration:.1f}s")
+    print(f"[晓伊实录 · say.py 回读时长] 总时长 {duration:.1f}s")
 
     # ---- src/day1_timing.js ----
     timing = {"duration": duration, "title": [0.0, TITLE_LEN], "endcard": endcard,
-              "voice": have_voice,
+              "voice": have_voice, "duration_source": "say.py measured MP3 durations (ffprobe/mutagen)",
               "cues": [{k: c[k] for k in ("id", "start", "end", "tts", "sub")} for c in cues]}
     with open(os.path.join(ROOT, "src", "day1_timing.js"), "w", encoding="utf-8") as f:
         f.write("// Auto-generated by day1_tools/gen_all.py — DO NOT EDIT BY HAND\n")
@@ -151,7 +230,7 @@ def main():
     bgm *= fade.astype(np.float32)
 
     voice = np.zeros(N, dtype=np.float32)
-    if have_voice:
+    if True:
         for c, v in zip(cues, voices):
             i0 = int(c["start"] * SR)
             i1 = min(N, i0 + len(v))
@@ -172,19 +251,7 @@ def main():
             out.append(float(np.sqrt(np.mean(seg ** 2))) if len(seg) else 0.0)
         m = max(out) or 1.0
         return [round(min(1.0, v / m), 3) for v in out]
-    if have_voice:
-        voice_env = rms_frames(voice)
-    else:  # 预览口型: cue 内 5Hz 音节起伏(确定性)
-        voice_env = []
-        for i in range(nf):
-            ft = i / 30
-            act = next((c for c in cues if c["start"] <= ft < c["end"]), None)
-            if act:
-                ph = (ft - act["start"]) * 5.2
-                v = 0.45 + 0.4 * abs(math.sin(ph * math.pi)) * (0.7 + 0.3 * math.sin(ft * 2.7))
-            else:
-                v = 0.04
-            voice_env.append(round(float(v), 3))
+    voice_env = rms_frames(voice)  # 只用真实晓伊人声 RMS 驱动口型
     beats, hits, bt = [], [c["start"] for c in cues], 0.08
     while bt < duration:
         beats.append(round(bt, 3)); bt += BEAT
@@ -197,7 +264,7 @@ def main():
         json.dump(env, f)
         f.write(";\n")
     for c in cues:
-        print(f"  L{c['id']:02d} {c['start']:6.2f}-{c['end']:6.2f}  {c['tts']}")
+        print(f"  L{c['id']:02d} {c['start']:6.2f}-{c['end']:6.2f}  dur={c['dur']:.3f}s  F0={c['f0_median_hz']}Hz  {c['tts']}")
     print("OK: src/day1_timing.js, src/lyrics.js, assets/day1_track.wav, assets/day1_envelope.js")
 
 if __name__ == "__main__":
