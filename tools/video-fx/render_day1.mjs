@@ -358,9 +358,21 @@ function probeDuration(audio, ff) {
   return (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]);
 }
 function scaleScenes(scenes, target) {
-  const src = scenes[scenes.length - 1].b;
-  const k = target / src;
-  return scenes.map(s => ({ ...s, a: s.a * k, b: s.b * k }));
+  // 按「字幕字数」加权分配音轨时长：晓伊语速近似恒定，比等比缩放更贴合朗读节奏。
+  // 每段至少 2.6 秒，避免一闪而过；剩余时长按字数线性分配。
+  const MIN = 2.6;
+  const n = scenes.length;
+  const reserve = MIN * n;
+  const flexible = Math.max(0.001, target - reserve);
+  const weights = scenes.map(s => Math.max(1, (s.sub || '').length));
+  const sum = weights.reduce((a, b) => a + b, 0);
+  let cursor = 0;
+  return scenes.map((s, i) => {
+    const dur = MIN + flexible * (weights[i] / sum);
+    const out = { ...s, a: cursor, b: cursor + dur };
+    cursor += dur;
+    return out;
+  });
 }
 
 // ---------- main ----------
