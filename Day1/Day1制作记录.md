@@ -28,9 +28,9 @@
 - ✅ 更新版已重新检查 18 张关键静帧、成片关键帧及 27 个 cue 起点后 0.06s/0.18s 的 54 张边界帧；头发+清晰度修复版另从最终 MP4 抽取 27 个 cue 在 25%/55%/85% 处的 81 张编码帧逐张复核，并单独检查 16.5–17.8s 的 14 张连续抽帧，未再发现右侧长发竖直切边或整段尾巴消失，场景字幕与卡片字均可读。
 - ✅ 当前结构片文件：`成片/历史版/day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`（97.49s，1920×1080，30fps，H.264/AAC-LC 48kHz stereo，22,683,071 bytes，SHA-256 `546b24a57cc714e398883a1bb754534cf4c2453966ef0c33f13a053738894162`）。首版 Piper 文件保留作上一基线留档；同名 82bede5 文件已由头发+清晰度修复版覆盖。
 - ✅ 已按用户上传的 `配音_最终版.wav`（121.300s，40kHz stereo，SHA-256 `7b9396c587e65eee9d53efb9410c4be9eaa43ae33b8a5ad598ddb1aa50e7e9ea`）逐词对齐 27 cue：Vosk small-cn 输出 255 个词级时间戳，再用 5ms 波形边界修正；保留原 WAV 的句间停顿，只在前面加 2.6s 标题卡。
-- ✅ 最终配音对齐版：`成片/当前版/day1视频_最终配音对齐版.mp4`（127.24s，1920×1080，30fps，H.264/AAC-LC 48kHz stereo，28,246,361 bytes，SHA-256 `7082b137f68b41cefb47fd0a9c5760d6f90f04901b5404d97c48de209523bb88`）。已检查 18 张关键静帧、81 张 cue 编码帧、54 张边界帧，并对成片再跑 ASR 复核首尾词时间；逐 cue 数字见 `day1制作/最终配音对齐验收表.md`。
+- ✅ 最终配音对齐版：`成片/当前版/day1视频_最终配音对齐版.mp4`（127.24s，1920×1080，30fps，H.264/AAC-LC 48kHz stereo，28,246,361 bytes，SHA-256 `7082b137f68b41cefb47fd0a9c5760d6f90f04901b5404d97c48de209523bb88`）。已检查 18 张关键静帧、81 张 cue 编码帧、54 张边界帧，并对成片再跑 ASR 复核首尾词时间；逐 cue 数字见 `../tools/day1制作/最终配音对齐验收表.md`。
 
-Piper 逐句数字见 `day1制作/Piper结构片验收表.md`，机器报告见 `day1制作/day1_audio_piper/tts_report.json`；最终配音对齐数字见 `day1制作/最终配音对齐验收表.md` 与 `day1制作/day1_audio_final/alignment_report.json`。
+Piper 逐句数字见 `../tools/day1制作/Piper结构片验收表.md`，机器报告见 `../tools/day1制作/day1_audio_piper/tts_report.json`；最终配音对齐数字见 `../tools/day1制作/最终配音对齐验收表.md` 与 `../tools/day1制作/day1_audio_final/alignment_report.json`。
 
 ## 二、TTS 双轨：终版晓伊未完成，Piper 先解结构阻塞
 
@@ -40,7 +40,7 @@ Piper 逐句数字见 `day1制作/Piper结构片验收表.md`，机器报告见 
 
 - 沙箱：`/home/user/tools/say.py`
 - 本仓库：`tools/say.py`
-- 本仓库制作快照：`day1制作/say.py`
+- 本仓库制作快照：`../tools/day1制作/say.py`
 - video-fx：`day1_tools/say.py`
 
 用法：
@@ -92,7 +92,7 @@ alimiter=limit=0.89,loudnorm=I=-16:TP=-1.5:LRA=11
 ```
 
 - 27 条原始输出峰值均为 0.999969，原始削顶合计 **41**；后处理峰值范围 **0.682739–0.843750**，削顶合计 **0**。
-- 27 条后处理音频保存为 `day1制作/day1_audio_piper/L01.wav`–`L27.wav`，均为 48kHz 单声道。
+- 27 条后处理音频保存为 `../tools/day1制作/day1_audio_piper/L01.wav`–`L27.wav`，均为 48kHz 单声道。
 - 本工具自相关口径下，27 条 F0 中位为 **187.73–222.37Hz**，全部不在晓伊目标 290–330Hz；验收表和 manifest 都明确称其为“非晓伊占位音轨”。这正是它只能做结构片的原因。
 
 ## 三、严格实测与引擎门禁
@@ -185,7 +185,7 @@ python3 day1_tools/gen_all.py --engine piper/zh_CN-huayan-medium
 node render_day1.mjs --out whale_day1_piper_structure.mp4
 ```
 
-本仓库已保存同一批 27 条 WAV 和 manifest，可把 `day1制作/day1_audio_piper/` 内容复制回 `video-fx/day1_audio_piper/` 后从 `gen_all.py` 开始复跑。
+本仓库已保存同一批 27 条 WAV 和 manifest，可把 `../tools/day1制作/day1_audio_piper/` 内容复制回 `video-fx/day1_audio_piper/` 后从 `gen_all.py` 开始复跑。
 
 ### 4.2 出晓伊终版（仍待外部网络或 Azure）
 
@@ -203,7 +203,7 @@ Azure 路径已留接口，但需要用户自己的 Speech 资源环境变量（
 
 ### 4.3 复现用户最终配音对齐版
 
-把本仓库的 `Day1/配音_最终版.wav` 放到 `video-fx/day1_audio_final/final_voice.wav`，把 `day1制作/day1_audio_final/vosk_words.json` 放到同目录，并把 `day1制作/gen_finalvoice.py` 放回 `video-fx/day1_tools/gen_finalvoice.py`，然后执行：
+把本仓库的 `Day1/配音_最终版.wav` 放到 `video-fx/day1_audio_final/final_voice.wav`，把 `../tools/day1制作/day1_audio_final/vosk_words.json` 放到同目录，并把 `../tools/day1制作/gen_finalvoice.py` 放回 `video-fx/day1_tools/gen_finalvoice.py`，然后执行：
 
 ```bash
 python3 day1_tools/gen_finalvoice.py \
@@ -229,19 +229,19 @@ node render_day1.mjs --out day1_finalvoice_aligned_1080.mp4
 | `Day1配音台词.txt` | 27 行纯台词，一行一条 |
 | `配音_最终版.wav` | 用户上传的 121.300s 连续最终配音源文件；无嵌入引擎/音色元数据 |
 | `成片/当前版/day1视频_最终配音对齐版.mp4` | 当前 27-cue / 127.24s 对齐版；按用户 WAV 的词级时间戳重排字幕与镜头，1920×1080，非晓伊认证终版 |
-| `day1制作/最终配音对齐验收表.md` | 用户 WAV 的逐 cue 源时间、成片时间、F0、峰值、削顶与 QA 结论 |
-| `day1制作/day1_audio_final/` | `alignment_report.json`、255 词 `vosk_words.json` 与 27 条 QA 切片 |
+| `../tools/day1制作/最终配音对齐验收表.md` | 用户 WAV 的逐 cue 源时间、成片时间、F0、峰值、削顶与 QA 结论 |
+| `../tools/day1制作/day1_audio_final/` | `alignment_report.json`、255 词 `vosk_words.json` 与 27 条 QA 切片 |
 | `成片/历史版/day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` | 27-cue / 97.49s Piper 结构片；基于 `video-fx@82bede5` 连续骨架重渲，含尾巴、wink 右发与 clean 1080p 清晰度修复，非终版 |
 | `成片/历史版/day1视频_Piper结构片（非晓伊占位）.mp4` | 上一基线 27-cue / 97.49s 结构片；保留对照，非终版 |
-| `day1制作/Piper结构片验收表.md` | Piper 每 cue 的时长、F0、峰值、削顶与片中起止时间 |
-| `day1制作/day1_audio_piper/` | 27 条后处理 WAV + schema 2 `tts_report.json` |
+| `../tools/day1制作/Piper结构片验收表.md` | Piper 每 cue 的时长、F0、峰值、削顶与片中起止时间 |
+| `../tools/day1制作/day1_audio_piper/` | 27 条后处理 WAV + schema 2 `tts_report.json` |
 | `tools/say.py` | `edge` / `piper` / `azure` 可切换合成 + 时长/F0/峰值/削顶回读 |
-| `day1制作/gen_all.py` | engine/manifest 实测门禁、8% 卡点规则、字幕/混音/口型生成器 |
-| `day1制作/gen_finalvoice.py` | 连续用户 WAV 的词级对齐、波形边界修正、字幕/混音/口型生成器 |
-| `day1制作/synth_voice.py` | video-fx 内按引擎调用 `say.py` 的批量入口 |
-| `day1制作/video-fx源码快照/day1_all.js` | 27-cue 四章分镜；含六个新增镜头、删“官方”、L16 红章避让、动作徽章关闭、主角显式 `style:'pixel'`，以及针对 Day1 小主角明确设置的 `tailScale=1.0` |
-| `day1制作/video-fx源码快照/render_day1.mjs` | Day 1 渲染器；含 placeholder 终版文件名保护、Day1 HUD、wink 后发替换、clean 去像素量化、1920×1080 原生输出与 18 张静帧回归集 |
-| `day1制作/video-fx源码快照/day1_timing_piper_measured.js` | Piper 实测时间轴留档；27 条偏差全 0.0%，`timing_reused=true`；文件名已标明 Piper，不可当晓伊 timing |
-| `day1制作/video-fx源码快照/day1_timing_finalvoice_measured.js` | 用户 WAV 对齐时间轴留档；27 cue 按词级 ASR + 波形边界重排，`timing_reused=false` |
+| `../tools/day1制作/gen_all.py` | engine/manifest 实测门禁、8% 卡点规则、字幕/混音/口型生成器 |
+| `../tools/day1制作/gen_finalvoice.py` | 连续用户 WAV 的词级对齐、波形边界修正、字幕/混音/口型生成器 |
+| `../tools/day1制作/synth_voice.py` | video-fx 内按引擎调用 `say.py` 的批量入口 |
+| `../tools/day1制作/video-fx源码快照/day1_all.js` | 27-cue 四章分镜；含六个新增镜头、删“官方”、L16 红章避让、动作徽章关闭、主角显式 `style:'pixel'`，以及针对 Day1 小主角明确设置的 `tailScale=1.0` |
+| `../tools/day1制作/video-fx源码快照/render_day1.mjs` | Day 1 渲染器；含 placeholder 终版文件名保护、Day1 HUD、wink 后发替换、clean 去像素量化、1920×1080 原生输出与 18 张静帧回归集 |
+| `../tools/day1制作/video-fx源码快照/day1_timing_piper_measured.js` | Piper 实测时间轴留档；27 条偏差全 0.0%，`timing_reused=true`；文件名已标明 Piper，不可当晓伊 timing |
+| `../tools/day1制作/video-fx源码快照/day1_timing_finalvoice_measured.js` | 用户 WAV 对齐时间轴留档；27 cue 按词级 ASR + 波形边界重排，`timing_reused=false` |
 
 注：video-fx 工作区里的生成文件会随最后一次运行的生成器变化；当前沙箱克隆最后生成的是用户最终配音对齐版。若要在该仓库重出 Day 0、Piper 结构片或晓伊版，应先按对应流程重新生成，不要手改生成文件冒充实测结果。

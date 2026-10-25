@@ -7,7 +7,7 @@
 
 | 项目 | 结果 |
 |---|---|
-| 当前结构片 | `../成片/历史版/day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` |
+| 当前结构片 | `../../Day1/成片/历史版/day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` |
 | 文件大小 / SHA-256 | 22,683,071 bytes / `546b24a57cc714e398883a1bb754534cf4c2453966ef0c33f13a053738894162` |
 | 制作基线 | `aavvcasdas/video-fx` 分支 `arena/8be4c8f8-video-fx`，HEAD `82bede5 Rerender Chaoxi with continuous character rig` |
 | 视频 | 1920×1080，30fps，H.264 CRF 19；97.49s |
@@ -23,7 +23,7 @@
 
 | 项目 | 结果 |
 |---|---|
-| 结构片 | `../成片/历史版/day1视频_Piper结构片（非晓伊占位）.mp4` |
+| 结构片 | `../../Day1/成片/历史版/day1视频_Piper结构片（非晓伊占位）.mp4` |
 | 文件大小 / SHA-256 | 11,725,141 bytes / `69c052bc17af9719ab15b993c543e29f81827903fe40873b06eececc0aea8659` |
 | 视频 | 1280×720，30fps，H.264；97.49s |
 | 音频 | AAC-LC，48kHz，stereo；解码复测峰值 0.894086，≥0.999 样本 0 |
