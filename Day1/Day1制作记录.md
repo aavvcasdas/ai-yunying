@@ -19,16 +19,16 @@
   - `shotMvBelly`：MV 制作中泡泡，本鱼沿泳圈轨迹游满两圈。
 - ✅ 菜单仍保留已确认四项：MV / 打游戏 / Claude 共创 / 偷吃饭；“打游戏”卡已加“没手警告”，承接新台词，不假装能亲自操作。
 - ✅ Piper 结构片关键静帧集现为 18 张，并完成成片抽帧检查；新增的 L05 0.85（约 17.0s）是 wink 头发/尾巴常驻回归帧。复核中发现 L16 的“差 151 条？”红章曾被角色挡住，已把红章与角色左右错开，并重新渲染整片。
-- ✅ 首版结构片文件：`day1视频_Piper结构片（非晓伊占位）.mp4`（97.49s，1280×720，30fps，H.264/AAC 48kHz，11,725,141 bytes，SHA-256 `69c052bc17af9719ab15b993c543e29f81827903fe40873b06eececc0aea8659`）。
+- ✅ 首版结构片文件：`成片/历史版/day1视频_Piper结构片（非晓伊占位）.mp4`（97.49s，1280×720，30fps，H.264/AAC 48kHz，11,725,141 bytes，SHA-256 `69c052bc17af9719ab15b993c543e29f81827903fe40873b06eececc0aea8659`）。
 - ✅ 已移植到 `video-fx` 最新 HEAD `82bede5`；其中连续骨架与 pose/view 平滑过渡来自 `c2fc00a`。同一批 27 条 Piper measured 音频复算后，逐条时长偏差全部 **0.0%**，按 8% 规则复用原卡点（`timing_reused=true`），总时长仍为 97.49s。
 - ✅ 已修复最新共享 `drawTopHud` 写死 `Day 0` 的标注回归：只在 Day1 专用 `render_day1.mjs` 内覆盖为 `Day 1 · AI 接管中`，不改上游 `props.js`，避免影响 Day0/MV。
 - ✅ 已对齐更新版 MV 的叙事口径：Day1 内统一 `showActionBadge=false`，去掉不可读的 12px 动作小徽章。尾巴没有照搬 MV 单人近景的 0.68：该值在 Day1 的小主角与 wink 后发层级下会让整段尾巴藏进头发/裙摆，现已恢复骨架默认 `tailScale=1.0` 并重新渲染。
 - ✅ 已修复 17 秒附近右侧长发像被竖直裁掉的问题：上游 `wink` 姿势的 `backHair` 右缘几乎逐行硬切在 `gx=27`；Day1 专用渲染器只把 wink 后发替换为轮廓完整的 `heart backHair`，不改 wink 的脸、身体和动作。
 - ✅ 背景与文字已改走 `clean` 清晰路径：不再把整帧压到 480×270 再放大，也不再叠扫描线或吸附到 3px 网格；主角仍明确使用像素骨架。成片改为在 1280×720 逻辑坐标上以 1.5 倍原生栅格化输出 1920×1080，并以 H.264 CRF 19 编码，不是把旧 720p 后期放大。
 - ✅ 更新版已重新检查 18 张关键静帧、成片关键帧及 27 个 cue 起点后 0.06s/0.18s 的 54 张边界帧；头发+清晰度修复版另从最终 MP4 抽取 27 个 cue 在 25%/55%/85% 处的 81 张编码帧逐张复核，并单独检查 16.5–17.8s 的 14 张连续抽帧，未再发现右侧长发竖直切边或整段尾巴消失，场景字幕与卡片字均可读。
-- ✅ 当前结构片文件：`day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`（97.49s，1920×1080，30fps，H.264/AAC-LC 48kHz stereo，22,683,071 bytes，SHA-256 `546b24a57cc714e398883a1bb754534cf4c2453966ef0c33f13a053738894162`）。首版 Piper 文件保留作上一基线留档；同名 82bede5 文件已由头发+清晰度修复版覆盖。
+- ✅ 当前结构片文件：`成片/历史版/day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`（97.49s，1920×1080，30fps，H.264/AAC-LC 48kHz stereo，22,683,071 bytes，SHA-256 `546b24a57cc714e398883a1bb754534cf4c2453966ef0c33f13a053738894162`）。首版 Piper 文件保留作上一基线留档；同名 82bede5 文件已由头发+清晰度修复版覆盖。
 - ✅ 已按用户上传的 `配音_最终版.wav`（121.300s，40kHz stereo，SHA-256 `7b9396c587e65eee9d53efb9410c4be9eaa43ae33b8a5ad598ddb1aa50e7e9ea`）逐词对齐 27 cue：Vosk small-cn 输出 255 个词级时间戳，再用 5ms 波形边界修正；保留原 WAV 的句间停顿，只在前面加 2.6s 标题卡。
-- ✅ 最终配音对齐版：`day1视频_最终配音对齐版.mp4`（127.24s，1920×1080，30fps，H.264/AAC-LC 48kHz stereo，28,246,361 bytes，SHA-256 `7082b137f68b41cefb47fd0a9c5760d6f90f04901b5404d97c48de209523bb88`）。已检查 18 张关键静帧、81 张 cue 编码帧、54 张边界帧，并对成片再跑 ASR 复核首尾词时间；逐 cue 数字见 `day1制作/最终配音对齐验收表.md`。
+- ✅ 最终配音对齐版：`成片/当前版/day1视频_最终配音对齐版.mp4`（127.24s，1920×1080，30fps，H.264/AAC-LC 48kHz stereo，28,246,361 bytes，SHA-256 `7082b137f68b41cefb47fd0a9c5760d6f90f04901b5404d97c48de209523bb88`）。已检查 18 张关键静帧、81 张 cue 编码帧、54 张边界帧，并对成片再跑 ASR 复核首尾词时间；逐 cue 数字见 `day1制作/最终配音对齐验收表.md`。
 
 Piper 逐句数字见 `day1制作/Piper结构片验收表.md`，机器报告见 `day1制作/day1_audio_piper/tts_report.json`；最终配音对齐数字见 `day1制作/最终配音对齐验收表.md` 与 `day1制作/day1_audio_final/alignment_report.json`。
 
@@ -48,11 +48,11 @@ Piper 逐句数字见 `day1制作/Piper结构片验收表.md`，机器报告见 
 ```bash
 # 终版晓伊（Edge；成功后仍须逐条回读）
 python3 ~/tools/say.py --engine edge "大家好，本鱼回来了。日更，没摸鱼。" L01.mp3
-python3 ~/tools/say.py --engine edge --batch Day1配音台词.txt --outdir day1_audio
+python3 ~/tools/say.py --engine edge --batch Day1/Day1配音台词.txt --outdir day1_audio
 
 # 离线结构占位（Piper；明确不是晓伊）
 python3 ~/tools/say.py --engine piper "大家好，本鱼回来了。日更，没摸鱼。" L01.wav
-python3 ~/tools/say.py --engine piper --batch Day1配音台词.txt --outdir day1_audio_piper
+python3 ~/tools/say.py --engine piper --batch Day1/Day1配音台词.txt --outdir day1_audio_piper
 
 # 只检查已有音频，不合成
 python3 ~/tools/say.py --check L01.mp3
@@ -122,7 +122,7 @@ node render_day1.mjs --stills
 node render_day1.mjs --out day1_rerender_82bede5_piper.mp4
 ```
 
-结果：27/27 cue 与上一版 Piper timing 的时长偏差均为 0.0%，因此合法复用卡点；渲染日志明确为 `voice_engine=piper/zh_CN-huayan-medium final=false placeholder=true`。更新版 MP4 解码音频为 97.493s、48kHz stereo，峰值 **0.894073**，≥0.999 与满幅样本均为 **0**。克隆内输出 `day1_rerender_82bede5_piper.mp4` 已原样归档为本仓库的 `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`。
+结果：27/27 cue 与上一版 Piper timing 的时长偏差均为 0.0%，因此合法复用卡点；渲染日志明确为 `voice_engine=piper/zh_CN-huayan-medium final=false placeholder=true`。更新版 MP4 解码音频为 97.493s、48kHz stereo，峰值 **0.894073**，≥0.999 与满幅样本均为 **0**。克隆内输出 `day1_rerender_82bede5_piper.mp4` 已原样归档为本仓库的 `成片/历史版/day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`。
 
 ### 3.2 尾巴可见性修复重渲（2026-10-25）
 
@@ -150,7 +150,7 @@ node render_day1.mjs --stills
 node render_day1.mjs --out day1_rerender_82bede5_piper_clean1080_hairfix.mp4
 ```
 
-新版本已覆盖本仓库同名的 `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`：97.493s、1920×1080、30fps、H.264/AAC-LC 48kHz stereo、22,683,071 bytes，SHA-256 `546b24a57cc714e398883a1bb754534cf4c2453966ef0c33f13a053738894162`。解码音频仍为 97.493s，峰值 0.894073，≥0.999 与满幅样本均为 0。已检查 18 张关键静帧、最终 MP4 的 27 个 cue ×25%/55%/85% 共 81 张编码帧、cue 起点后 0.06s/0.18s 的 54 张边界帧，以及 16.5–17.8s 的 14 张连续帧：右侧长发已完整垂下，尾巴仍可见，卡片字、场景字和字幕边缘清晰。
+新版本已覆盖本仓库同名的 `成片/历史版/day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4`：97.493s、1920×1080、30fps、H.264/AAC-LC 48kHz stereo、22,683,071 bytes，SHA-256 `546b24a57cc714e398883a1bb754534cf4c2453966ef0c33f13a053738894162`。解码音频仍为 97.493s，峰值 0.894073，≥0.999 与满幅样本均为 0。已检查 18 张关键静帧、最终 MP4 的 27 个 cue ×25%/55%/85% 共 81 张编码帧、cue 起点后 0.06s/0.18s 的 54 张边界帧，以及 16.5–17.8s 的 14 张连续帧：右侧长发已完整垂下，尾巴仍可见，卡片字、场景字和字幕边缘清晰。
 
 ### 3.4 用户最终配音对齐重渲（2026-10-25）
 
@@ -162,12 +162,12 @@ node render_day1.mjs --out day1_rerender_82bede5_piper_clean1080_hairfix.mp4
 python3 day1_tools/gen_finalvoice.py \
   --voice day1_audio_final/final_voice.wav \
   --vosk-json day1_audio_final/vosk_words.json \
-  --script ../ai-yunying/Day1配音台词.txt
+  --script ../ai-yunying/Day1/Day1配音台词.txt
 node render_day1.mjs --stills
 node render_day1.mjs --out day1_finalvoice_aligned_1080.mp4
 ```
 
-成片已归档为 `day1视频_最终配音对齐版.mp4`：127.23s（容器）、1920×1080、30fps、28,246,361 bytes，SHA-256 `7082b137f68b41cefb47fd0a9c5760d6f90f04901b5404d97c48de209523bb88`。解码音频 127.232s、峰值 0.873779、削顶 0。对最终 MP4 独立再跑 Vosk，首词在 2.67s（字幕 2.695s），末词在 123.93s 结束（字幕 123.89s），与对齐表一致。源音频整段 F0 中位为 359.25Hz，27 cue 为 301.96–413.26Hz；WAV 没有引擎元数据，因此本片只称用户最终配音对齐版，不冒充已核验的晓伊 +0% / +0Hz 终版。
+成片已归档为 `成片/当前版/day1视频_最终配音对齐版.mp4`：127.23s（容器）、1920×1080、30fps、28,246,361 bytes，SHA-256 `7082b137f68b41cefb47fd0a9c5760d6f90f04901b5404d97c48de209523bb88`。解码音频 127.232s、峰值 0.873779、削顶 0。对最终 MP4 独立再跑 Vosk，首词在 2.67s（字幕 2.695s），末词在 123.93s 结束（字幕 123.89s），与对齐表一致。源音频整段 F0 中位为 359.25Hz，27 cue 为 301.96–413.26Hz；WAV 没有引擎元数据，因此本片只称用户最终配音对齐版，不冒充已核验的晓伊 +0% / +0Hz 终版。
 
 ## 四、复现命令
 
@@ -203,13 +203,13 @@ Azure 路径已留接口，但需要用户自己的 Speech 资源环境变量（
 
 ### 4.3 复现用户最终配音对齐版
 
-把本仓库根目录的 `配音_最终版.wav` 放到 `video-fx/day1_audio_final/final_voice.wav`，把 `day1制作/day1_audio_final/vosk_words.json` 放到同目录，并把 `day1制作/gen_finalvoice.py` 放回 `video-fx/day1_tools/gen_finalvoice.py`，然后执行：
+把本仓库的 `Day1/配音_最终版.wav` 放到 `video-fx/day1_audio_final/final_voice.wav`，把 `day1制作/day1_audio_final/vosk_words.json` 放到同目录，并把 `day1制作/gen_finalvoice.py` 放回 `video-fx/day1_tools/gen_finalvoice.py`，然后执行：
 
 ```bash
 python3 day1_tools/gen_finalvoice.py \
   --voice day1_audio_final/final_voice.wav \
   --vosk-json day1_audio_final/vosk_words.json \
-  --script ../ai-yunying/Day1配音台词.txt
+  --script ../ai-yunying/Day1/Day1配音台词.txt
 node render_day1.mjs --out day1_finalvoice_aligned_1080.mp4
 ```
 
@@ -217,9 +217,9 @@ node render_day1.mjs --out day1_finalvoice_aligned_1080.mp4
 
 ## 五、旧预览片（历史留档）
 
-`day1视频_预览版（待晓伊配音）.mp4` 是旧 21-cue、无人声、按估时排布的预览：85.20 秒，1280×720，30fps，H.264/AAC 48kHz。它不包含本轮新增六条台词，也不满足实测卡点要求，只能回看构图风格，**不能作为 Day 1 发布片**。
+`成片/历史版/day1视频_预览版（待晓伊配音）.mp4` 是旧 21-cue、无人声、按估时排布的预览：85.20 秒，1280×720，30fps，H.264/AAC 48kHz。它不包含本轮新增六条台词，也不满足实测卡点要求，只能回看构图风格，**不能作为 Day 1 发布片**。
 
-首版 `day1视频_Piper结构片（非晓伊占位）.mp4` 与 `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` 都包含完整 27 cue、真实可听的 Piper 占位配音、字幕、BGM 与实测卡点，但同样**不是发布终版**。当前观看与对齐复核以 `day1视频_最终配音对齐版.mp4` 为准；若仍执行旧的晓伊认证要求，则发布前还要取得可核验的晓伊 +0% / +0Hz 音频并重新过门禁。
+首版 `成片/历史版/day1视频_Piper结构片（非晓伊占位）.mp4` 与 `成片/历史版/day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` 都包含完整 27 cue、真实可听的 Piper 占位配音、字幕、BGM 与实测卡点，但同样**不是发布终版**。当前观看与对齐复核以 `成片/当前版/day1视频_最终配音对齐版.mp4` 为准；若仍执行旧的晓伊认证要求，则发布前还要取得可核验的晓伊 +0% / +0Hz 音频并重新过门禁。
 
 ## 六、关键文件
 
@@ -228,11 +228,11 @@ node render_day1.mjs --out day1_finalvoice_aligned_1080.mp4
 | `Day1文案.md` | 27-cue 连读版、Cue/分镜表与数据出处 |
 | `Day1配音台词.txt` | 27 行纯台词，一行一条 |
 | `配音_最终版.wav` | 用户上传的 121.300s 连续最终配音源文件；无嵌入引擎/音色元数据 |
-| `day1视频_最终配音对齐版.mp4` | 当前 27-cue / 127.24s 对齐版；按用户 WAV 的词级时间戳重排字幕与镜头，1920×1080，非晓伊认证终版 |
+| `成片/当前版/day1视频_最终配音对齐版.mp4` | 当前 27-cue / 127.24s 对齐版；按用户 WAV 的词级时间戳重排字幕与镜头，1920×1080，非晓伊认证终版 |
 | `day1制作/最终配音对齐验收表.md` | 用户 WAV 的逐 cue 源时间、成片时间、F0、峰值、削顶与 QA 结论 |
 | `day1制作/day1_audio_final/` | `alignment_report.json`、255 词 `vosk_words.json` 与 27 条 QA 切片 |
-| `day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` | 27-cue / 97.49s Piper 结构片；基于 `video-fx@82bede5` 连续骨架重渲，含尾巴、wink 右发与 clean 1080p 清晰度修复，非终版 |
-| `day1视频_Piper结构片（非晓伊占位）.mp4` | 上一基线 27-cue / 97.49s 结构片；保留对照，非终版 |
+| `成片/历史版/day1视频_Piper结构片_更新版82bede5（非晓伊占位）.mp4` | 27-cue / 97.49s Piper 结构片；基于 `video-fx@82bede5` 连续骨架重渲，含尾巴、wink 右发与 clean 1080p 清晰度修复，非终版 |
+| `成片/历史版/day1视频_Piper结构片（非晓伊占位）.mp4` | 上一基线 27-cue / 97.49s 结构片；保留对照，非终版 |
 | `day1制作/Piper结构片验收表.md` | Piper 每 cue 的时长、F0、峰值、削顶与片中起止时间 |
 | `day1制作/day1_audio_piper/` | 27 条后处理 WAV + schema 2 `tts_report.json` |
 | `tools/say.py` | `edge` / `piper` / `azure` 可切换合成 + 时长/F0/峰值/削顶回读 |

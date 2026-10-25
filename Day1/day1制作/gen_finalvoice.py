@@ -191,7 +191,7 @@ def parse_args(argv=None):
     ap = argparse.ArgumentParser(description="Day1 user-provided final voice alignment/track generator")
     ap.add_argument("--voice", default=os.path.join(ROOT, "day1_audio_final", "final_voice.wav"))
     ap.add_argument("--vosk-json", default=os.path.join(ROOT, "day1_audio_final", "vosk_words.json"))
-    ap.add_argument("--script", default=os.path.join(ROOT, "..", "ai-yunying", "Day1配音台词.txt"))
+    ap.add_argument("--script", default=os.path.join(ROOT, "..", "ai-yunying", "Day1", "Day1配音台词.txt"))
     ap.add_argument("--audio-dir", default=os.path.join(ROOT, "day1_audio_final"))
     return ap.parse_args(argv)
 

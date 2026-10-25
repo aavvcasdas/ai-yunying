@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCRIPT_TXT = ROOT.parent / "ai-yunying" / "Day1配音台词.txt"
+SCRIPT_TXT = ROOT.parent / "ai-yunying" / "Day1" / "Day1配音台词.txt"
 
 
 def find_say_py() -> Path:

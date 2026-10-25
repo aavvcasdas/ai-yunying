@@ -1,0 +1,15 @@
+# Local caches and render intermediates. Final media that belongs in the
+# project archive should be added deliberately with `git add -f` if needed.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+*_stills/
+*_preview_frames/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+~$*

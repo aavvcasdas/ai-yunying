@@ -4,7 +4,7 @@
 #   终版晓伊: python3 day1_tools/gen_all.py --engine edge/zh-CN-XiaoyiNeural
 #   Piper结构片: python3 day1_tools/gen_all.py --engine piper/zh_CN-huayan-medium
 # 逻辑（严格实测，禁止估时）:
-#   1) 读 ../ai-yunying/Day1配音台词.txt (27 条, 一行一条)
+#   1) 读 ../ai-yunying/Day1/Day1配音台词.txt (27 条, 一行一条)
 #   2) manifest(tts_report.json) 每条必须 measured=true、dirty=false，
 #      且 engine 与本次 --engine 完全一致；换引擎时旧 manifest 直接判 dirty；
 #   3) 逐条用 ffprobe/mutagen/ffmpeg 独立复测时长。edge/azure 的晓伊终版
@@ -17,7 +17,7 @@ import argparse, json, math, os, re, shutil, subprocess, sys, wave
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCRIPT_TXT = os.path.join(ROOT, "..", "ai-yunying", "Day1配音台词.txt")
+SCRIPT_TXT = os.path.join(ROOT, "..", "ai-yunying", "Day1", "Day1配音台词.txt")
 F0_MIN_HZ, F0_MAX_HZ = 290.0, 330.0
 DURATION_TOLERANCE_SEC = 0.08
 DEFAULT_DEVIATION_THRESHOLD = 0.08
