@@ -235,11 +235,90 @@ function blitChar(ctx, x, y, u, draw, o = {}) {
   ctx.restore();
 }
 
+// ---------------------------------------------------------------------------
+// 2.1 鲸鱼娘（经典版）= 高清立绘，不再是 40 格像素骨架
+// ---------------------------------------------------------------------------
+// v1/v2 被退回"还是模糊"：骨架的脸只有 20 来个格子，任何 1080p 特写都撑不住。
+// v3 起改用高清立绘（`dafeiyu.webp` → `whale_girl_src/whale_idle.png`，先做四边泛洪去背），
+// 只做整体呼吸 / 摆动 / 倾斜 / 翻转的程序化微动，**不做**骨块变形，所以永远是清晰的原画线条。
+const SPRITE_H_U = 9.4;      // 立绘高度（单位 u，与旧骨架的 9.5u 对齐）
+const SPRITE_FOOT_U = 0.30;  // 脚底相对 y 的偏移（旧骨架约 +0.5u，立绘站得略高一点更稳）
+
+// 用矢量笔触补几个"情绪符号"，替代原来骨架自带的像素 emote（像素 emote 贴在 HD 脸旁边会显脏）
+function hdEmote(ctx, x, y, u, key, t) {
+  if (!key) return;
+  const bob = Math.sin(t * 5) * 0.05 * u;
+  if (key === 'sweat' || key === 'sweatdrop') {
+    const ex = x + 1.35 * u, ey = y - 8.9 * u + bob;
+    paint(ctx, [[ex, ey - 0.30 * u], [ex + 0.24 * u, ey + 0.08 * u], [ex + 0.12 * u, ey + 0.30 * u],
+      [ex - 0.12 * u, ey + 0.30 * u], [ex - 0.24 * u, ey + 0.08 * u]],
+      { wash: '#7DD3FC', fill: '#38BDF8', fillOp: 150, ink: '#0C4A6E', sw: 1.2, curv: 0.4 });
+  } else if (key === 'exclaim') {
+    const ex = x + 1.5 * u, ey = y - 9.3 * u + bob;
+    paint(ctx, ellPts(ex, ey, 0.34 * u, 0.34 * u, 18), { wash: '#FEE2E2', ink: '#B91C1C', sw: 2 });
+    ctx.font = `900 ${Math.round(0.46 * u)}px "NotoSansSC", sans-serif`;
+    ctx.fillStyle = '#B91C1C'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('!', ex, ey + 1);
+  } else if (key === 'question') {
+    const ex = x + 1.5 * u, ey = y - 9.3 * u + bob;
+    paint(ctx, ellPts(ex, ey, 0.34 * u, 0.34 * u, 18), { wash: '#FEF3C7', ink: '#B45309', sw: 2 });
+    ctx.font = `900 ${Math.round(0.46 * u)}px "NotoSansSC", sans-serif`;
+    ctx.fillStyle = '#B45309'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('?', ex, ey + 1);
+  } else if (key === 'sparkle' || key === 'heart') {
+    const n = key === 'heart' ? 1 : 3;
+    for (let i = 0; i < n; i++) {
+      const a = t * 0.8 + i * 2.1;
+      const ex = x + (1.3 + 0.35 * Math.cos(a)) * u;
+      const ey = y - (9.1 + 0.3 * Math.sin(a)) * u;
+      if (key === 'heart') {
+        paint(ctx, [[ex, ey + 0.22 * u], [ex - 0.22 * u, ey - 0.02 * u], [ex - 0.10 * u, ey - 0.20 * u],
+          [ex, ey - 0.10 * u], [ex + 0.10 * u, ey - 0.20 * u], [ex + 0.22 * u, ey - 0.02 * u]],
+          { wash: '#FB7185', ink: '#9F1239', sw: 1.1, curv: 0.5 });
+      } else {
+        paint(ctx, starPts(ex, ey, 0.20 * u, 0.075 * u, 5), { wash: PAL.gold, ink: '#8A6A16', sw: 1 });
+      }
+    }
+  }
+}
+
+function drawWhaleSprite(ctx, x, y, u, o) {
+  const img = globalThis.WHALE_SPRITE;
+  if (!img) return false;
+  const t = o.t || 0;
+  const H = SPRITE_H_U * u;
+  const bottom = y + SPRITE_FOOT_U * u + (o.dy || 0) * u;
+  const w = H * (img.width / img.height);
+  const breathe = 1 + Math.sin(t * 2.2) * 0.006;
+  const sway = Math.sin(t * 1.55) * 0.010 + (o.rot || 0);
+  ctx.save();
+  ctx.translate(x, bottom);
+  ctx.rotate(sway);
+  if (o.flip) ctx.scale(-1, 1);
+  ctx.scale(breathe, breathe);
+  ctx.imageSmoothingEnabled = true;
+  if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, -w / 2, -H, w, H);
+  ctx.restore();
+  return true;
+}
+
 function WGF(ctx, x, y, u, o = {}) {
-  const { t = 0, ...rest } = o;
+  const { t = 0 } = o;
+  if (globalThis.WHALE_SPRITE) {
+    if (o.shadow !== false) {
+      paint(ctx, ellPts(x, y + SPRITE_FOOT_U * u + 0.06 * u, 2.05 * u, 0.40 * u, 16),
+        { wash: PAL.ink, washOp: 62, ink: null });
+    }
+    drawWhaleSprite(ctx, x, y, u, o);
+    hdEmote(ctx, x, y, u, o.emote, t);
+    return;
+  }
+  // —— 兜底：立绘没加载时退回改好的像素骨架（补丁版引擎）——
+  const { t: _t, ...rest } = o;
   const opts = { ...FACE_GATE, transitionBlend: 1, tailScale: 1, showActionBadge: false, t, ...rest };
-  Object.assign(opts, FACE_GATE);   // ← 强制项必须在 spread 之后（v1 的坑）
-  opts.noShadow = true;             // 投影由 blitChar 在场景里画
+  Object.assign(opts, FACE_GATE);
+  opts.noShadow = true;
   blitChar(ctx, x, y, u, (g, bx, by, uDev) => whaleGirl(g, bx, by, uDev, opts), { shadow: o.shadow });
 }
 
@@ -1205,18 +1284,20 @@ function shotL16(ctx, t, lt, p) {
   if (frontA > 0.03) {
     inkLine(ctx, [[-100, frontY], [200, frontY + 8], [520, frontY - 6], [860, frontY + 10], [W + 100, frontY - 4]], 5, `rgba(242,166,121,${frontA})`, 'ink', 0.2);
   }
-  // 只剩湿向日葵（掉在刚才站着的地方）
+  // 只剩湿向日葵：掉在她脚边的地板上（v2 里飘在脸旁边，压住了脸）
   if (reveal > 0.6) {
-    const s = 1.0;
+    const s = 0.85, sx = charX + 150, sy = 654;
     ctx.save();
     ctx.globalAlpha = (reveal - 0.6) / 0.4;
+    paint(ctx, ellPts(sx, sy + 16, 22, 6, 12), { wash: 'rgba(0,0,0,0.28)', ink: null });
+    inkLine(ctx, [[sx, sy + 10], [sx - 2, sy + 34]], 3, '#4D8B5C', 'ink', 0.3);
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * TAU;
-      paint(ctx, ellPts(charX + 12 + Math.cos(a) * 13 * s, 380 + Math.sin(a) * 13 * s, 9 * s, 7 * s, 10), { wash: '#FBBF24', ink: PAL.ink, sw: 1 });
+      paint(ctx, ellPts(sx + Math.cos(a) * 12 * s, sy + Math.sin(a) * 12 * s, 8 * s, 6.5 * s, 10), { wash: '#FBBF24', ink: PAL.ink, sw: 1 });
     }
-    paint(ctx, ellPts(charX + 12, 380, 9, 9, 10), { wash: '#92400E', ink: PAL.ink, sw: 1 });
+    paint(ctx, ellPts(sx, sy, 8 * s, 8 * s, 10), { wash: '#92400E', ink: PAL.ink, sw: 1 });
     ctx.restore();
-    letter(ctx, '只剩湿向日葵', charX + 140, 306, 20, PAL.cream, { pop: popAt(t, 16, 0.7, 0.84), alpha: 0.9 });
+    letter(ctx, '只剩湿向日葵', sx + 8, sy - 66, 20, PAL.cream, { pop: popAt(t, 16, 0.7, 0.84), alpha: 0.9 });
   }
   if (p > 0.72) letter(ctx, '染色剂不防水！', charX - 300, 330, 28, PAL.gold, { pop: popAt(t, 16, 0.72, 0.86), rot: -0.04 });
   camEnd(ctx);
@@ -1407,7 +1488,20 @@ const POSE_KEYS = {
   celebrate: 'dsh-whale-state-celebrate.webp',
   idle: 'dsh-whale-state-idle-cute.webp'
 };
+const WHALE_SPRITE_FILE = path.resolve(__dirname, '../whale_girl_src/whale_idle.png');
+async function loadWhaleSprite() {
+  if (!fs.existsSync(WHALE_SPRITE_FILE)) {
+    console.warn('⚠️ 没找到高清鲸鱼娘立绘，退回像素骨架：', WHALE_SPRITE_FILE);
+    console.warn('   先跑：node ../whale_girl_src/make_sprite.mjs <源图> ../whale_girl_src/whale_idle.png');
+    return;
+  }
+  globalThis.WHALE_SPRITE = await loadImage(WHALE_SPRITE_FILE);
+  const img = globalThis.WHALE_SPRITE;
+  console.log(`鲸鱼娘立绘：${img.width}×${img.height}（${path.basename(WHALE_SPRITE_FILE)}）`);
+}
+
 async function loadPose() {
+  await loadWhaleSprite();
   globalThis.DAY3_POSES = {};
   for (const [key, file] of Object.entries(POSE_KEYS)) {
     const f = path.join(POSE_DIR, file);

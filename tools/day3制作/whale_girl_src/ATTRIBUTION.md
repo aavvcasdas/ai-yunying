@@ -1,0 +1,35 @@
+# 鲸鱼娘立绘 · 来源与授权（Day3 样片用）
+
+## 用途
+
+Day3 无配音样片里「鲸鱼娘」这个角色（L01–L02、L16 之后、片尾）用的高清立绘，
+由本目录的 `make_sprite.mjs` 从原图抠底生成 `whale_idle.png`。
+
+## 来源
+
+- 形象参考与立绘出处：**鲸鱼娘开源资产库** <https://treapgogo.github.io/deepseek-whale-girl/>
+  （社区自发维护的非官方资源库，仓库 MIT，2026）。
+  - 本站明确声明：**不设定任何形式的"标准人设"，不代表深度求索公司或 DeepSeek 官方立场。**
+  - 站点 `characters/dafeiyu/reference-sheets/` 提供 `dafeiyu-chibi-character-sheet.png`（Q 版三视图与细节）与 `dafeiyu-mature-character-sheet.png`。
+- 本仓库根目录的 `dafeiyu.webp`（1024×1024）与 `dafeiyu-chibi-character-sheet.png`（1448×1086）
+  是用户指定的形象基准，由用户提供。
+- 形象本身的著作权归社区原作者；本站与镜像只做整理。若要公开发布成片，
+  请保留「非官方同人 / AI 生成内容」标注，并按资产库的说明署名来源。
+
+## 生成物
+
+| 文件 | 说明 |
+|---|---|
+| `whale_idle.png` | 从 `dafeiyu.webp` 抠底后的透明立绘（926×1024），渲染器直接读取 |
+| `make_sprite.mjs` | 抠图脚本（四边泛洪 → 发缝白洞 → 去自带投影 → 阶梯削白边 → 裁包围盒） |
+
+重新生成：
+
+```bash
+node make_sprite.mjs ../../../../dafeiyu.webp whale_idle.png
+```
+
+## 注意
+
+- 这台机器上的脚本阈值是对 `dafeiyu.webp` 这张图实测调出来的（发色 b≥118 且 b−r≥42 用来区分"头发缝"与"裙子上的白蕾丝"）。换图请用 `--debug` 复核。
+- 角色形象属于社区共创，**不要**在任何发布物里写成 Anthropic / DeepSeek 官方形象。
