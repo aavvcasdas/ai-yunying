@@ -182,3 +182,49 @@ NODE_PATH=<node_modules-with-@napi-rs/canvas> node render_day2_bonus.mjs \
 | `../tools/day2制作/video-fx源码快照/day2_poses/` | 39 张候选姿势 WebP、来源说明与 MIT 许可证；只供试穿展示，不代表已定稿 |
 | `../tools/day2制作/video-fx源码快照/day2_timing_measured.js` | 实测 timing 快照 |
 | `../tools/day2制作/Day2指定配音对齐验收表.md` | 逐 cue 时间、F0、峰值、削顶、成片规格与 QA 结论 |
+
+## 九、2026-10-26 无配音双样片（供选择视觉路线）
+
+用户已否决第六节 Piper 初步草稿的视觉路线：完整姿势图主演仍像表情包、主背景太单薄、电视里只有孤立角色。因此另做两条**无配音样片**，只借用 12 个镜头的新增情节结构，不再沿用其主体、背景和电视实现；两条样片都不覆盖 Day2 当前版，也不宣布正式换形象。
+
+| 样片 | 路线 | 文件 | 大小 | SHA-256 |
+|---|---|---|---:|---|
+| A | 原版基础上升级 | `成片/样片/Day2加更_样片A_原版升级_无配音.mp4` | 13,115,641 bytes | `51b362f02264183ea87e9722211c687055717db093b633dcdf8967f9870a6189` |
+| B | 旧版主画面加动作，表情包新版只进电视 | `成片/样片/Day2加更_样片B_旧版加动作_电视双小场景_无配音.mp4` | 13,096,635 bytes | `f734afdacef2d71e90017f926bff9ad4b7cb43e802c0eb117bf2d5fc06b7aa1c` |
+
+共同规格与内容：
+
+- 32.200s，1920×1080，30fps，H.264 High，yuv420p；A/B 视频码率分别约 3255kb/s、3250kb/s；**容器内只有 1 条视频流，没有音频流**，MP4 title/comment 均注明无配音样片及 variant。
+- 覆盖现有 B01–B12 全部新增/修订：真实评论与回复、B01/B02 无电视、B03 起电视入画、1816 位住户、B06/B07 真实三动作、B09 的 200/400 多条、B10 私信暂时回不了、B12 吃白饭等待投票。
+- 主背景改为丰富房间：双舷窗、书架与留言墙、白饭补给站、时钟、彩灯串、地毯、电视柜/游戏机、台灯、杯子、书堆、饭碗、绿植、气泡和星光。
+- 电视内不再是孤立角色：每个小画面都有缩小版墙面、舷窗、书架、白饭牌、桌台、植物、书堆和频道条，角色与动作/评论气泡都在完整小场景内。
+
+两条路线的区别：
+
+- **样片 A（原版升级）**：B01/B02 保持素版原像素骨架；B03 起仍是同一骨架，但加上金色星星发夹、双侧发带蝴蝶结、铃铛、围裙星星、金色裙边、光圈/星光及动作道具。电视只播放一个完整的旧版小场景。
+- **样片 B（旧版加动作）**：主画面全程使用素版原像素骨架并调用真实动作；电视左右分屏，左边是旧版完整小场景，右边是表情包新版完整小场景。这样同时呈现“表情包新版加入电视”和“电视里保留缩小旧版”的两种要求，最终是否保留分屏由用户选路线后再定。
+
+样片时长是固定无声展示时长 `[2, 2, 2.4, 2, 2.4, 3.6, 3.6, 2.4, 3, 2.4, 2.4, 3]` 秒加 1 秒尾帧，B06/B07 的句内动作停留也只为无声审看重新均分；这不是实测配音 timing。选定路线后如做有声版，仍须用最终晓伊逐 cue 重新合成、重新实测并按 >8% 规则决定是否重排。
+
+QA：渲染前每条检查 19 张静帧（12 镜头及 B06/B07 三动作和细节段）；成片后两条 MP4 均全片解码退出码 0，并从 MP4 本身各抽 6 帧复核。Day2 当前版复核仍为 27,213,164 bytes，SHA-256 `578988c40859a2c483e7e1432582d17ae21eab5de8d28f24320ee22e41271eb8`，未被覆盖。
+
+复现入口（在 ai-yunying 仓库根目录执行；`<video-fx>` 为 `arena/8be4c8f8-video-fx@82bede5` 检出）：
+
+```bash
+cp 'tools/day2加更制作/video-fx源码快照/day2_bonus_samples_all.js' <video-fx>/src/ch/
+cp 'tools/day2加更制作/video-fx源码快照/render_day2_bonus_samples.mjs' <video-fx>/src/ch/
+mkdir -p <video-fx>/assets/day2_poses
+cp 'tools/day2制作/video-fx源码快照/day2_poses/'*.webp <video-fx>/assets/day2_poses/
+
+cd <video-fx>
+FFMPEG_BIN=<ffmpeg> NODE_PATH=<node_modules-with-@napi-rs/canvas> \
+  node src/ch/render_day2_bonus_samples.mjs --variant enhanced --stills
+FFMPEG_BIN=<ffmpeg> NODE_PATH=<node_modules-with-@napi-rs/canvas> \
+  node src/ch/render_day2_bonus_samples.mjs --variant enhanced \
+  --out '/home/user/ai-yunying/Day2/成片/样片/Day2加更_样片A_原版升级_无配音.mp4'
+FFMPEG_BIN=<ffmpeg> NODE_PATH=<node_modules-with-@napi-rs/canvas> \
+  node src/ch/render_day2_bonus_samples.mjs --variant oldactions \
+  --out '/home/user/ai-yunying/Day2/成片/样片/Day2加更_样片B_旧版加动作_电视双小场景_无配音.mp4'
+```
+
+`render_day2_bonus_samples.mjs` 只接受 `sample_only=true`、`voice=false`、`measured=false` 的 12-cue 样片 timing，并要求输出名包含对应的“样片A/样片B”和“无配音”，禁止把样片冒充有声终版。
