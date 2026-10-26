@@ -6,8 +6,9 @@
 // - From B03, the TV compares two complete miniature rooms: left = current
 //   pixel whale learning/previewing the 28 registered rig actions; right =
 //   newly designed sticker-style fish previewing all 39 complete poses.
-// - The formal side-by-side catalog starts in B03, continues through B04/B05,
-//   then finishes in the music-only remainder before B06. The 28 rig actions
+// - The formal side-by-side catalog starts in B03, continues through B04/B05
+//   and underneath B06, then finishes in the measured B06/B07 gap. Dialogue
+//   is never paused for a music-only catalog remainder. The 28 rig actions
 //   and 39 still poses are different asset classes and are counted separately.
 // - No invented ribbons, bells, clips, apron decals, halos or orbiting
 //   sparkle overlays are used. Timing comes only from the measured
@@ -88,8 +89,10 @@
       start: CATALOG_START,
       end: CATALOG_END,
       duration: CATALOG_DURATION,
-      silentRemainderStart: Number(FINAL_TIMING.catalog.silent_remainder_start),
-      silentRemainderEnd: Number(FINAL_TIMING.catalog.silent_remainder_end),
+      dialogueOverlapStart: Number(FINAL_TIMING.catalog.dialogue_overlap_start),
+      dialogueOverlapEnd: Number(FINAL_TIMING.catalog.dialogue_overlap_end),
+      insertDuration: Number(FINAL_TIMING.catalog.insert_duration || 0),
+      scriptPauseInserted: FINAL_TIMING.catalog.script_pause_inserted === true,
       pixelStart: CATALOG_START,
       pixelEnd: CATALOG_END,
       pixelItemSeconds: PIXEL_CATALOG_ITEM_SECONDS,
@@ -234,6 +237,15 @@
     if (safe.action === 'sleep_curl') safe.eyes = 'happy';
     safe.squint = 0.01;
     safe.transitionBlend = 1;
+    // The original pixel head already contains its small mouth.  In pixel
+    // mode the legacy rig implements o/waveO/flat/pout/cat/smirk by first
+    // painting a skin-coloured rectangle and then a red block at a fixed
+    // chin coordinate.  On the laptop `thinking` pose and tilted
+    // `peek_curious` head that patch reads as a foreign object stuck to the
+    // mouth/chin (the two artifacts flagged by the user), so this cut keeps
+    // only the sprite's own smile and disables the alternating lip patch.
+    safe.mouth = 'smile';
+    safe.talking = false;
     return safe;
   }
 
@@ -1124,8 +1136,13 @@
       tag(ctx, x + w - 92, y + h - 22, '当时回复', PAL.gold, popAt(t, n, 0.42, 0.58), 17);
       return;
     }
-    letter(ctx, 'Day1 评论', x + w / 2, y + 42, 24, '#64748B', { stroke: false, ink: false });
-    inkLine(ctx, [[x + 38, y + 72], [x + w - 38, y + 72]], 1.2, '#CBD5E1', 'inkfine', 0);
+    letter(ctx, 'Day1 评论', x + w / 2, y + 36, 24, '#64748B', { stroke: false, ink: false });
+    // The commenter ID is visual provenance on the card only; it is neither
+    // spoken nor put into the dialogue subtitles.
+    letter(ctx, '@用户3400921604841', x + w / 2, y + 64, 16, '#64748B', {
+      stroke: false, ink: false
+    });
+    inkLine(ctx, [[x + 38, y + 82], [x + w - 38, y + 82]], 1.2, '#CBD5E1', 'inkfine', 0);
     letter(ctx, '“能提升一下画质吗，', x + w / 2, y + 126, 34, PAL.whaleNavy, {
       stroke: false, ink: false
     });
@@ -1377,37 +1394,15 @@
     camEnd(ctx);
   }
 
-  // Music-only remainder: B05 has ended, B06 is deliberately delayed in the
-  // production track until the continuous 28+39 catalog reaches its end.
-  function shotCatalogRemainder(ctx, t, lt, dur) {
-    camBegin(ctx, W / 2, 360, 1.06, 0);
-    room(ctx, t, '#17305F');
-    const state = drawFinalTv(ctx, t, { highlight: true, oldEmotion: 'happy' });
-    const hostAction = state.complete
-      ? 'eat_white_rice'
-      : (lt < 7 ? 'peek_curious' : (lt < 15 ? 'jump_joy' : 'eat_white_rice'));
-    pixelOld(ctx, 292, 590, 35, t, {
-      action: hostAction,
-      emotionName: 'happy',
-      moveMode: 'bounce',
-      seed: 55,
-      lookX: 0.68
-    });
-    letter(ctx, state.complete ? '完整目录播完啦' : '完整目录继续播', 292, 116, 27, PAL.gold, {
-      pop: clamp(lt / 0.3), rot: -0.015
-    });
-    tag(ctx, 292, 164, '左边 28 动作 · 右边 39 姿势', PAL.whaleCyan, clamp(lt / 0.3), 19);
-    camEnd(ctx);
-  }
-
   function shotB06ReplyCount(ctx, t, lt, dur) {
     const sp = cueP(t, 6);
     camBegin(ctx, W / 2, 360, 1.05 + 0.02 * ease(sp), 0);
     room(ctx, t, '#1C2852');
+    // Do not override leftAction/rightPose here: the formal 28+39 catalog is
+    // still active underneath B06 and finishes only in the B06/B07 gap.
+    // The scrolling comment bubbles are an overlay inside the left TV room.
     drawFinalTv(ctx, t, {
       bubbles: 'scroll',
-      leftAction: sp < 0.58 ? 'peek_curious' : 'shock_petrify',
-      rightPose: sp < 0.58 ? 'curious' : 'failure',
       oldEmotion: 'happy',
       caption: sp < 0.58 ? '200…' : '400+',
       captionK: sp < 0.58 ? popAt(t, 6, 0.08, 0.22) : popAt(t, 6, 0.58, 0.7)
@@ -1677,7 +1672,6 @@
     [C(3), shotB03TwoPlans],
     [C(4), shotB04LeftRight],
     [C(5), shotB05CompareIdentity],
-    [CE(5), shotCatalogRemainder],
     [C(6), shotB06ReplyCount],
     [C(7), shotB07PrivateMessages],
     [C(8), shotB08Question1931],
@@ -1692,7 +1686,6 @@
     shotB03TwoPlans,
     shotB04LeftRight,
     shotB05CompareIdentity,
-    shotCatalogRemainder,
     shotB06ReplyCount,
     shotB07PrivateMessages,
     shotB08Question1931,

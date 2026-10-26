@@ -4,8 +4,11 @@
 The source is one continuous WAV supplied by the user.  This script maps Vosk
 word timestamps to the nine actually spoken cues, refines boundaries with 5 ms
 RMS onset/offset detection, crops only the leading silence from the production
-mix, inserts the scripted music-only full-catalog remainder between B05 and
-B06, and writes measured timing/envelope files into a video-fx checkout.
+mix, and writes measured timing/envelope files into a video-fx checkout.  The
+scripted dialogue is never paused for the visual catalog: the 42-second TV
+catalog starts in B03, continues underneath B06, and ends in the measured
+B06/B07 gap.  Clause subtitles use the same Vosk word timestamps; no cue or
+clause duration is estimated from character counts.
 
 The WAV only embeds a Lavf encoder tag.  It is therefore recorded strictly as
 ``user-provided/final-voice-wav``; no synthesis engine or voice identity is
@@ -33,9 +36,8 @@ BEAT = 60.0 / BPM
 ENGINE_ID = "user-provided/final-voice-wav"
 ASR_MODEL = "vosk-model-small-cn-0.22"
 EXPECTED_WORD_COUNT = 213
-CATALOG_DURATION_SECONDS = 54.0
+CATALOG_DURATION_SECONDS = 42.0
 CATALOG_START_AFTER_B03_SECONDS = 0.35
-CATALOG_TO_B06_GAP_SECONDS = 0.45
 END_HOLD_SECONDS = 1.6
 
 # 1-based inclusive Vosk word ranges for the nine spoken lines.  ASR contains
@@ -65,6 +67,77 @@ SUBS = [
     "私信也暂时回不了。不是本鱼躲起来，也不是本鱼偷懒，是真的回不了哦。",
     "好啦，先不数了。1931 位住户，帮本鱼选一选嘛：是留住现在的本鱼，让她继续学新动作，还是换成右边新设计的鱼呀？",
     "鲸鱼绝不摸鱼！本鱼先把这碗白饭吃完，等你们开会选好。边吃边等，应该不算摸鱼吧？",
+]
+
+UNRECOGNIZED_INTERJECTIONS = {
+    "B04": {"source_start": 26.67, "source_end": 27.01, "text": "诶？"},
+    "B06": {"source_start": 50.08, "source_end": 50.43, "text": "诶？"},
+}
+
+# Clause-level subtitles, in the spirit of the Day videos' short timed lines.
+# Tuple form is (first Vosk word index, last Vosk word index, display text),
+# using the same 1-based inclusive indexing as WORD_RANGES.  The special
+# __INTERJECTION__ marker uses the RMS-reviewed source range above because
+# Vosk did not emit those two short utterances as words.  The builder asserts
+# that concatenating each cue's display texts reproduces SUBS exactly.
+SUBTITLE_SEGMENT_RANGES = [
+    [
+        (1, 5, "昨天，有人跟本鱼说："),
+        (6, 10, "“能提升一下画质吗？"),
+        (11, 14, "感觉人物有些模糊。”"),
+    ],
+    [
+        (15, 19, "本鱼立刻回他：“收到，"),
+        (20, 25, "回头把本鱼擦清楚一点。”"),
+    ],
+    [
+        (26, 31, "主人没有偷偷把本鱼换掉哦。"),
+        (32, 40, "他给现在的本鱼准备了新动作，"),
+        (41, 48, "还另外设计了一条新的鱼，"),
+        (49, 52, "都放进电视里，"),
+        (53, 56, "先让大家选一选。"),
+    ],
+    [
+        (57, 64, "左边，是现在的本鱼在学新动作。"),
+        (65, 70, "右边，是主人新设计的鱼。"),
+        ("__INTERJECTION__", None, "诶？"),
+        (71, 77, "它怎么也捧着白饭碗呀？"),
+    ],
+    [
+        (78, 83, "两边都动起来看看吧！"),
+        (84, 88, "左边还是有点糊糊的，"),
+        (89, 91, "右边清楚一点。"),
+        (92, 99, "蓝头发、大尾巴、白饭碗都还在……"),
+        (100, 105, "到底选哪边好呢？"),
+    ],
+    [
+        (106, 106, "对了，"),
+        (107, 114, "评论好像只能回复 200 条左右。"),
+        (115, 123, "可是本鱼这边已经显示回复 400 多条了……"),
+        ("__INTERJECTION__", None, "诶？"),
+        (124, 133, "本鱼的小脑袋有点转不过来了。"),
+    ],
+    [
+        (134, 139, "私信也暂时回不了。"),
+        (140, 143, "不是本鱼躲起来，"),
+        (144, 147, "也不是本鱼偷懒，"),
+        (148, 153, "是真的回不了哦。"),
+    ],
+    [
+        (154, 158, "好啦，先不数了。"),
+        (159, 165, "1931 位住户，"),
+        (166, 169, "帮本鱼选一选嘛："),
+        (170, 174, "是留住现在的本鱼，"),
+        (175, 179, "让她继续学新动作，"),
+        (180, 187, "还是换成右边新设计的鱼呀？"),
+    ],
+    [
+        (188, 191, "鲸鱼绝不摸鱼！"),
+        (192, 199, "本鱼先把这碗白饭吃完，"),
+        (200, 203, "等你们开会选好。"),
+        (204, 208, "边吃边等，"),
+        (209, 213, "应该不算摸鱼吧？"),
+    ],
 ]
 
 
@@ -257,6 +330,65 @@ def refine_boundaries(words, mono: np.ndarray, sr: int):
     return refined
 
 
+def build_subtitle_segments(cue_index: int, words, base_offset: float, cue_start: float, cue_end: float):
+    """Build clause subtitles from measured ASR/RMS timestamps.
+
+    Internal boundaries are the first Vosk word timestamp of each clause;
+    the two ASR-missing interjections use their reviewed RMS source ranges.
+    A clause remains on screen until the next clause starts, matching the
+    short timed-line presentation used by the Day videos without ever
+    estimating a boundary from character counts.
+    """
+    cue_id = f"B{cue_index:02d}"
+    specs = SUBTITLE_SEGMENT_RANGES[cue_index - 1]
+    expected = SUBS[cue_index - 1]
+    if "".join(str(spec[2]) for spec in specs) != expected:
+        raise SystemExit(f"{cue_id} 分句字幕拼接与批准字幕不一致")
+
+    raw = []
+    for first, last, text in specs:
+        if first == "__INTERJECTION__":
+            hit = UNRECOGNIZED_INTERJECTIONS.get(cue_id)
+            if not hit or hit["text"] != text:
+                raise SystemExit(f"{cue_id} 缺少未识别语气词的实测边界")
+            source_start = float(hit["source_start"])
+            source_end = float(hit["source_end"])
+            raw.append({
+                "text": text,
+                "word_index_start": None,
+                "word_index_end": None,
+                "source_start": round(source_start, 3),
+                "source_end": round(source_end, 3),
+                "boundary_source": "RMS-reviewed ASR-missing interjection",
+            })
+        else:
+            first_i = int(first)
+            last_i = int(last)
+            if not (1 <= first_i <= last_i <= len(words)):
+                raise SystemExit(f"{cue_id} 分句词序号越界: {first_i}-{last_i}")
+            raw.append({
+                "text": text,
+                "word_index_start": first_i,
+                "word_index_end": last_i,
+                "source_start": round(float(words[first_i - 1]["start"]), 3),
+                "source_end": round(float(words[last_i - 1]["end"]), 3),
+                "boundary_source": "Vosk word timestamp",
+            })
+
+    segments = []
+    for i, item in enumerate(raw):
+        start = cue_start if i == 0 else round(base_offset + item["source_start"], 3)
+        start = max(cue_start, min(start, cue_end))
+        if segments and start <= segments[-1]["start"]:
+            start = round(segments[-1]["start"] + 0.001, 3)
+        segments.append({**item, "start": round(float(start), 3)})
+    for i, segment in enumerate(segments):
+        segment["end"] = segments[i + 1]["start"] if i + 1 < len(segments) else cue_end
+        if not (cue_start <= segment["start"] < segment["end"] <= cue_end):
+            raise SystemExit(f"{cue_id} 分句字幕边界无效: {segment}")
+    return segments
+
+
 def generate_bgm(duration: float) -> np.ndarray:
     n = int(math.ceil(duration * SR))
     tt = np.arange(n, dtype=np.float64) / SR
@@ -364,8 +496,8 @@ def main(argv=None) -> None:
         raise SystemExit(f"video-fx 根目录不完整: {video_root}")
 
     lines = [x.strip() for x in script_path.read_text(encoding="utf-8").splitlines() if x.strip()]
-    if len(lines) != 9 or len(SUBS) != 9 or len(WORD_RANGES) != 9:
-        raise SystemExit("台词、字幕与词序号映射必须同为 9 条")
+    if len(lines) != 9 or len(SUBS) != 9 or len(WORD_RANGES) != 9 or len(SUBTITLE_SEGMENT_RANGES) != 9:
+        raise SystemExit("台词、字幕、分句字幕与词序号映射必须同为 9 条")
     if not lines[0].startswith("昨天，有人跟本鱼说") or not lines[-1].startswith("鲸鱼绝不摸鱼"):
         raise SystemExit("配音台词与本 WAV 的首尾不一致，禁止套用词序号映射")
     if "一千九百三十一位住户" not in lines[7]:
@@ -400,10 +532,15 @@ def main(argv=None) -> None:
 
     catalog_start = round(base_positions[2][0] + CATALOG_START_AFTER_B03_SECONDS, 3)
     catalog_end = round(catalog_start + CATALOG_DURATION_SECONDS, 3)
-    target_b06_start = round(catalog_end + CATALOG_TO_B06_GAP_SECONDS, 3)
-    insert_duration = round(max(0.0, target_b06_start - base_positions[5][0]), 3)
-    if insert_duration <= 0:
-        raise SystemExit("目录时长不足，未形成 B05/B06 之间的无台词目录余段")
+    # No production pause is inserted.  The visual catalog keeps running
+    # underneath B06 and must land in the measured silence between B06 and
+    # B07, so all 28+39 items finish before the private-message beat.
+    insert_duration = 0.0
+    if not (base_positions[5][1] < catalog_end < base_positions[6][0]):
+        raise SystemExit(
+            "目录必须在 B06 台词下方继续，并在 B06/B07 实测间隔内结束，"
+            f"实得 catalog_end={catalog_end}, B06={base_positions[5]}, B07={base_positions[6]}"
+        )
 
     cues = []
     report_items = []
@@ -429,9 +566,12 @@ def main(argv=None) -> None:
             clip_out[-fade_n:] *= ramp[::-1]
         write_wav16(audio_dir / clip_name, clip_out, source_sr)
 
-        shift = insert_duration if i >= 6 else 0.0
+        shift = 0.0
         timeline_start = round(base_start + shift, 3)
         timeline_end = round(base_end + shift, 3)
+        subtitle_segments = build_subtitle_segments(
+            i, words, base_offset, timeline_start, timeline_end
+        )
         cue = {
             "id": f"B{i:02d}",
             "n": i,
@@ -439,6 +579,16 @@ def main(argv=None) -> None:
             "end": timeline_end,
             "tts": line,
             "sub": sub,
+            "subtitle_segments": [
+                {
+                    "start": segment["start"],
+                    "end": segment["end"],
+                    "text": segment["text"],
+                    "word_index_start": segment["word_index_start"],
+                    "word_index_end": segment["word_index_end"],
+                }
+                for segment in subtitle_segments
+            ],
             "duration_seconds": round(source_end - source_start, 3),
             "measured": True,
             "engine": ENGINE_ID,
@@ -451,6 +601,7 @@ def main(argv=None) -> None:
                 "file": clip_name,
                 "text": line,
                 "subtitle": sub,
+                "subtitle_segments": subtitle_segments,
                 "base_timeline_start": base_start,
                 "base_timeline_end": base_end,
                 "production_shift_seconds": round(shift, 3),
@@ -487,10 +638,13 @@ def main(argv=None) -> None:
         "start": catalog_start,
         "end": catalog_end,
         "duration": CATALOG_DURATION_SECONDS,
-        "insert_start_base_timeline": base_positions[5][0],
+        "insert_start_base_timeline": None,
         "insert_duration": insert_duration,
-        "silent_remainder_start": cues[4]["end"],
-        "silent_remainder_end": catalog_end,
+        "silent_remainder_start": None,
+        "silent_remainder_end": None,
+        "dialogue_overlap_start": cues[5]["start"],
+        "dialogue_overlap_end": catalog_end,
+        "script_pause_inserted": False,
         "pixel_count": 28,
         "pixel_item_seconds": round(CATALOG_DURATION_SECONDS / 28, 6),
         "pose_count": 39,
@@ -530,8 +684,8 @@ def main(argv=None) -> None:
             "refined with 5ms RMS onset/offset detection"
         ),
         "unrecognized_interjections_inside_cues": [
-            {"cue": "B04", "source_start": 26.67, "source_end": 27.01, "text": "诶？"},
-            {"cue": "B06", "source_start": 50.08, "source_end": 50.43, "text": "诶？"},
+            {"cue": cue_id, **hit}
+            for cue_id, hit in UNRECOGNIZED_INTERJECTIONS.items()
         ],
         "title_len": 0,
         "source_crop_start_seconds": first_source_start,
@@ -576,31 +730,21 @@ def main(argv=None) -> None:
     voice48_full = decode_stereo_48k(voice_path, source_audio, source_sr)
     crop_i = int(round(first_source_start * SR))
     voice48_cropped = voice48_full[crop_i:].copy()
-    split_i = int(round(base_positions[5][0] * SR))
     total_n = int(round(duration * SR))
     voice_stereo = np.zeros((total_n, 2), dtype=np.float32)
 
-    first_take = min(split_i, len(voice48_cropped), total_n)
-    if first_take > 0:
-        voice_stereo[:first_take] += voice48_cropped[:first_take]
-    second_start = int(round(cues[5]["start"] * SR))
-    second_take = min(len(voice48_cropped) - split_i, total_n - second_start)
-    if second_take > 0:
-        voice_stereo[second_start : second_start + second_take] += voice48_cropped[
-            split_i : split_i + second_take
-        ]
+    # The dialogue remains one continuous take after the leading-silence
+    # crop.  In particular, B06 starts at its measured base-timeline time;
+    # no music-only section is inserted between B05 and B06.
+    voice_take = min(len(voice48_cropped), total_n)
+    if voice_take > 0:
+        voice_stereo[:voice_take] += voice48_cropped[:voice_take]
 
-    # Small fades only in the production track; archived source WAV is untouched.
+    # A 5 ms fade only at the production-track head; the archived source WAV
+    # itself is untouched.
     fade_n = int(0.005 * SR)
     if total_n > fade_n:
         voice_stereo[:fade_n] *= np.linspace(0, 1, fade_n, dtype=np.float32)[:, None]
-    for center in (split_i, second_start):
-        lo = max(0, center - fade_n)
-        hi = min(total_n, center + fade_n)
-        if hi > lo:
-            # The split is in measured near-silence; this only removes clicks.
-            ramp = np.sin(np.linspace(0, np.pi, hi - lo, dtype=np.float32)) * 0.15 + 0.85
-            voice_stereo[lo:hi] *= ramp[:, None]
     voice_stereo *= 0.92
 
     bgm = generate_bgm(duration)[:total_n]

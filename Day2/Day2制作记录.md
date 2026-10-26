@@ -313,3 +313,19 @@ FFMPEG_BIN=<ffmpeg> node render_day2_bonus_final.mjs \
 ```
 
 `render_day2_bonus_final.mjs` 要求 9-cue timing 必须为 `measured=true`、`voice=true`、`voice_engine=user-provided/final-voice-wav`、首 cue 0.000s，并拒绝样片/无配音/Piper/draft 输出名。归档 timing 快照为 `../tools/day2加更制作/video-fx源码快照/day2_bonus_final_timing.js`。
+
+## 十二、2026-10-26 用户复核修正：嘴部净化、分句字幕、补 ID、取消 41 秒后停顿
+
+第十一节的 105.100s 文件已由本节修正版同路径覆盖，第十一节只保留为上一版制作与 QA 历史，当前成片以本节规格为准。
+
+| 文件 | 规格 | 大小 | SHA-256 |
+|---|---|---:|---|
+| `成片/加更/Day2加更_鲸鱼选鱼_最终配音版.mp4` | 82.300s、2469 帧、1920×1080、30fps、H.264 High/yuv420p、AAC LC 48kHz 立体声 160kb/s | 76,533,531 bytes | `64ec411b9f5cc506e51eaf444544e11265ad6e22cb38b87801744795ba010871` |
+
+用户截图中的两处嘴部异物已经定位：第一张是 B01 后半 `thinking` 笔记本姿势的 `flat` 嘴，第二张是 `peek_curious` 好奇表情的 `o` 嘴。旧 pixel rig 对这两类嘴型先在固定下巴坐标刷肤色矩形，再叠红色块，倾斜或坐姿时就像嘴巴/下巴上多了一个小物件。最终场景的 `safePixelOptions()` 现在统一强制 `mouth='smile'`、`talking=false`，只保留原像素头自带的小嘴，删除 `o/waveO/flat/pout/cat/smirk` 及交替唇形贴片；动作本身的饭碗、麦克风、放大镜等有叙事作用的道具不属于这类贴片，仍按动作保留。开场评论卡已在标题下补上视觉来源 `@用户3400921604841`，口播和对白字幕仍不出现该 ID。
+
+字幕不再把整 cue 包装进全宽黑条。生成器按批准字幕的标点拆成 39 个分句，并用同一组 Vosk 词时间戳给每个分句定界；两处 ASR 未单独识别的“诶？”使用报告中的 RMS 复核源边界。生成器会断言分句拼接后与批准字幕逐字一致，渲染器则以 Day 视频式短句对白框一次只显示当前分句。所有 cue 与分句时长仍来自实测音频/ASR 时间，不按字数估算。
+
+41 秒后的长停顿已删除：生产轨不再插入 22.800s 无台词段，B06 从旧版 65.080s 提前到源 WAV 原有节奏的 42.280s，B07–B09 同步回位到 52.825s、60.260s、72.565s。电视目录改为 10.630–52.630s 共 42.000s，左侧 28 个动作每项 1.500000s、右侧 39 张姿势每项 1.076923s；它在 B06 台词下方继续播放，并于 B06/B07 的实测间隔内完成。B06 镜头不再用 `peek_curious/shock_petrify/curious/failure` 覆盖目录项目，只叠加评论气泡、计数牌与电视底座计数。
+
+QA：渲染前生成并实际查看 138 张静帧（首帧、9 cue 各三点、39 个分句字幕中点、28 个动作中点、39 张姿势中点、B05/B06 衔接、B06 目录重叠、目录完成和尾帧），另对 B01 的 `thinking` 与多处 `peek_curious` 做脸部近景放大，确认红色嘴部方块和下巴横线贴片消失。成片完整解码退出码 0，视频流回读 2469 帧；再从 MP4 本体抽取 0.100s、2.805s、4.488s、13.650s、41.700s、42.500s、47.455s、52.730s、65.000s、81.500s 共 10 帧复核。生产 WAV 峰值 0.889236、削波 0；MP4 解码音频峰值 0.881927、削波 0，`volumedetect` mean/max 为 -17.1/-1.1dB，`loudnorm` 输入综合响度 -12.92 LUFS、真峰值 -1.09dBTP、LRA 2.90。48kHz 单声道 5ms RMS 包络最佳偏移 0.000s（相关系数 0.999967）。新 timing、生产轨、包络和对齐报告 SHA-256 分别为 `a62213af5c059d6eec07abb5aa8cbb3fcec8419c9dd33b56ea4094b3de2fef3a`、`9946c074eb82cbf17b5b04a907b57c8a1244091e994fd0e80363b4030822c60b`、`7d2523ed47c0f1952dd8f3d3f460cfd8cfcac8d3089ab0a8e84632d4316f7f2c`、`e8bfb4bdb247ee8daa943df4c81c133503eee21d5c489204edda8767eb24bc41`。复现命令同第十一节，渲染器现额外拒绝 `insert_duration != 0`、缺少分句字幕或 `script_pause_inserted != false` 的旧 timing。
