@@ -2,14 +2,20 @@
 //
 // Purpose: let the user choose the character direction before another voiced
 // draft is made.
-// - enhanced: the original pixel rig stays as the base, with visible upgrade
-//   details/FX and real rig actions in the main picture.
+// - enhanced: the original pixel rig stays as the base and is updated only
+//   with the earlier project's own actions, emotions, views and staging.
+//   No newly invented ribbons, bells, star clips, apron decals, halos or
+//   orbiting sparkle overlays are allowed on this route.
 // - oldactions: the plain original pixel rig stays in the main picture and
 //   receives the actions; the sticker/pose candidate is only shown inside TV.
-// Both variants use a richer room. The TV contains complete miniature scenes
-// (wall, porthole, shelf, desk/cabinet, props, character and actions), not a
-// lone fish on an empty blue screen. This file uses fixed silent sample timing
-// only; it must never be treated as measured voice timing.
+// After the 12-shot story, sample A plays all 28 pixel-rig actions. Sample B
+// plays those 28 actions and then all 39 sticker poses inside a complete TV
+// room. The 39 still poses and 28 rig actions are different asset classes and
+// must never be conflated. Both variants use a richer room. The TV contains
+// complete miniature scenes (wall, porthole, shelf, desk/cabinet, props,
+// character and actions), not a lone fish on an empty blue screen. This file
+// uses fixed silent sample timing only; it must never be treated as measured
+// voice timing.
 
 (function (root) {
   const CORE = root.CORE || (typeof require !== 'undefined' ? require('../core.js') : {});
@@ -37,12 +43,81 @@
     '评论的事先放一边。一千八百一十六位住户，你们更喜欢现在的本鱼，还是电视里的老版本鱼？',
     '鲸鱼绝不摸鱼。本鱼先去吃完这碗白饭，等你们开会结果。'
   ];
+
+  // Canonical earlier-project registries. Keep these in sync with agent.md
+  // sections 0.2 and 0.3. The pixel list is the video-fx rig's 28 real
+  // actions; the sticker list is DSH's 39 complete still poses.
+  const PIXEL_ACTION_CATALOG_28 = [
+    ['eat_white_rice', '吃白饭大肥鱼'], ['eat_onigiri', '啃海苔大饭团'],
+    ['coin_hug', '抱大金币财迷'], ['hum_working_song', '哼唱工作歌'],
+    ['token_wordle_sneak', '偷吃Token玩游戏'], ['drag_ahoge', '拎海浪呆毛悬空'],
+    ['sleep_curl', '蜷尾侧睡'], ['wake_stretch', '睡醒伸懒腰'],
+    ['ciallo_wink', 'Ciallo比耶'], ['playful_fists', '双拳傲娇抗议'],
+    ['confident_hips', '叉腰得意'], ['idol_mic_sing', '握麦高歌'],
+    ['fatfish_working', '狂敲代码打工鱼'], ['fatfish_transform', '召唤蓝色大肥鱼'],
+    ['tail_wag_dance', '摇尾偶像舞'], ['jump_joy', '蓄力高跳摘星'],
+    ['peek_curious', '探头放大镜观察'], ['shy_fidget', '害羞对手指'],
+    ['shock_petrify', '石化震惊'], ['cry_fountain', '暴风喷泉泪'],
+    ['toast_cheers', '举杯畅饮碰杯'], ['umbrella_stroll', '撑鲸鱼伞漫步'],
+    ['camera_shutter', '举拍立得定格'], ['guitar_strum', '抱吉他弹唱'],
+    ['rose_bouquet', '捧红玫瑰'], ['sparkler_firework', '挥舞仙女棒'],
+    ['walk_brisk', '轻快迈步走'], ['run_sprint', '全力冲刺奔跑']
+  ].map(([id, zh], index) => ({ n: index + 1, id, zh }));
+  const STICKER_POSE_CATALOG_39 = [
+    ['angry', '生气叉腰'], ['blush', '害羞捂嘴'], ['bold', '自信叉腰'],
+    ['celebrate', '举臂庆祝'], ['cool-shades', '墨镜比耶'], ['curious', '问号好奇'],
+    ['daily-done', '竖拇指完成'], ['daily-eat', '捧碗吃白饭'], ['daily-gaming', '手柄游戏'],
+    ['daily-stretch', '双臂上伸'], ['eat', '吃小点心'], ['failure', '含泪紧张'],
+    ['game-happy', '双V跳起'], ['game-win', '举起奖杯'], ['greet', '挥手打招呼'],
+    ['idle-cute', '正面站立'], ['levelup', '彩带升级跳'], ['meme-cry', '喷泉泪大哭'],
+    ['meme-doge', '斜眼无语'], ['meme-heart', '爱心眼比心'], ['meme-music', '耳机听歌'],
+    ['meme-no', '抱臂拒绝'], ['meme-smug', '侧脸得意'], ['meme-yes', '星星眼举手'],
+    ['react-belly', '捧腹大笑'], ['react-head', '抱头慌张'], ['react-tail', '受惊翘尾'],
+    ['running', '抱笔记本赶工'], ['sleep', '坐着睡觉'], ['star', '星星眼兴奋'],
+    ['success', '握拳成功'], ['tail-swing', '尾巴前伸'], ['teasing', '指脸调侃'],
+    ['thinking', '侧目思考'], ['wink', '眨眼比手势'], ['work-deadline', '电脑前赶工'],
+    ['work-debug', '放大镜查错'], ['work-idea', '电脑旁有想法'], ['work-review', '眼镜电脑审查']
+  ].map(([id, zh], index) => ({ n: index + 1, id, zh }));
+  function assertCatalog(name, items, expected) {
+    const ids = items.map(item => item.id);
+    if (items.length !== expected || new Set(ids).size !== expected) {
+      throw new Error(`${name} must contain ${expected} unique entries, got ${items.length}/${new Set(ids).size}`);
+    }
+  }
+  assertCatalog('PIXEL_ACTION_CATALOG_28', PIXEL_ACTION_CATALOG_28, 28);
+  assertCatalog('STICKER_POSE_CATALOG_39', STICKER_POSE_CATALOG_39, 39);
+
+  const SAMPLE_STORY_SECONDS = SAMPLE_CUE_SECONDS.reduce((a, b) => a + b, 0) + SAMPLE_TAIL_SECONDS;
+  const PIXEL_CATALOG_ITEM_SECONDS = 1.6;
+  const PIXEL_CATALOG_START = SAMPLE_STORY_SECONDS;
+  const PIXEL_CATALOG_END = PIXEL_CATALOG_START + PIXEL_ACTION_CATALOG_28.length * PIXEL_CATALOG_ITEM_SECONDS;
+  const POSE_CATALOG_ITEM_SECONDS = 0.85;
+  const POSE_CATALOG_START = SAMPLE_VARIANT === 'oldactions' ? PIXEL_CATALOG_END : null;
+  const POSE_CATALOG_END = SAMPLE_VARIANT === 'oldactions'
+    ? POSE_CATALOG_START + STICKER_POSE_CATALOG_39.length * POSE_CATALOG_ITEM_SECONDS
+    : null;
+  const CATALOG_END = POSE_CATALOG_END ?? PIXEL_CATALOG_END;
+  const SAMPLE_DURATION = CATALOG_END + 1.2;
+
   const SAMPLE_CUE_STARTS = SAMPLE_CUE_SECONDS.reduce((acc, sec) => {
     acc.push((acc[acc.length - 1] || 0) + (acc.length ? SAMPLE_CUE_SECONDS[acc.length - 1] : 0));
     return acc;
   }, []);
   const TT = {
-    duration: SAMPLE_CUE_SECONDS.reduce((a, b) => a + b, 0) + SAMPLE_TAIL_SECONDS,
+    duration: SAMPLE_DURATION,
+    story_duration: SAMPLE_STORY_SECONDS,
+    catalog: {
+      storyEnd: SAMPLE_STORY_SECONDS,
+      pixelStart: PIXEL_CATALOG_START,
+      pixelEnd: PIXEL_CATALOG_END,
+      pixelItemSeconds: PIXEL_CATALOG_ITEM_SECONDS,
+      pixelCount: PIXEL_ACTION_CATALOG_28.length,
+      poseStart: POSE_CATALOG_START,
+      poseEnd: POSE_CATALOG_END,
+      poseItemSeconds: POSE_CATALOG_ITEM_SECONDS,
+      poseCount: SAMPLE_VARIANT === 'oldactions' ? STICKER_POSE_CATALOG_39.length : 0,
+      end: CATALOG_END
+    },
     title_len: 0,
     voice: false,
     measured: false,
@@ -59,6 +134,8 @@
   };
   root.DAY2_BONUS_SAMPLE_TIMING = TT;
   root.DAY2_BONUS_SAMPLE_LINES = SAMPLE_LINES.slice();
+  root.PIXEL_ACTION_CATALOG_28 = PIXEL_ACTION_CATALOG_28.slice();
+  root.STICKER_POSE_CATALOG_39 = STICKER_POSE_CATALOG_39.slice();
 
   const {
     W, H, TAU, PAL, clamp, lerp, seg, ease, easeOut, backOut,
@@ -158,15 +235,24 @@
   function safePixelOptions(o) {
     const safe = { ...o };
     const emo = safe.emotion || safe.emo;
-    if (safe.eyes === 'lids' || safe.eyes === 'dead' || emo === 'deadpan' || emo === 'sleepy' || emo === 'smug') {
+    if (safe.eyes === 'lids' || safe.eyes === 'dead' || safe.eyes === 'wink' ||
+        emo === 'deadpan' || emo === 'sleepy' || emo === 'smug') {
       safe.eyes = 'open';
       safe.brows = 'flat';
       safe.mouth = safe.mouth || 'flat';
       safe.lookY = 0.55;
-      safe.transitionBlend = 1;
     }
-    // 像素回退时也不要让过渡 squint 触及旧骨架的整块肤色盖眼分支。
-    safe.squint = Math.min(Number(safe.squint) || 0, 0.44);
+    // The legacy rig computes `o.squint || autoBlink`. Passing literal zero
+    // therefore still enables its rectangular skin-coloured eyelid patch,
+    // which reads as a white line across the iris. A tiny non-zero value
+    // disables both auto-blink and transition squint without changing the
+    // character design. The renderer also swaps the wink pose's head runs
+    // for the open-eyed wave head while preserving the wink body bones.
+    // Sleep is the one semantic exception: use the rig's clean happy-eye
+    // arcs, never the lids/dead skin patch.
+    if (safe.action === 'sleep_curl') safe.eyes = 'happy';
+    safe.squint = 0.01;
+    safe.transitionBlend = 1;
     return safe;
   }
 
@@ -723,8 +809,8 @@
   // both variants use the original pixel rig in the main picture. The sticker
   // helper is separate and is used only for the TV inset in the B sample.
   // ---------------------------------------------------------------------------
-  const MAIN_LABEL = SAMPLE_VARIANT === 'enhanced' ? '原版升级' : '旧版动作版';
-  const MAIN_LONG_LABEL = SAMPLE_VARIANT === 'enhanced' ? '原版升级 · 已装好' : '旧版加动作 · 样片';
+  const MAIN_LABEL = SAMPLE_VARIANT === 'enhanced' ? '原版项目更新' : '旧版加动作';
+  const MAIN_LONG_LABEL = SAMPLE_VARIANT === 'enhanced' ? '主人装的动作更新 · 原骨架' : '旧版主画面 · 加动作';
 
   function stickerCharacter(ctx, x, y, u, t, pose, o = {}) {
     return whaleGirl(ctx, x, y, u, {
@@ -750,83 +836,24 @@
     greet: { emotionName: 'happy', moveMode: 'wave', emote: 'sparkle' }
   };
 
-  function enhancedOriginalAura(ctx, x, y, u, t) {
-    glow(ctx, x, y - u * 4.65, u * 4.5, PAL.whaleCyan, 0.16);
-    paint(ctx, ellPts(x, y - u * 0.18, u * 3.35, u * 0.48, 24), {
-      wash: null, ink: PAL.gold, sw: 1.25
-    });
-    for (let i = 0; i < 7; i++) {
-      const a = t * 0.75 + i * (TAU / 7);
-      const sx = x + Math.cos(a) * u * 3.0;
-      const sy = y - u * 4.7 + Math.sin(a) * u * 3.9;
-      paint(ctx, starPts(sx, sy, u * (0.16 + (i % 2) * 0.05), 0.42, 4, a), {
-        wash: i % 2 ? PAL.gold : '#7DD3FC', washOp: 120, ink: null
-      });
-    }
-  }
-
-  function enhancedOriginalDetails(ctx, x, y, u, t, action) {
-    const bob = Math.sin(t * 4.2) * u * 0.06;
-    // New small identity details are added onto the original rig rather than
-    // swapping in a sticker body: gold hair stars, a collar bell, a brighter
-    // apron trim and tail sparkles.
-    [-1.34, 1.34].forEach((dx, i) => {
-      paint(ctx, starPts(x + dx * u, y - u * 8.12 + bob * (i ? 0.7 : 1), u * 0.2, 0.46, 5, i * 0.4), {
-        wash: PAL.gold, ink: PAL.ink, sw: 0.55
-      });
-    });
-    paint(ctx, ellPts(x, y - u * 4.66 + bob, u * 0.22, u * 0.22, 14), {
-      wash: PAL.gold, fill: '#F59E0B', fillOp: 80, ink: PAL.ink, sw: 0.7
-    });
-    inkLine(ctx, [[x - u * 0.12, y - u * 4.58 + bob], [x + u * 0.12, y - u * 4.58 + bob]], 1, PAL.ink, 'ink', 0);
-    // Make the A-route additions legible at sample size: twin hair ribbons
-    // and an apron star added onto the same original rig.
-    [-1, 1].forEach(side => {
-      const cx = x + side * u * 1.72;
-      const cy = y - u * 7.22 + bob;
-      paint(ctx, [[cx, cy], [cx - side * u * 0.42, cy - u * 0.2], [cx - side * u * 0.42, cy + u * 0.2]], {
-        wash: PAL.whaleCyan, fill: '#0284C7', fillOp: 55, ink: PAL.ink, sw: 0.65
-      });
-      paint(ctx, [[cx, cy], [cx + side * u * 0.42, cy - u * 0.2], [cx + side * u * 0.42, cy + u * 0.2]], {
-        wash: PAL.rose, fill: '#BE123C', fillOp: 42, ink: PAL.ink, sw: 0.65
-      });
-      paint(ctx, ellPts(cx, cy, u * 0.12, u * 0.12, 10), { wash: PAL.gold, ink: PAL.ink, sw: 0.55 });
-    });
-    paint(ctx, starPts(x + u * 0.74, y - u * 3.08, u * 0.17, 0.45, 5, 0.2), {
-      wash: PAL.gold, ink: PAL.ink, sw: 0.5
-    });
-    inkLine(ctx, [[x - u * 1.55, y - u * 2.2], [x - u * 0.7, y - u * 2.02], [x, y - u * 2.16], [x + u * 0.7, y - u * 2.02], [x + u * 1.55, y - u * 2.2]], 1.5, PAL.gold, 'ink', 0.12);
-    for (let i = 0; i < 3; i++) {
-      paint(ctx, ellPts(x - u * (2.15 + i * 0.28), y - u * (1.15 + i * 0.24) + Math.sin(t * 5 + i) * u * 0.07, u * 0.09, u * 0.15, 10), {
-        wash: '#7DD3FC', washOp: 150, ink: null
-      });
-    }
-    if (action === 'eat_white_rice') bowlAt(ctx, x + u * 2.55, y - u * 0.35, Math.max(0.28, u / 76), t);
-    if (action === 'token_wordle_sneak') controller(ctx, x + u * 2.55, y - u * 0.75, Math.max(0.24, u / 92), Math.sin(t * 7) * 0.08);
-    if (action === 'wake_stretch') {
-      [-2.2, -1.1, 0, 1.1, 2.2].forEach((dx, i) => {
-        inkLine(ctx, [[x + dx * u, y - u * 8.65], [x + dx * u * 1.12, y - u * (9.35 - Math.abs(i - 2) * 0.12)]], 1.6, i % 2 ? PAL.gold : PAL.rose, 'ink', 0.08);
-      });
-    }
-  }
-
   function candidate(ctx, x, y, u, t, pose, o = {}) {
     const map = MAIN_POSE_TO_PIXEL[pose] || { emotionName: 'happy' };
-    // In sample A the additions are installed at B03; B01/B02 stay plain
-    // original so the before/after change is visible.
-    const enhancedActive = SAMPLE_VARIANT === 'enhanced' && t >= C(3);
-    if (enhancedActive) enhancedOriginalAura(ctx, x, y, u, t);
-    const result = pixelOld(ctx, x, y, u, t, {
+    // Sample A follows the earlier project only: the same original rig,
+    // its registered actions/emotions and motivated staging. It deliberately
+    // adds no ribbons, bells, star clips, apron decals, halo or aura. B01/B02
+    // remain the plain baseline; from B03 the installed update is expressed
+    // through the fuller action/emotion staging and, after the story, the
+    // complete 28-action catalog.
+    const projectUpdateActive = SAMPLE_VARIANT === 'enhanced' && t >= C(3);
+    return pixelOld(ctx, x, y, u, t, {
       ...o,
       action: map.action,
       emotionName: map.emotionName || 'happy',
       moveMode: map.moveMode || o.moveMode || 'bounce',
-      emote: map.emote,
+      emote: projectUpdateActive ? map.emote : o.emote,
       seed: o.seed || 0,
       lookX: o.lookX || 0
     });
-    if (enhancedActive) enhancedOriginalDetails(ctx, x, y, u, t, map.action);
-    return result;
   }
 
   function pixelOld(ctx, x, y, u, t, o = {}) {
@@ -836,7 +863,9 @@
       ...o,
       characterMode: 'original',
       eyes: 'open',
-      squint: Math.min(Number(o.squint) || 0, 0.44),
+      // See safePixelOptions: 0.01, not 0, is required to bypass the rig's
+      // `o.squint || autoBlink` skin-coloured eyelid patch.
+      squint: 0.01,
       transitionBlend: 1,
       showActionBadge: false,
       t
@@ -1200,7 +1229,7 @@
       sq: age < 0.16 ? -0.08 * Math.sin((age / 0.16) * Math.PI) : 0
     });
     tag(ctx, 405, 150, label, PAL.gold, clamp(age / 0.18), 24);
-    letter(ctx, SAMPLE_VARIANT === 'enhanced' ? '原骨架加细节 + 真动作' : '旧骨架直接加真动作', 405, 104, 20, '#BAE6FD', {
+    letter(ctx, SAMPLE_VARIANT === 'enhanced' ? '原骨架 + 先前项目真动作' : '旧骨架直接加真动作', 405, 104, 20, '#BAE6FD', {
       alpha: sp < 0.18 ? 0.95 : 0.55, stroke: false, ink: false
     });
     camEnd(ctx);
@@ -1230,7 +1259,7 @@
     });
     tag(ctx, 405, 158, MAIN_LABEL, PAL.gold, 1, 22);
     if (sp >= 0.74) {
-      letter(ctx, '眼睛 · 头发 · 衣服', 405, 104, 25, PAL.gold, {
+      letter(ctx, SAMPLE_VARIANT === 'enhanced' ? '动作 · 表情 · 走位' : '眼睛 · 头发 · 衣服', 405, 104, 25, PAL.gold, {
         pop: popAt(t, 7, 0.74, 0.84), rot: -0.015
       });
     }
@@ -1301,7 +1330,7 @@
     drawTv(ctx, t, {
       label: '老版',
       action: 'eat_white_rice',
-      caption: sp >= 0.7 ? (SAMPLE_VARIANT === 'enhanced' ? '升级版还是老版？' : '选A还是B？') : '',
+      caption: sp >= 0.7 ? (SAMPLE_VARIANT === 'enhanced' ? '接着播完整28动作' : '选A还是B？') : '',
       captionK: popAt(t, 12, 0.7, 0.84),
       oldEmotion: 'happy'
     });
@@ -1315,7 +1344,180 @@
     camEnd(ctx);
   }
 
-  TIMELINE.chapter(`day2_bonus_sample_${SAMPLE_VARIANT}`, 0, TT.duration, [
+  function catalogProgress(ctx, current, total, y, color) {
+    const x0 = 66, x1 = 1214;
+    const slotW = (x1 - x0) / total;
+    for (let i = 0; i < total; i++) {
+      paint(ctx, rrPts(x0 + i * slotW + 1, y, Math.max(2, slotW - 2), 8, 2, 0.4), {
+        wash: i < current ? color : '#334155',
+        washOp: i < current ? 210 : 150,
+        ink: null
+      });
+    }
+  }
+
+  function catalogInfoCard(ctx, x, y, w, h, title, id, zh, note, color) {
+    card(ctx, x, y, w, h, '#0D1B3A', color, 16);
+    letter(ctx, title, x + w / 2, y + 25, 20, color, { stroke: false, ink: false });
+    letter(ctx, id, x + w / 2, y + 58, 24, PAL.cream, { stroke: false, ink: false });
+    letter(ctx, zh, x + w / 2, y + 88, 25, PAL.gold, { stroke: false, ink: false });
+    letter(ctx, note, x + w / 2, y + h - 17, 15, '#B8CBDE', { stroke: false, ink: false });
+  }
+
+  const CATALOG_ACTION_PHASE_OFFSET = {
+    hum_working_song: 1.0,
+    token_wordle_sneak: 0.8,
+    jump_joy: 0.1
+  };
+
+  // Complete earlier-project pixel-action catalog: one real rig action at a
+  // time, with the same action mirrored inside a complete miniature room.
+  function shotPixelActionCatalog(ctx, t, lt, dur) {
+    const idx = clamp(Math.floor((t - PIXEL_CATALOG_START) / PIXEL_CATALOG_ITEM_SECONDS), 0, PIXEL_ACTION_CATALOG_28.length - 1);
+    const item = PIXEL_ACTION_CATALOG_28[idx];
+    const age = clamp(t - PIXEL_CATALOG_START - idx * PIXEL_CATALOG_ITEM_SECONDS, 0, PIXEL_CATALOG_ITEM_SECONDS);
+    const ageK = age / PIXEL_CATALOG_ITEM_SECONDS;
+    const actionClock = 32 + (CATALOG_ACTION_PHASE_OFFSET[item.id] || 0) + age;
+    const moveMode = item.id === 'walk_brisk' ? 'walk' : (item.id === 'run_sprint' ? 'run' : 'bounce');
+    const traverse = item.id === 'walk_brisk' || item.id === 'run_sprint' || item.id === 'umbrella_stroll';
+    camBegin(ctx, W / 2, 360, 1.02, 0);
+    room(ctx, t, '#142C5A');
+    catalogInfoCard(ctx, 54, 72, 660, 126,
+      `先前项目像素动作目录 · ${String(item.n).padStart(2, '0')}/28`,
+      item.id, item.zh, '这是像素骨架真动作，不是静态姿势图', PAL.whaleCyan);
+
+    const miniOuter = { x: 786, y: 126, w: 430, h: 330 };
+    card(ctx, miniOuter.x, miniOuter.y, miniOuter.w, miniOuter.h, '#0D1830', PAL.gold, 18);
+    const mini = { x: miniOuter.x + 14, y: miniOuter.y + 16, w: miniOuter.w - 28, h: miniOuter.h - 42 };
+    miniRoomPanel(ctx, mini, t, {
+      label: `完整小场景同步 · ${String(item.n).padStart(2, '0')}/28`,
+      border: PAL.gold
+    });
+    const miniX = traverse
+      ? mini.x + mini.w * (0.3 + ageK * 0.42)
+      : mini.x + mini.w * 0.55;
+    pixelOld(ctx, miniX, mini.y + mini.h - 28, 14.2, actionClock, {
+      action: item.id,
+      moveMode,
+      seed: 400 + idx,
+      lookX: traverse ? 0.55 : 0
+    });
+
+    const mainX = traverse ? lerp(292, 500, ease(ageK)) : 398;
+    pixelOld(ctx, mainX, 590, 40, actionClock, {
+      action: item.id,
+      moveMode,
+      seed: 500 + idx,
+      lookX: traverse ? 0.55 : 0
+    });
+    tag(ctx, 398, 612, `${String(item.n).padStart(2, '0')} · ${item.zh}`, PAL.gold, clamp(age / 0.16), 19);
+    catalogProgress(ctx, idx + 1, PIXEL_ACTION_CATALOG_28.length, 638, PAL.whaleCyan);
+    camEnd(ctx);
+  }
+
+  function catalogTvFurniture(ctx, box, t) {
+    // miniRoomPanel was authored for a ~400px inset. When the pose catalog
+    // enlarges the TV, scale the room dressing with it so the screen remains
+    // a furnished room rather than a large blank backdrop.
+    const floorY = box.y + box.h - 52;
+    paint(ctx, ellPts(box.x + box.w * 0.55, floorY + 22, box.w * 0.34, 13, 24), {
+      wash: '#7C3AED', washOp: 48, ink: 'rgba(196,181,253,0.5)', sw: 1
+    });
+    // Left bookcase with two populated shelves.
+    const bx = box.x + 24, by = box.y + 112, bw = 176, bh = 158;
+    card(ctx, bx, by, bw, bh, '#241D4D', 'rgba(196,181,253,0.55)', 10);
+    [0, 1].forEach(row => {
+      const sy = by + 72 + row * 62;
+      paint(ctx, rectPts(bx + 10, sy, bw - 20, 7, 1), {
+        wash: '#7B4B2A', fill: '#3B2414', fillOp: 80, ink: PAL.ink, sw: 0.7
+      });
+      [PAL.rose, PAL.gold, PAL.whaleCyan, '#A78BFA', '#4ADE80'].forEach((col, i) => {
+        const bh2 = 34 + ((i + row) % 3) * 7;
+        paint(ctx, rrPts(bx + 16 + i * 30, sy - bh2, 20, bh2, 3, 0.7), {
+          wash: col, fill: '#0F172A', fillOp: 35, ink: PAL.ink, sw: 0.6
+        });
+      });
+    });
+    letter(ctx, '小房间书架', bx + bw / 2, by + 22, 15, '#DDD6FE', { stroke: false, ink: false });
+    // Right drawer cabinet and a warm lamp on the left of the acting area.
+    const cx = box.x + box.w - 190, cy = floorY - 92;
+    card(ctx, cx, cy, 164, 92, '#251E52', 'rgba(196,181,253,0.6)', 10);
+    inkLine(ctx, [[cx + 12, cy + 46], [cx + 152, cy + 46]], 1, '#C4B5FD', 'inkfine', 0);
+    paint(ctx, ellPts(cx + 82, cy + 24, 5, 5, 8), { wash: PAL.gold, ink: PAL.ink, sw: 0.6 });
+    paint(ctx, ellPts(cx + 82, cy + 68, 5, 5, 8), { wash: PAL.gold, ink: PAL.ink, sw: 0.6 });
+    sampleBookStack(ctx, cx + 128, cy - 2, 0.72);
+    const lx = box.x + 228, ly = floorY + 4;
+    glow(ctx, lx + 16, ly - 82, 58, '#FACC15', 0.1);
+    inkLine(ctx, [[lx, ly], [lx, ly - 64], [lx + 24, ly - 84]], 2.4, '#CBD5E1', 'ink', 0);
+    paint(ctx, [[lx + 4, ly - 96], [lx + 46, ly - 96], [lx + 37, ly - 72], [lx + 13, ly - 72]], {
+      wash: '#F59E0B', fill: '#92400E', fillOp: 55, ink: PAL.ink, sw: 0.8
+    });
+    sampleSeaweedPlant(ctx, box.x + 38, box.y + box.h - 34, 0.62, t);
+    sampleBookStack(ctx, box.x + box.w - 38, box.y + box.h - 28, 0.72);
+  }
+
+  // Sample B only: all 39 DSH still poses, one by one inside an enlarged,
+  // complete TV room while the unchanged old pixel lead stays outside.
+  function shotStickerPoseCatalog(ctx, t, lt, dur) {
+    const idx = clamp(Math.floor((t - POSE_CATALOG_START) / POSE_CATALOG_ITEM_SECONDS), 0, STICKER_POSE_CATALOG_39.length - 1);
+    const item = STICKER_POSE_CATALOG_39[idx];
+    const age = clamp(t - POSE_CATALOG_START - idx * POSE_CATALOG_ITEM_SECONDS, 0, POSE_CATALOG_ITEM_SECONDS);
+    camBegin(ctx, W / 2, 360, 1.02, 0);
+    room(ctx, t, '#1B2654');
+    catalogInfoCard(ctx, 48, 72, 470, 126,
+      `电视姿势目录 · ${String(item.n).padStart(2, '0')}/39`,
+      item.id, item.zh, '39 张完整姿势图逐张播放，不冒充骨骼动作', '#C4B5FD');
+    pixelOld(ctx, 286, 590, 35, t, {
+      action: idx % 9 === 8 ? 'jump_joy' : 'peek_curious',
+      emotionName: 'happy',
+      moveMode: 'bounce',
+      seed: 700 + idx,
+      lookX: 0.65
+    });
+    tag(ctx, 286, 612, '主画面仍是旧版', PAL.whaleCyan, 1, 18);
+
+    const tv = { x: 556, y: 92, w: 672, h: 472 };
+    card(ctx, tv.x, tv.y, tv.w, tv.h, '#0D1830', '#C4B5FD', 20);
+    const screen = { x: tv.x + 16, y: tv.y + 18, w: tv.w - 32, h: tv.h - 52 };
+    miniRoomPanel(ctx, screen, t, {
+      label: `${String(item.n).padStart(2, '0')}/39 · ${item.id} · ${item.zh}`,
+      top: '#3B2F63',
+      mid: '#25245C',
+      bottom: '#211C42',
+      border: '#C4B5FD',
+      labelColor: '#EDE9FE'
+    });
+    catalogTvFurniture(ctx, screen, t);
+    stickerCharacter(ctx, screen.x + screen.w * 0.55, screen.y + screen.h - 29, 24.5, t, item.id, {
+      seed: 900 + idx,
+      poseBlend: clamp(age / 0.12),
+      sq: age < 0.14 ? -0.07 * Math.sin((age / 0.14) * Math.PI) : 0
+    });
+    paint(ctx, ellPts(tv.x + tv.w - 34, tv.y + tv.h - 18, 6, 6, 10), {
+      wash: '#4ADE80', ink: PAL.ink, sw: 0.7
+    });
+    catalogProgress(ctx, idx + 1, STICKER_POSE_CATALOG_39.length, 638, '#C4B5FD');
+    camEnd(ctx);
+  }
+
+  function shotCatalogComplete(ctx, t, lt, dur) {
+    camBegin(ctx, W / 2, 360, 1.04, 0);
+    room(ctx, t, '#162B5C');
+    letter(ctx, '完整目录播完啦', 640, 132, 44, PAL.gold, { pop: clamp(lt / 0.25), rot: -0.012 });
+    letter(ctx, SAMPLE_VARIANT === 'oldactions'
+      ? '像素动作 28/28 · 电视姿势 39/39'
+      : '像素动作 28/28 · 无新加饰品', 640, 188, 25, PAL.cream, {
+      stroke: false, ink: false
+    });
+    pixelOld(ctx, 640, 590, 40, t, {
+      action: 'jump_joy', emotionName: 'happy', moveMode: 'bounce', seed: 999
+    });
+    catalogProgress(ctx, SAMPLE_VARIANT === 'oldactions' ? 39 : 28,
+      SAMPLE_VARIANT === 'oldactions' ? 39 : 28, 638, PAL.gold);
+    camEnd(ctx);
+  }
+
+  const SAMPLE_SHOTS = [
     [C(1), shotB01Comment],
     [C(2), shotB02Reply],
     [C(3), shotB03Installed],
@@ -1327,8 +1529,13 @@
     [C(9), shotB09ReplyCount],
     [C(10), shotB10PrivateMessages],
     [C(11), shotB11Question1816],
-    [C(12), shotB12EatAndWait]
-  ]);
+    [C(12), shotB12EatAndWait],
+    [PIXEL_CATALOG_START, shotPixelActionCatalog]
+  ];
+  if (POSE_CATALOG_START !== null) SAMPLE_SHOTS.push([POSE_CATALOG_START, shotStickerPoseCatalog]);
+  SAMPLE_SHOTS.push([CATALOG_END, shotCatalogComplete]);
+
+  TIMELINE.chapter(`day2_bonus_sample_${SAMPLE_VARIANT}`, 0, TT.duration, SAMPLE_SHOTS);
 
   const DAY2_BONUS_SAMPLE_ALL = {
     shotB01Comment,
@@ -1343,7 +1550,12 @@
     shotB10PrivateMessages,
     shotB11Question1816,
     shotB12EatAndWait,
+    shotPixelActionCatalog,
+    shotStickerPoseCatalog,
+    shotCatalogComplete,
     drawTv,
+    PIXEL_ACTION_CATALOG_28,
+    STICKER_POSE_CATALOG_39,
     SAMPLE_VARIANT,
     SAMPLE_LINES,
     TT

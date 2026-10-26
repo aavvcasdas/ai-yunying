@@ -228,3 +228,54 @@ FFMPEG_BIN=<ffmpeg> NODE_PATH=<node_modules-with-@napi-rs/canvas> \
 ```
 
 `render_day2_bonus_samples.mjs` 只接受 `sample_only=true`、`voice=false`、`measured=false` 的 12-cue 样片 timing，并要求输出名包含对应的“样片A/样片B”和“无配音”，禁止把样片冒充有声终版。
+
+## 十、2026-10-26 用户纠正：删除装饰堆叠、补全动作目录、Day2 老版重渲
+
+第九节的 v1 双样片只保留为历史对照：样片 A 的双蝴蝶结、铃铛、星星发夹、围裙星星、光圈和环绕星光已被用户明确否决；样片 B 的旧版主画面方向保留，但 v1 只展示少量动作，不能再称为完整展示。仓库根目录 `agent.md` 已新增第 0.1–0.4 节，完整收录原版像素形象、5 个基础骨架、5 种视角、31 种情绪、眼/嘴/头顶符号/帽饰注册表、28 个像素骨架动作，以及 DSH 39 张完整姿势图的逐图实际画面。后续必须区分：**39 是静态完整姿势图，28 才是像素骨架规范动作**；样片源码同时导出 `PIXEL_ACTION_CATALOG_28` 与 `STICKER_POSE_CATALOG_39`，渲染器会断言两组数量、唯一性及与上游动作表/姿势文件的对应关系。
+
+### 修正版无配音双样片
+
+| 样片 | 内容 | 文件 | 时长/帧数 | 大小 | SHA-256 |
+|---|---|---|---:|---:|---|
+| A v2 | 12 镜剧情段 + 28 个像素动作逐个播放；不加任何新饰品 | `成片/样片/Day2加更_样片A_原版跟随先前项目更新_完整28动作_无配音.mp4` | 78.200s / 2346 帧 | 31,166,918 bytes | `3f244c957c36359e530a142eeb05e275554a753c2e54c8e4d552cbfaa82cb5ec` |
+| B v2 | 12 镜剧情段 + 28 个像素动作 + 电视内 39 张姿势逐张播放 | `成片/样片/Day2加更_样片B_旧版加动作_完整28动作39姿势_无配音.mp4` | 111.350s / 3341 帧 | 44,463,628 bytes | `0b5386eb0c47850a767fedb08b603bc616bae155630d74124fe6538a05dad77e` |
+
+共同规格为 1920×1080、30fps、H.264 High、yuv420p，且只有视频流、没有音频流。剧情段仍为 0–32.2s 的固定无声展示时长，不是实测配音 timing。像素动作目录为 32.2–77.0s，每项 1.6s，主画面与右侧完整小场景同步播放并标注编号、英文 ID 和中文名。样片 B 的姿势目录为 77.0–110.15s，每张 0.85s，39 张图逐张进入放大后的完整电视房间；电视内有墙面、彩灯、舷窗、书架、白饭牌、柜子、台灯、地毯、植物、书堆、地板与频道条，不再是纯色屏上的孤立角色。样片 A 已从源码删除 `enhancedOriginalAura()` 与 `enhancedOriginalDetails()`，所谓更新只来自先前项目已有的动作、表情、道具和走位。
+
+### Day2 老版动作与丰富背景修订版
+
+| 文件 | 规格 | 大小 | SHA-256 |
+|---|---|---:|---|
+| `成片/修订版/day2视频_指定配音实测对齐版_老版动作丰富背景修订.mp4` | 104.720s、3142 帧、1920×1080、30fps、H.264 High + AAC 48kHz 立体声 | 55,230,062 bytes | `5259c5c07605f78489d6ecdeb977fe6154248dedd37a458dc488ce9491e9ad75` |
+
+该修订版只改画面，不改指定 WAV、17-cue 实测时间轴、台词、字幕文本与数据口径；主角继续使用 `original` 像素骨架，没有升级成 DSH 表情包，也没有恢复样片 A v1 的装饰 overlay。眼睛修复由三层共同完成：分镜层强制睁眼时使用 `open`，把 `squint` 固定为非零的 `0.01` 以绕过原 rig 的肤色盖眼自动眨眼分支，渲染器把 `wink` 头部像素换成 `wave` 双眼头但保留叉腰身体；`sleep_curl` 例外使用干净的深色闭眼弧线并强制 `heart` 骨骼，避免被 sleepy 预设抢成抱笔记本。近景静帧已复核无肤色横带。
+
+动作方面，17 个台词镜头与尾卡均已绑定语义动作或明确走位：查菜单时探头/打工/跳起，打游戏时用手柄动作，查账号时敲电脑，零票时逐卡查看，扣饭时追饭碗奔跑，翻账本时打工后叉腰，查主人账号时偷切号/观察/工作，推户口本时真走过去，薄肌段按运动跑、蛋白质吃饭团、睡大觉蜷睡分配动作，结尾绕场冲刺。背景改为有墙板层次、双舷窗、彩灯、时钟、白饭补给站、双书架、留言墙、地毯、台灯、书堆、抽屉柜、杯子和绿植的完整房间。旧版当前文件没有被覆盖，仍为 27,213,164 bytes、SHA-256 `578988c40859a2c483e7e1432582d17ae21eab5de8d28f24320ee22e41271eb8`；修订版须经用户观看确认后，才可另行决定是否替换当前版。
+
+### QA 与复现
+
+渲染前检查 Day2 35 张静帧、样片 A 48 张静帧（19 个剧情点 + 28 个动作 + 完成帧）、样片 B 87 张静帧（19 个剧情点 + 28 个动作 + 39 张姿势 + 完成帧）。三条 MP4 均全片解码退出码 0；另从成片本身抽查 Day2 35 帧与 24 帧动作三联帧、样片 A 14 帧、样片 B 10 帧。仓库源码与实际渲染副本已逐字节 `cmp` 一致，4 份 JS/MJS 均通过 `node --check`。
+
+```bash
+# 在 ai-yunying 仓库根目录；<video-fx> 为 arena/8be4c8f8-video-fx@82bede5 检出
+python3 'tools/day2制作/gen_day2_finalvoice.py' --video-fx-root <video-fx>
+cp 'tools/day2制作/video-fx源码快照/day2_all.js' <video-fx>/src/ch/
+cp 'tools/day2制作/video-fx源码快照/render_day2.mjs' <video-fx>/
+cp 'tools/day2加更制作/video-fx源码快照/day2_bonus_samples_all.js' <video-fx>/src/ch/
+cp 'tools/day2加更制作/video-fx源码快照/render_day2_bonus_samples.mjs' <video-fx>/
+mkdir -p <video-fx>/assets/day2_poses
+cp 'tools/day2制作/video-fx源码快照/day2_poses/'*.webp <video-fx>/assets/day2_poses/
+
+cd <video-fx>
+FFMPEG_PATH=<ffmpeg> NODE_PATH=<node_modules-with-@napi-rs/canvas> \
+  node render_day2.mjs --stills --character original
+FFMPEG_PATH=<ffmpeg> NODE_PATH=<node_modules-with-@napi-rs/canvas> \
+  node render_day2.mjs --character original --style clean \
+  --out '/home/user/ai-yunying/Day2/成片/修订版/day2视频_指定配音实测对齐版_老版动作丰富背景修订.mp4'
+FFMPEG_BIN=<ffmpeg> NODE_PATH=<node_modules-with-@napi-rs/canvas> \
+  node render_day2_bonus_samples.mjs --variant enhanced \
+  --out '/home/user/ai-yunying/Day2/成片/样片/Day2加更_样片A_原版跟随先前项目更新_完整28动作_无配音.mp4'
+FFMPEG_BIN=<ffmpeg> NODE_PATH=<node_modules-with-@napi-rs/canvas> \
+  node render_day2_bonus_samples.mjs --variant oldactions \
+  --out '/home/user/ai-yunying/Day2/成片/样片/Day2加更_样片B_旧版加动作_完整28动作39姿势_无配音.mp4'
+```

@@ -120,15 +120,35 @@
   function safePixelOptions(o) {
     const safe = { ...o };
     const emo = safe.emotion || safe.emo;
-    if (safe.eyes === 'lids' || safe.eyes === 'dead' || emo === 'deadpan' || emo === 'sleepy' || emo === 'smug') {
-      safe.eyes = 'open';
+    if (emo === 'deadpan' || emo === 'sleepy' || emo === 'smug') {
       safe.brows = 'flat';
       safe.mouth = safe.mouth || 'flat';
       safe.lookY = 0.55;
-      safe.transitionBlend = 1;
     }
-    // 像素回退时也不要让过渡 squint 触及旧骨架的整块肤色盖眼分支。
-    safe.squint = Math.min(Number(safe.squint) || 0, 0.44);
+    // Day2's current cut is the old pixel lead. Force both irises to stay
+    // visible on that path: emotion presets may otherwise select lids/dead/
+    // wink or a high transition squint. The underlying rig computes
+    // `o.squint || autoBlink`, so literal 0 would still trigger its
+    // rectangular skin-coloured eyelid patch (the visible white line).
+    // 0.01 is intentionally non-zero and disables that branch. The
+    // renderer additionally swaps the wink pose's head runs for the
+    // open-eyed wave head while retaining the wink body bones. Sleep is
+    // the one semantic exception: happy-eye arcs are allowed because the
+    // 0.01 squint below still bypasses the skin-coloured patch branch.
+    safe.eyes = safe.action === 'sleep_curl' ? 'happy' : 'open';
+    if (safe.action === 'sleep_curl') {
+      // The sleepy emotion preset otherwise forces laptop bones and would
+      // make the curled-sleep action read as sleeping over a computer.
+      safe.poseMode = 'heart';
+      safe.poseFrom = 'heart';
+      safe.poseTo = 'heart';
+      safe.poseBlend = 1;
+      safe.tailSit = false;
+      safe.laptop = false;
+      if (safe.tailMode === 'cushion') safe.tailMode = undefined;
+    }
+    safe.squint = 0.01;
+    safe.transitionBlend = 1;
     return safe;
   }
 
@@ -378,17 +398,174 @@
     ctx.restore();
   }
 
+  function day2StringLights(ctx, t) {
+    const cols = [PAL.gold, PAL.whaleCyan, PAL.rose, '#4ADE80', '#C4B5FD'];
+    for (let s = 0; s < 2; s++) {
+      const pts = [];
+      for (let i = 0; i <= 24; i++) {
+        const x = 20 + i * 52;
+        const y = 42 + s * 24 + Math.sin((i / 24) * Math.PI * 4 + s * 0.7) * 9 + 10;
+        pts.push([x, y]);
+      }
+      inkLine(ctx, pts, 1, '#0A1A38', 'inkfine', 0.25);
+      pts.forEach((p, i) => {
+        const tw = 0.72 + 0.28 * Math.abs(Math.sin(t * 2.2 + i * 0.8 + s));
+        paint(ctx, ellPts(p[0], p[1] + 6, 3.2 * tw, 4.4 * tw, 8), {
+          wash: cols[(i + s) % cols.length], washOp: 150, ink: null
+        });
+      });
+    }
+  }
+
+  function day2BookStack(ctx, x, y, s = 1) {
+    const books = [
+      ['#DB2777', 58, 13], ['#2563EB', 50, 12], ['#D97706', 42, 11]
+    ];
+    books.forEach((b, i) => {
+      paint(ctx, rrPts(x - b[1] * s / 2, y - (i + 1) * b[2] * s, b[1] * s, b[2] * s, 3, 0.8), {
+        wash: b[0], fill: '#0F172A', fillOp: 45, ink: PAL.ink, sw: 0.8
+      });
+      inkLine(ctx, [[x - b[1] * s * 0.34, y - (i + 0.52) * b[2] * s],
+        [x + b[1] * s * 0.34, y - (i + 0.52) * b[2] * s]], 0.7, '#F8FAFC', 'inkfine', 0);
+    });
+  }
+
+  function day2SeaweedPlant(ctx, x, y, s, t) {
+    paint(ctx, [[x - 22 * s, y - 26 * s], [x + 22 * s, y - 26 * s], [x + 15 * s, y], [x - 15 * s, y]], {
+      wash: '#B45309', fill: '#451A03', fillOp: 65, ink: PAL.ink, sw: 1
+    });
+    for (let i = -2; i <= 2; i++) {
+      const sway = Math.sin(t * 2 + i * 0.8) * 5 * s;
+      inkLine(ctx, [[x + i * 7 * s, y - 24 * s],
+        [x + i * 10 * s + sway, y - (48 + Math.abs(i) * -5) * s],
+        [x + i * 13 * s - sway, y - (72 - Math.abs(i) * 7) * s]], 2.2 * s,
+      i % 2 ? '#22C55E' : '#14B8A6', 'ink', 0.15);
+    }
+  }
+
+  function day2Shelf(ctx, x, y, w, t) {
+    paint(ctx, rectPts(x, y, w, 9, 1), {
+      wash: '#7B4B2A', fill: '#3B2414', fillOp: 88, ink: PAL.ink, sw: 1
+    });
+    const cols = [PAL.rose, PAL.gold, PAL.whaleCyan, '#A78BFA', '#4ADE80'];
+    cols.forEach((col, i) => {
+      const bw = 20 + (i % 2) * 4;
+      const bh = 42 + (i % 3) * 8;
+      paint(ctx, rrPts(x + 14 + i * 31, y - bh, bw, bh, 3, 0.8), {
+        wash: col, fill: '#0F172A', fillOp: 38, ink: PAL.ink, sw: 0.8
+      });
+      inkLine(ctx, [[x + 19 + i * 31, y - bh + 10], [x + 19 + i * 31 + bw - 10, y - bh + 10]],
+        0.7, '#F8FAFC', 'inkfine', 0);
+    });
+    paint(ctx, rrPts(x + w - 72, y - 34, 34, 34, 5, 0.8), {
+      wash: '#E0F2FE', fill: '#7DD3FC', fillOp: 45, ink: PAL.ink, sw: 0.9
+    });
+    paint(ctx, ellPts(x + w - 55, y - 18, 9, 6, 10), { wash: PAL.whaleCyan, ink: null });
+    day2SeaweedPlant(ctx, x + w - 18, y, 0.42, t);
+  }
+
+  function day2MessageWall(ctx, x, y, w, h, t) {
+    card(ctx, x, y, w, h, '#13294F', 'rgba(125,211,252,0.55)', 12);
+    letter(ctx, '住户留言墙', x + w / 2, y + 20, 17, '#BAE6FD', { stroke: false, ink: false });
+    const cols = ['#FEF3C7', '#DBEAFE', '#FCE7F3', '#DCFCE7'];
+    for (let i = 0; i < 8; i++) {
+      const nx = x + 14 + (i % 4) * ((w - 28) / 4);
+      const ny = y + 36 + Math.floor(i / 4) * ((h - 46) / 2);
+      const nw = (w - 44) / 4;
+      const nh = (h - 58) / 2;
+      ctx.save();
+      ctx.translate(nx + nw / 2, ny + nh / 2);
+      ctx.rotate(Math.sin(t * 1.4 + i) * 0.025 + (i % 2 ? 0.025 : -0.02));
+      paperCard(ctx, -nw / 2, -nh / 2, nw, nh, cols[i % cols.length], '#64748B', 4);
+      inkLine(ctx, [[-nw * 0.32, -5], [nw * 0.3, -5]], 0.8, '#64748B', 'inkfine', 0);
+      inkLine(ctx, [[-nw * 0.32, 5], [nw * 0.18, 5]], 0.8, '#94A3B8', 'inkfine', 0);
+      ctx.restore();
+    }
+  }
+
+  function day2WallClock(ctx, x, y, r, t) {
+    paint(ctx, ellPts(x, y, r + 6, r + 6, 24), {
+      wash: '#475569', fill: '#1E293B', fillOp: 88, ink: PAL.ink, sw: 1.1
+    });
+    paint(ctx, ellPts(x, y, r, r, 24), {
+      wash: '#F8FAFC', fill: '#CBD5E1', fillOp: 35, ink: PAL.ink, sw: 1
+    });
+    for (let i = 0; i < 12; i++) {
+      const a = i * TAU / 12;
+      paint(ctx, ellPts(x + Math.cos(a) * r * 0.82, y + Math.sin(a) * r * 0.82, 1.6, 1.6, 6), {
+        wash: '#334155', ink: null
+      });
+    }
+    const ha = -Math.PI / 2 + (t % 60) / 60 * TAU;
+    const ma = -Math.PI / 2 + (t % 8) / 8 * TAU;
+    inkLine(ctx, [[x, y], [x + Math.cos(ha) * r * 0.48, y + Math.sin(ha) * r * 0.48]], 2.4, '#0F172A', 'ink', 0);
+    inkLine(ctx, [[x, y], [x + Math.cos(ma) * r * 0.72, y + Math.sin(ma) * r * 0.72]], 1.6, '#2563EB', 'ink', 0);
+  }
+
+  function day2DeskLamp(ctx, x, y, s, t) {
+    glow(ctx, x, y - 72 * s, 72 * s, '#FACC15', 0.1 + Math.sin(t * 7) * 0.008);
+    inkLine(ctx, [[x, y], [x, y - 62 * s], [x + 28 * s, y - 82 * s]], 3 * s, '#334155', 'ink', 0);
+    paint(ctx, [[x + 10 * s, y - 92 * s], [x + 52 * s, y - 92 * s], [x + 43 * s, y - 66 * s], [x + 19 * s, y - 66 * s]], {
+      wash: '#F59E0B', fill: '#92400E', fillOp: 55, ink: PAL.ink, sw: 1
+    });
+    paint(ctx, ellPts(x, y, 24 * s, 6 * s, 12), { wash: '#334155', ink: PAL.ink, sw: 0.8 });
+  }
+
   function room(ctx, t, wallCol = '#132653') {
     PROPS.wall(ctx, wallCol);
+    // Layered wall panelling and lit set dressing. These are room details,
+    // not character ornaments; foreground story cards/props draw over them.
+    for (let i = 0; i < 6; i++) {
+      const x = 96 + i * 214;
+      paint(ctx, rectPts(x, 70, 2, 430, 0), { wash: '#7DD3FC', washOp: 20, ink: null });
+      paint(ctx, ellPts(x, 92 + (i % 2) * 330, 3, 3, 6), { wash: PAL.gold, washOp: 90, ink: null });
+    }
+    for (let i = 0; i < 22; i++) {
+      const x = 42 + rnd(i + 40) * 1190;
+      const y = 86 + rnd(i + 120) * 390;
+      paint(ctx, ellPts(x, y, 1.5 + rnd(i) * 1.6, 1.5 + rnd(i) * 1.6, 6), {
+        wash: i % 4 ? '#7DD3FC' : '#FDE68A', washOp: 34, ink: null
+      });
+    }
+    day2StringLights(ctx, t);
+    PROPS.windowPorthole(ctx, 112, 154, 38, t * 0.8, true);
     PROPS.windowPorthole(ctx, 1130, 148, 62, t, true);
+    day2WallClock(ctx, 646, 112, 34, t);
+    paperCard(ctx, 704, 82, 150, 64, '#FEF3C7', '#D97706', 8);
+    letter(ctx, '白饭补给站', 779, 114, 20, '#92400E', { stroke: false, ink: false });
+    day2Shelf(ctx, 570, 300, 284, t);
+    day2Shelf(ctx, 946, 286, 236, t + 2);
+    day2MessageWall(ctx, 44, 348, 300, 138, t);
+
     PROPS.floorBand(ctx, 548, '#1B2442');
+    for (let i = 0; i < 9; i++) {
+      inkLine(ctx, [[40 + i * 150, 560], [10 + i * 150, 716]], 0.8, '#0C1430', 'inkfine', 0);
+    }
+    paint(ctx, ellPts(640, 632, 450, 38, 36), {
+      wash: '#6D28D9', washOp: 38, ink: 'rgba(196,181,253,0.35)', sw: 1
+    });
     PROPS.desk(ctx, 505, -80, W + 80);
+    day2DeskLamp(ctx, 74, 508, 0.82, t);
+    day2BookStack(ctx, 184, 512, 0.9);
+    day2BookStack(ctx, 1116, 512, 0.84);
+    day2SeaweedPlant(ctx, 1226, 512, 0.72, t);
+    // A compact drawer unit behind the usual right-side acting area gives
+    // the desk depth without moving any established foot/prop anchors.
+    card(ctx, 1004, 418, 198, 88, '#1E3A5F', 'rgba(125,211,252,0.5)', 10);
+    inkLine(ctx, [[1020, 462], [1186, 462]], 1, '#7DD3FC', 'inkfine', 0);
+    paint(ctx, ellPts(1103, 443, 5, 5, 8), { wash: PAL.gold, ink: PAL.ink, sw: 0.6 });
+    paint(ctx, ellPts(1103, 484, 5, 5, 8), { wash: PAL.gold, ink: PAL.ink, sw: 0.6 });
+    paint(ctx, rrPts(500, 482, 34, 28, 5, 0.8), {
+      wash: '#E0F2FE', fill: '#7DD3FC', fillOp: 50, ink: PAL.ink, sw: 0.8
+    });
+    inkLine(ctx, [[534, 490], [546, 496], [534, 503]], 1.4, PAL.ink, 'ink', 0);
+
     for (let i = 0; i < 9; i++) {
       const bx = 64 + ((i * 173) % 1140);
       const by = 470 - ((t * (18 + i * 3) + i * 67) % 390);
       paint(ctx, ellPts(bx, by, 3 + (i % 3), 3 + (i % 3), 8), {
         wash: PAL.whaleCyan,
-        washOp: 66,
+        washOp: 58,
         ink: null
       });
     }
@@ -592,7 +769,19 @@
       [SD(1) * 0.36, 'focused'],
       [SD(1) * 0.7, 'proud', 'sparkle']
     ]);
-    whaleGirl(ctx, 842, 566, 29, { ...md, ...move('bounce', t, 2), t });
+    // Count with the body, not a fixed bounce: lean in to inspect, work the
+    // tally, then jump when the winning row lands.
+    const l01Action = sp < 0.36 ? 'peek_curious' : (sp < 0.68 ? 'fatfish_working' : 'jump_joy');
+    const l01X = sp < 0.36
+      ? lerp(788, 842, ease(popAt(t, 1, 0, 0.36)))
+      : 842 + Math.sin(t * 2.4) * 5;
+    whaleGirl(ctx, l01X, 566, 30, {
+      ...md,
+      action: l01Action,
+      ...move(sp < 0.36 ? 'walk' : 'bounce', t, 2),
+      lookX: -0.65,
+      t
+    });
     controller(ctx, 812, 612, 1.18, -0.04 + Math.sin(t * 5.2) * 0.018);
     letter(ctx, '第一名先上桌', 925, 196, 27, PAL.gold, {
       pop: popAt(t, 1, 0.68, 0.82), rot: -0.04
@@ -620,10 +809,14 @@
       [SD(2) * 0.5, 'shy'],
       [SD(2) * 0.82, 'deadpan']
     ]);
-    whaleGirl(ctx, 866, 568, 27, {
+    const l02Action = sp < 0.5 ? 'token_wordle_sneak' : (sp < 0.82 ? 'shy_fidget' : 'shock_petrify');
+    const l02X = 866 + (sp < 0.5 ? Math.sin(t * 3.2) * 10 : lerp(0, -22, ease(popAt(t, 2, 0.5, 0.82))));
+    whaleGirl(ctx, l02X, 568, 28, {
       ...md,
-      spritePose: sp < 0.5 ? 'bold' : (sp < 0.82 ? 'blush' : 'meme-doge'),
-      ...move('bounce', t, 4),
+      spritePose: sp < 0.5 ? 'daily-gaming' : (sp < 0.82 ? 'blush' : 'failure'),
+      action: l02Action,
+      ...move(sp < 0.5 ? 'dance' : 'bounce', t, 4),
+      lookX: -0.45,
       t
     });
     controller(ctx, 824, 618, 1.08, 0.03 + Math.sin(t * 4.4) * 0.014);
@@ -656,11 +849,16 @@
       [SD(3) * 0.62, 'nervous', 'sweat'],
       [SD(3) * 0.86, 'deadpan']
     ]);
-    whaleGirl(ctx, 1012, 568, 26, {
+    const l03Action = sp < 0.3 ? 'peek_curious'
+      : (sp < 0.58 ? 'fatfish_working' : (sp < 0.86 ? 'shy_fidget' : 'shock_petrify'));
+    const l03X = 1012 - ease(popAt(t, 3, 0.05, 0.42)) * 34 + ease(popAt(t, 3, 0.62, 0.86)) * 18;
+    whaleGirl(ctx, l03X, 568, 27, {
       ...md,
       spritePose: sp < 0.3 ? 'thinking' : (sp < 0.62 ? 'curious' : (sp < 0.86 ? 'failure' : 'meme-doge')),
-      action: sp > 0.58 ? 'shy_fidget' : undefined,
+      action: l03Action,
+      ...move(sp < 0.42 ? 'walk' : 'bounce', t, 3),
       headTilt: (md.headTilt || 0) + 0.06,
+      lookX: -0.7,
       t
     });
     stamp(ctx, 884, 404, '不会打', '#FB7185', popAt(t, 3, 0.62, 0.76), 0.08, 31);
@@ -700,7 +898,15 @@
     }
     ladyClaude(ctx, 1142, 448, 12, { hasFan: true, t });
     const md = emotions(lt, [[0, 'deadpan'], [SD(4) * 0.72, 'confused', 'question']]);
-    whaleGirl(ctx, 986, 572, 25, { ...md, ...move('bounce', t, 3), t });
+    const l04X = kf(sp, [[0, 928], [0.3, 966], [0.69, 1002], [0.84, 986], [1, 986]], ease);
+    const l04Action = sp < 0.69 ? 'peek_curious' : (sp < 0.84 ? 'shock_petrify' : 'shy_fidget');
+    whaleGirl(ctx, l04X, 572, 26, {
+      ...md,
+      action: l04Action,
+      ...move(sp < 0.69 ? 'walk' : 'bounce', t, 3),
+      lookX: -0.65,
+      t
+    });
     camEnd(ctx);
   }
 
@@ -727,11 +933,13 @@
       [SD(5) * 0.42, 'pout'],
       [SD(5) * 0.62, 'happy']
     ]);
-    whaleGirl(ctx, 930, 572, 27, {
+    const l05X = sp < 0.3 ? 896 : lerp(896, 930, ease(popAt(t, 5, 0.3, 0.55)));
+    whaleGirl(ctx, l05X, 572, 28, {
       ...md,
       spritePose: sp < 0.42 ? 'failure' : (sp < 0.55 ? 'angry' : 'daily-eat'),
-      action: sp >= 0.55 ? 'eat_white_rice' : 'playful_fists',
-      ...move('bounce', t, 1),
+      action: sp >= 0.55 ? 'eat_white_rice' : (sp >= 0.3 ? 'run_sprint' : 'playful_fists'),
+      ...move(sp >= 0.3 && sp < 0.55 ? 'run' : 'bounce', t, 1),
+      lookX: sp < 0.55 ? 0.65 : 0,
       t
     });
     camEnd(ctx);
@@ -770,11 +978,14 @@
       [SD(6) * 0.58, 'angry'],
       [SD(6) * 0.9, 'sob', 'sweat']
     ]);
-    whaleGirl(ctx, 716, 574, 26, {
+    const l06X = sp < 0.52 ? 716 : lerp(716, 858, drag);
+    whaleGirl(ctx, l06X, 574, 27, {
       ...md,
       spritePose: sp < 0.2 ? 'meme-yes' : (sp < 0.9 ? 'angry' : 'meme-cry'),
-      action: sp >= 0.42 ? 'playful_fists' : undefined,
-      ...move('bounce', t, 5),
+      action: sp >= 0.9 ? 'cry_fountain'
+        : (sp >= 0.52 ? 'run_sprint' : (sp >= 0.42 ? 'playful_fists' : 'shock_petrify')),
+      ...move(sp >= 0.52 && sp < 0.9 ? 'run' : 'bounce', t, 5),
+      lookX: 0.75,
       t
     });
     camEnd(ctx);
@@ -807,11 +1018,14 @@
       [SD(7) * 0.44, 'proud', 'sparkle'],
       [SD(7) * 0.8, 'smug']
     ]);
-    whaleGirl(ctx, 945, 574, 27, {
+    const l07X = kf(sp, [[0, 968], [0.18, 945], [0.44, 928], [0.8, 945], [1, 945]], ease);
+    whaleGirl(ctx, l07X, 574, 28, {
       ...md,
       spritePose: sp < 0.18 ? 'angry' : (sp < 0.44 ? 'running' : (sp < 0.8 ? 'bold' : 'meme-smug')),
-      action: sp < 0.36 ? 'playful_fists' : 'confident_hips',
-      ...move('bounce', t, 4),
+      action: sp < 0.18 ? 'playful_fists'
+        : (sp < 0.44 ? 'fatfish_working' : (sp < 0.8 ? 'confident_hips' : 'jump_joy')),
+      ...move(sp >= 0.18 && sp < 0.44 ? 'walk' : 'bounce', t, 4),
+      lookX: -0.6,
       t
     });
     camEnd(ctx);
@@ -844,11 +1058,11 @@
       });
     }
     const md = emotions(lt, [[0, 'proud', 'sparkle'], [SD(8) * 0.55, 'joy', 'heart']]);
-    whaleGirl(ctx, 1072, 574, 25, {
+    whaleGirl(ctx, 1072 + Math.sin(t * 3.4) * (sp >= 0.55 ? 12 : 3), 574, 26, {
       ...md,
       spritePose: sp < 0.55 ? 'bold' : 'celebrate',
-      action: 'confident_hips',
-      ...move('bounce', t, 1),
+      action: sp < 0.55 ? 'confident_hips' : (sp < 0.82 ? 'tail_wag_dance' : 'jump_joy'),
+      ...move(sp >= 0.55 && sp < 0.82 ? 'dance' : 'bounce', t, 1),
       t
     });
     camEnd(ctx);
@@ -887,10 +1101,12 @@
       [SD(9) * 0.34, 'question'],
       [SD(9) * 0.62, 'idea', 'sparkle']
     ]);
-    whaleGirl(ctx, 1018, 574, 26, {
+    const l09X = kf(sp, [[0, 1052], [0.34, 1018], [0.62, 996], [1, 996]], ease);
+    whaleGirl(ctx, l09X, 574, 27, {
       ...md,
       spritePose: sp < 0.34 ? 'failure' : (sp < 0.62 ? 'work-debug' : 'work-idea'),
-      action: 'peek_curious',
+      action: sp < 0.34 ? 'token_wordle_sneak' : (sp < 0.62 ? 'peek_curious' : 'fatfish_working'),
+      ...move(sp < 0.62 ? 'walk' : 'bounce', t, 2),
       lookX: -1,
       t
     });
@@ -931,10 +1147,12 @@
       [SD(10) * 0.68, 'shocked', 'exclaim'],
       [SD(10) * 0.9, 'deadpan']
     ]);
-    whaleGirl(ctx, 920, 574, 28, {
+    whaleGirl(ctx, sp >= 0.9 ? 942 : 920, 574, 28, {
       ...md,
       spritePose: sp < 0.68 ? 'curious' : (sp < 0.9 ? 'meme-yes' : 'meme-doge'),
-      action: sp >= 0.68 && sp < 0.9 ? 'shock_petrify' : 'peek_curious',
+      action: sp >= 0.9 ? 'shy_fidget' : (sp >= 0.68 ? 'shock_petrify' : 'peek_curious'),
+      ...move(sp >= 0.9 ? 'walk' : 'bounce', t, 4),
+      lookX: -0.65,
       t
     });
     camEnd(ctx);
@@ -959,8 +1177,9 @@
       pop: popAt(t, 11, 0.04, 0.2), stroke: false, ink: false
     });
     const wx = kf(sp, [[0, 1040], [0.3, 1040], [0.9, 790], [1, 790]], ease);
-    whaleGirl(ctx, wx, 578, 25, {
+    whaleGirl(ctx, wx, 578, 26, {
       ...feel('deadpan', t),
+      action: sp > 0.3 && sp < 0.9 ? 'walk_brisk' : (sp >= 0.9 ? 'confident_hips' : 'peek_curious'),
       ...move(sp > 0.3 && sp < 0.9 ? 'walk' : 'bounce', t, 2),
       lookX: -1,
       t
@@ -998,12 +1217,14 @@
       [SD(12) * 0.52, 'thinking'],
       [SD(12) * 0.8, 'shy']
     ]);
-    whaleGirl(ctx, 690, 574, 27, {
+    const l12X = kf(sp, [[0, 650], [0.34, 680], [0.72, 718], [1, 718]], ease);
+    whaleGirl(ctx, l12X, 574, 28, {
       ...md,
       // 地面上的大饭碗会推到她身边；本镜始终用无碗姿态，避免手里再多一碗。
       spritePose: sp < 0.34 ? 'success' : (sp < 0.52 ? 'curious' : (sp < 0.8 ? 'thinking' : 'blush')),
       action: sp < 0.34 ? 'jump_joy' : (sp < 0.72 ? 'peek_curious' : 'shy_fidget'),
-      ...move('bounce', t, 1),
+      ...move(sp >= 0.34 && sp < 0.72 ? 'walk' : 'bounce', t, 1),
+      lookX: sp < 0.72 ? 0.55 : 0,
       t
     });
     camEnd(ctx);
@@ -1055,11 +1276,13 @@
       [SD(13) * 0.38, 'focused'],
       [SD(13) * 0.76, 'proud', 'sparkle']
     ]);
-    whaleGirl(ctx, 920, 574, 27, {
+    const l13X = kf(sp, [[0, 956], [0.38, 920], [0.76, 906], [1, 920]], ease);
+    whaleGirl(ctx, l13X, 574, 28, {
       ...md,
-      spritePose: sp < 0.38 ? 'work-idea' : (sp < 0.76 ? 'running' : 'bold'),
-      action: sp < 0.74 ? 'peek_curious' : 'confident_hips',
-      ...move('bounce', t, 3),
+      spritePose: sp < 0.38 ? 'work-idea' : (sp < 0.76 ? 'running' : 'daily-stretch'),
+      action: sp < 0.38 ? 'fatfish_working' : (sp < 0.76 ? 'peek_curious' : 'wake_stretch'),
+      ...move(sp < 0.76 ? 'walk' : 'bounce', t, 3),
+      lookX: -0.6,
       t
     });
     camEnd(ctx);
@@ -1108,21 +1331,21 @@
     });
     bowlAt(ctx, 1128, 442, 0.78, t);
     stamp(ctx, 1128, 318, '只靠它，不够', '#FCA5A5', popAt(t, 14, 0.74, 0.88), -0.06, 24);
-    const swimK = popAt(t, 14, 0.02, 0.55);
-    const wx = 950 + Math.cos(swimK * TAU * 2) * 60;
-    const wy = 572 + Math.sin(swimK * TAU * 2) * 10;
+    const wx = kf(sp, [[0, 898], [0.22, 1012], [0.39, 1012], [0.55, 972], [0.76, 972], [1, 950]], ease);
+    const wy = sp >= 0.39 && sp < 0.62 ? 580 : 572;
     const md = emotions(lt, [
       [0, 'focused'],
       [SD(14) * 0.24, 'happy'],
       [SD(14) * 0.42, 'sleepy', 'zzz'],
       [SD(14) * 0.76, 'deadpan']
     ]);
-    whaleGirl(ctx, wx, wy, 24, {
+    whaleGirl(ctx, wx, wy, 25, {
       ...md,
-      spritePose: sp < 0.24 ? 'daily-stretch' : (sp < 0.42 ? 'eat' : (sp < 0.76 ? 'sleep' : 'meme-doge')),
-      action: sp < 0.39 ? 'walk_brisk' : (sp < 0.62 ? 'sleep_curl' : 'shy_fidget'),
-      ...move(sp < 0.39 ? 'walk' : 'bounce', t, 2),
-      flip: Math.sin(swimK * TAU * 2) > 0,
+      spritePose: sp < 0.22 ? 'running' : (sp < 0.39 ? 'eat' : (sp < 0.62 ? 'sleep' : 'meme-doge')),
+      action: sp < 0.22 ? 'run_sprint'
+        : (sp < 0.39 ? 'eat_onigiri' : (sp < 0.62 ? 'sleep_curl' : 'shy_fidget')),
+      ...move(sp < 0.22 ? 'run' : 'bounce', t, 2),
+      lookX: sp < 0.39 ? 0.6 : -0.35,
       t
     });
     camEnd(ctx);
@@ -1158,11 +1381,13 @@
       [SD(15) * 0.48, 'nervous', 'sweat'],
       [SD(15) * 0.76, 'starstruck', 'sparkle']
     ]);
-    whaleGirl(ctx, 1018, 576, 26, {
+    const l15X = kf(sp, [[0, 1044], [0.48, 1018], [0.76, 996], [1, 996]], ease);
+    whaleGirl(ctx, l15X, 576, 27, {
       ...md,
       spritePose: sp < 0.48 ? 'blush' : (sp < 0.76 ? 'failure' : 'star'),
-      action: 'shy_fidget',
-      ...move('bounce', t, 6),
+      action: sp < 0.48 ? 'shy_fidget' : (sp < 0.76 ? 'peek_curious' : 'jump_joy'),
+      ...move(sp < 0.76 ? 'walk' : 'bounce', t, 6),
+      lookX: -0.6,
       t
     });
     camEnd(ctx);
@@ -1188,13 +1413,13 @@
     letter(ctx, '明天见', 750, 252, 56, PAL.cream, {
       pop: popAt(t, 16, 0.76, 0.9), rot: -0.015
     });
-    whaleGirl(ctx, 760, 570, 27, {
+    whaleGirl(ctx, 760 + Math.sin(t * 3.6) * 8, 570, 28, {
       ...feel(sp > 0.74 ? 'joy' : 'happy', t),
-      spritePose: sp > 0.74 ? 'wink' : 'greet',
-      ...move('wave', t),
+      spritePose: sp > 0.74 ? 'celebrate' : 'greet',
+      action: sp > 0.74 ? 'jump_joy' : 'tail_wag_dance',
+      ...move(sp > 0.74 ? 'bounce' : 'wave', t),
       t
     });
-    miniWhale(ctx, 1010, 470, 13, { t });
     camEnd(ctx);
   }
 
@@ -1241,9 +1466,9 @@
       const a = -Math.PI / 2 + popAt(t, 17, 0.85, 1.0) * TAU;
       wx = W / 2 + Math.cos(a) * 285;
       wy = 520 + Math.sin(a) * 48;
-      mood = feel(sp > 0.97 ? 'wink' : 'joy', t);
-      action = 'walk_brisk';
-      spritePose = sp < 0.93 ? 'celebrate' : (sp < 0.97 ? 'react-tail' : 'wink');
+      mood = feel('joy', t);
+      action = 'run_sprint';
+      spritePose = sp < 0.93 ? 'celebrate' : 'react-tail';
       paint(ctx, ellPts(W / 2, 520, 300, 58, 44), {
         wash: null, ink: '#38BDF8', sw: 1.2
       });
@@ -1252,7 +1477,7 @@
       ...mood,
       spritePose,
       action,
-      ...move(sp >= 0.85 ? 'walk' : 'bounce', t, 1),
+      ...move(sp >= 0.85 ? 'run' : 'bounce', t, 1),
       flip: sp >= 0.85 && Math.cos(-Math.PI / 2 + popAt(t, 17, 0.85, 1.0) * TAU) < 0,
       t
     });
@@ -1278,8 +1503,12 @@
     eggAt(ctx, 250, 438, 0.9);
     clawd(ctx, 250, 552, 12, { ...move('bounce', t, 1), hat: 'party', t });
     bionicPuppy(ctx, 400, 556, 13, { t });
-    whaleGirl(ctx, W / 2, 566, 25, { ...feel('love', t), ...move('wave', t), t });
-    miniWhale(ctx, 806, 500, 13, { t });
+    whaleGirl(ctx, W / 2 + Math.sin(t * 3.8) * 10, 566, 26, {
+      ...feel('love', t),
+      action: 'tail_wag_dance',
+      ...move('wave', t),
+      t
+    });
     agentReachBot(ctx, 918, 532, 13, { t });
     biliTvMascot(ctx, 1038, 550, 13, { t });
     camEnd(ctx);

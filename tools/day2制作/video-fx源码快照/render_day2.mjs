@@ -45,6 +45,12 @@ const WHALE_RIG = require('./src/whale_girl_rig_data.js');
 if (WHALE_RIG?.poses?.wink && WHALE_RIG?.poses?.heart?.backHair) {
   WHALE_RIG.poses.wink.backHair = WHALE_RIG.poses.heart.backHair;
 }
+// 眼睛白线门禁：保留 wink 的叉腰身体骨骼，但头部改用双眼睁开的 wave 头，
+// 避免单眼闭合及自动眨眼的肤色横带。分镜层 safePixelOptions 同时固定
+// eyes=open、squint=0.01；只改渲染装配，不改角色原图与已实测时间轴。
+if (WHALE_RIG?.poses?.wink && WHALE_RIG?.poses?.wave?.head) {
+  WHALE_RIG.poses.wink.head = WHALE_RIG.poses.wave.head;
+}
 require('./src/whale_girl_actions.js');
 require('./src/whale_girl.js');
 require('./src/clawd.js');
