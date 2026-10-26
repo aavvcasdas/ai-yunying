@@ -1,0 +1,37 @@
+Claude 大小姐左侧电视像素规格验证图来源
+
+验证图：Claude大小姐_左侧电视像素规格验证.png
+上游仓库：https://github.com/Silasvanceneo/claude-ojousama
+上游提交：2c3457a67917da18d3337d28890796af70a3d5db
+上游文件：assets/sprites/wave.png（第 1 帧，manifest 单帧 98×122）
+
+本项目处理：
+- 按 manifest 切出第 1 帧；
+- 以 BOX 下采样到 78×97，原生高度对齐加更电视左边旧鱼约 97 格的规格；
+- alpha 以 128 为阈值硬切；
+- RGB 以 FASTOCTREE 量化到 114 色、无抖动；
+- 最后仅为检查而最近邻放大并放到深蓝背景上。
+
+这张图只用于 Day3 剧本阶段的像素规格验证。正式制作若并入更多条带，须继续保留上游仓库、提交号与下列 MIT 许可证，并在制作记录中列明实际使用的动作。
+
+MIT License
+
+Copyright (c) 2026 Silasvanceneo
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
