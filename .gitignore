@@ -13,3 +13,6 @@ node_modules/
 .DS_Store
 Thumbs.db
 ~$*
+
+# 骨架自检产出的对照图（成品已另存到 Day3/成片/骨架演示/）
+tools/day3制作/whale_girl_src/rig_preview/

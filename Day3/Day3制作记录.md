@@ -7,6 +7,7 @@
 > `day3_无配音样片_v3.mp4`（高清但只有一张站姿，被判"动作不够"），仅留档对照
 > 渲染器：`tools/day3制作/video-fx源码快照/render_day3_sample.mjs`
 > QA 静帧：`tools/day3制作/video-fx源码快照/day3_stills/`（67 张，`*_stills/` 已被 `.gitignore` 排除，不入库）
+> v5 骨架：`tools/day3制作/whale_girl_src/whale_rig.mjs` + `whale_rig_actions.mjs`；演示片 `Day3/成片/骨架演示/whale骨架动作库_v1.mp4`
 
 ---
 
@@ -88,6 +89,121 @@ node render_day3_sample.mjs --out ../../../Day3/成片/无配音样片/day3_无�
 
 校验（v4 实测）：`-f null -` 全片解码 OK；`ffprobe` = 1920×1080 / 30fps / 99.63s / **只有一条视频流、无音轨**；
 `blackdetect=d=0.30:pix_th=0.06` **0 命中**（换镜仍不黑屏）；体积 25.57MB；渲染 2989 帧约 2 分 35 秒（≈19.9fps）。
+
+---
+
+---
+
+## 〇之二、v5：把 9 张立绘拆成「10 骨骨架」，多出 15 个骨骼动作
+
+> 本轮不动 v4 的成片：`day3_无配音样片_v4.mp4` 保持原样。这一节做的是**可复用的动作系统**，
+> 演示片在 `Day3/成片/骨架演示/`。骨架已经能直接接进 Day3 的分镜（接口见文末）。
+
+### 为什么还要再拆
+
+v4 的 21 个动作本质是「整张立绘 + 外层 transform」：能跳、能压、能镜像，但**身体不能弯**。
+用户要的是「动作更多、更不一样」，卡点不在动作数量，而在**自由度**：
+整块图只能平移/旋转/缩放，做不出鞠躬、摇头、抬臂、踢腿这种局部动作。
+
+所以这一步把每张立绘拆成骨架：**同一个角色的 9 张姿势 × 一副骨架 × 骨骼级动作 = 组合数**。
+
+### 骨架是怎么「量」出来的（不靠手填坐标）
+
+`tools/day3制作/whale_girl_src/whale_rig.mjs`
+
+1. **读 alpha 通道**：逐行统计每行不透明像素的左右边界，得到包围盒、逐行轮廓。
+2. **定中线**：取 0.45–0.72 高度区间每行中点的**中位数** —— 这样举起来的手、散开的头发不会把中线带偏。
+3. **摆骨头**（10 根，全部在包围盒归一化坐标里）：
+
+| 骨 | head → tail | 作用 |
+|---|---|---|
+| `root` | 胯 → 胸 | 整体位移/旋转/挤压（唯一带全局 pivot 的骨） |
+| `spine` | 胯 → 胸 | 弯腰、后仰、扭 |
+| `head` | 颈 → 头顶 | 点头、摇头、歪头 |
+| `armL` / `armR` | 肩 → 手（中线 ±0.20×宽，高度 0.70） | 抬臂、挥手、叉腰 |
+| `legL` / `legR` | 胯 → 脚（底线两脚，夹在 ±0.20×宽内） | 踏步、踢腿、蹲 |
+| `hairL` / `hairR` | 耳侧 → 发梢 | 甩头、滞后飘动 |
+| `tail` | 腰侧 → 尾尖 | 鲸尾甩水 |
+
+> 第一版把「手」定义成轮廓左右极值，结果**把头发当成了手**：骨架一动，整片头发跟着手臂跑。
+> 现在四肢端点用比例外推、再用轮廓极值小幅修正，脚也夹在 ±0.20 宽内。
+
+4. **刷权重**：18×26 网格（432 个顶点），每个顶点算到 10 根骨骼线段的距离，
+   权重 `exp(-(d/σ)²)`，σ 按立绘高度归一化（四肢 0.135、头 0.24、躯干 0.30、头发 0.20、尾 0.15）；
+   取最强的 4 根、归一化后再做 **gamma 1.6 锐化** —— 不锐化的话四肢被 spine/root 摊平，抬臂只动袖子，动作读不出来。
+5. **线性混合蒙皮 + 三角形贴图**：每帧算出 10 根骨的「姿势矩阵 × 静止矩阵⁻¹」，
+   顶点按权重混合后移动，再把 900 个三角形（每格两个）用 `clip` + 仿射 `drawImage` 重绘。
+   三角形目标顶点外扩 0.6px，盖住相邻三角形之间的抗锯齿缝。
+
+### 三个调试时才暴露的坑（都写在代码注释里了）
+
+| 现象 | 原因 | 修法 |
+|---|---|---|
+| 静止姿势和原图差了 17% | 骨骼世界矩阵把**父骨的绝对平移连乘**了，父骨位置被重复加一遍 | 存「相对父骨的偏移」，`world = world[parent] × T(offset) × R` |
+| 每格纹理都是错位的整张图 | 仿射解算写错一个元素（`m11` 用了 `by` 应为 `bx`） | 按 `L = C · A⁻¹` 重新展开 |
+| `spin_360` 整格空白 | root 的 `sx = -1` 绕**贴图原点**镜像，把人翻到画布外 | root 的旋转/缩放绕胯点：`T(胯)·S·T(-胯)` |
+
+自检数据：**静止姿势 vs 原图平均误差 10.23/1020**（≈1%，差值集中在描边抗锯齿），
+900 个三角形 + 两路角色同时绘制 ≈ 15fps 出片速度（1080p，含背景与文字）。
+
+### 新增的 15 个骨骼动作（`whale_rig_actions.mjs`）
+
+| # | key | 中文 | 用到的骨 |
+|---|---|---|---|
+| 1 | `breathe_idle` | 呼吸站姿 | spine / head / tail |
+| 2 | `bow_deep` | 深鞠躬 | spine / head / arm / hair |
+| 3 | `nod_yes` | 点头答应 | head / spine |
+| 4 | `shake_no` | 摇头说不 | head / arm / hair |
+| 5 | `wave_arm` | 抬臂挥手 | armR / spine / head |
+| 6 | `beckon_hand` | 招招手过来 | armR / head / spine |
+| 7 | `squat_jump` | 蓄力蹲 → 弹起 | leg / spine / arm / hair |
+| 8 | `lean_back` | 后仰惊吓 | spine / head / arm / leg |
+| 9 | `tiptoe_reach` | 踮脚够高处 | armR / spine / head / leg |
+| 10 | `hip_sway` | 扭胯摇摆 | root / spine / head / arm |
+| 11 | `spin_360` | 原地转一整圈 | root（sx 过零）/ hair / tail |
+| 12 | `tail_whip` | 鲸尾甩水 | tail / hair / spine |
+| 13 | `sigh_collapse` | 泄气瘫下去 | root / spine / head / arm / hair |
+| 14 | `kick_leg` | 踢一下腿 | legR / spine / arm |
+| 15 | `heart_tilt` | 歪头比心 | head / armL·armR / hair |
+
+**和 v4 的关系**：v4 的 21 个姿势级动作全部保留，v5 的 15 个是叠在上面的**骨骼层**；
+两者可以混用（同一镜里先用姿势切，再用骨骼加局部动作）。同一副骨架可以套任意一张立绘 ——
+所以「15 动作 × 9 姿势 = 135 种组合」，这是 v4 做不到的。
+
+### 交付物
+
+| 文件 | 说明 |
+|---|---|
+| `Day3/成片/骨架演示/whale骨架动作库_v1.mp4` | 42.3s / 1920×1080 / 30fps / 无音轨；每个动作一张卡，左边成品、右边同帧骨架视图 |
+| `Day3/成片/骨架演示/骨架动作速览.png` | 15 个动作一屏速览（5×3，标注动作名与所用立绘） |
+| `Day3/成片/骨架演示/骨架图_9姿势.png` | 9 张立绘各自的骨架叠加图（证明骨架是按每张图分别量的） |
+| `tools/day3制作/whale_girl_src/whale_rig.mjs` | 量骨架 / 刷权重 / 蒙皮 / 三角形渲染 / 骨架可视化 |
+| `tools/day3制作/whale_girl_src/whale_rig_actions.mjs` | 15 个骨骼动作 |
+| `tools/day3制作/whale_girl_src/render_rig_demo.mjs` | 演示片渲染器（`--stills` 只出静帧） |
+| `tools/day3制作/whale_girl_src/rig_preview.mjs` | 骨架自检：9 姿势叠加图 + 静止姿势误差 |
+| `tools/day3制作/whale_girl_src/rig_action_grid.mjs` | 15 动作速览图 |
+
+复现：
+
+```bash
+cd tools/day3制作/whale_girl_src
+node rig_preview.mjs                 # 骨架图 + 静止误差自检
+node rig_action_grid.mjs             # 15 动作速览
+node render_rig_demo.mjs             # 演示片（约 1.5 分钟，1080p）
+```
+
+校验（实测）：演示片 `-f null -` 解码 OK；1920×1080 / 30fps / 42.30s / **无音轨** / 17.12MB；
+1269 帧渲染 1 分 27 秒（≈15fps）。
+
+### 接进 Day3 分镜的接口
+
+```js
+import { buildRig, drawRigged } from './whale_rig.mjs';
+import { rigAnim } from './whale_rig_actions.mjs';
+const rig = buildRig(await loadImage('whale_idle.png'), { ctxFactory });
+// x/y/u 口径与 Day3 渲染器一致（y = 脚底，1u ≈ 立绘高/12）
+drawRigged(ctx, rig, charX, charY, u, { anim: rigAnim('bow_deep', localT) });
+```
 
 ---
 
