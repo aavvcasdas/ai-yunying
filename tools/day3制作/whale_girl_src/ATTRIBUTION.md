@@ -21,7 +21,18 @@ Day3 无配音样片里「鲸鱼娘」这个角色（L01–L02、L16 之后、�
 | 文件 | 说明 |
 |---|---|
 | `whale_idle.png` | 从 `dafeiyu.webp` 抠底后的透明立绘（926×1024），渲染器直接读取 |
+| `pose_wave/run/cry/shock/eat/point/think/cheer.png` | **AI 生成的同角色差分姿势源图**（1024×1024）：以 `dafeiyu.webp` 作 image reference 逐张生成，保证同一角色（深蓝渐变海蓝长发、白蕾丝女仆发箍 + 亮蓝蝴蝶结、鲸鳍耳、蓝白女仆裙 + 小鲸围裙、深蓝玛丽珍鞋）只换姿势不换设计 |
+| `whale_wave/run/cry/shock/eat/point/think/cheer.png` | 上述 8 张用同一个 `make_sprite.mjs` 抠底后的透明立绘，渲染器按 `WHALE_POSES` 读取 |
 | `make_sprite.mjs` | 抠图脚本（四边泛洪 → 发缝白洞 → 去自带投影 → 阶梯削白边 → 裁包围盒） |
+
+> 差分姿势是 **AI 生成内容 + 非官方同人**，与原角色设计者无关；成片里必须保留「非官方同人 / AI 生成内容」角标（渲染器 HUD 已固定输出）。
+> 生成方式见 `Day3/Day3制作记录.md` §〇之一：只换姿势、不改配色与服装；一旦发现颜色偏离 `dafeiyu.webp` 就重出，不另造形象。
+
+重新抠一张姿势图（示例）：
+
+```bash
+node make_sprite.mjs pose_wave.png whale_wave.png
+```
 
 重新生成：
 

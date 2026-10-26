@@ -1,11 +1,93 @@
-# Day3 制作记录 · 无配音样片 v3
+# Day3 制作记录 · 无配音样片 v4
 
 > 状态：**无配音样片（占位节奏），只用于确认形象切换与分镜，不是成片、不得发布。**
 >
-> 成片：`Day3/成片/无配音样片/day3_无配音样片_v3.mp4`（1920×1080 / 30fps / 99.63s / 无音轨 / 25.13MB）
-> 历史版：`day3_无配音样片_v1.mp4`（被退回）、`day3_无配音样片_v2.mp4`（像素骨架版，仍被判"模糊"），仅留档对照
+> 成片：`Day3/成片/无配音样片/day3_无配音样片_v4.mp4`（1920×1080 / 30fps / 99.63s / 无音轨 / 25.57MB）
+> 历史版：`day3_无配音样片_v1.mp4`（被退回）、`day3_无配音样片_v2.mp4`（像素骨架版，仍被判"模糊"）、
+> `day3_无配音样片_v3.mp4`（高清但只有一张站姿，被判"动作不够"），仅留档对照
 > 渲染器：`tools/day3制作/video-fx源码快照/render_day3_sample.mjs`
 > QA 静帧：`tools/day3制作/video-fx源码快照/day3_stills/`（67 张，`*_stills/` 已被 `.gitignore` 排除，不入库）
+
+---
+
+## 〇之一、v4：鲸鱼娘从"一张站姿"升级成 9 套姿势 / 21 个动作
+
+v3 把脸修清楚了，但鲸鱼娘全场只有**一张站姿**，动态只靠呼吸摆动，被用户判"动作不够，要照老版本骨架那样多，甚至更多更不一样"。
+v4 不动形象设计（配色、服装、比例一律按 `dafeiyu.webp`），只补**动作**。
+
+### 9 张同角色差分姿势
+
+做法：以 `dafeiyu.webp` 作 image reference 逐张生成同一角色的不同姿势（不是另造一套形象），
+再用 v3 同一个抠图脚本 `make_sprite.mjs` 处理成透明 PNG —— 阈值和 v3 完全一致，所以配色、描边、光晕处理与 `whale_idle.png` 是同一套。
+
+| 姿势 key | 透明图 | 尺寸 | 去背比例 | 脚底线 | 用途 |
+|---|---|---|---|---|---|
+| `idle` | `whale_idle.png` | 926×1024 | 46.0% | 0.988 | 站立、呼吸、翻本子 |
+| `wave` | `whale_wave.png` | 926×1024 | 46.1% | 0.989 | 挥手、摆手否认、送爱心 |
+| `run` | `whale_run.png` | 871×1019 | 56.2% | 0.974 | 冲刺、小步快走 |
+| `cry` | `whale_cry.png` | 926×1024 | 46.1% | 0.989 | 哭成喷泉、发抖抽泣 |
+| `shock` | `whale_shock.png` | 926×1024 | 46.8% | 0.988 | 被弹幕吓一跳 |
+| `eat` | `whale_eat.png` | 934×1024 | 46.0% | 0.989 | 抱碗吃饭、护食 |
+| `point` | `whale_point.png` | 926×1024 | 46.1% | 0.988 | 叉腰指证、抬头喊口号 |
+| `think` | `whale_think.png` | 926×1024 | 46.3% | 0.989 | 低头翻户口本/返工单、按快门 |
+| `cheer` | `whale_cheer.png` | 927×978 | 51.2% | 0.980 | 得意小跳、拉伸、转圈 |
+
+`pose_*.png`（1024×1024）是未抠底的源图留档，来源与授权见 `tools/day3制作/whale_girl_src/ATTRIBUTION.md`。
+
+### 动作库（`WHALE_ACT`，21 个）
+
+每个动作返回 `{ pose, dx, dy, rot, sx, sy, jump, flip }` 交给 `drawPoseSprite()`，
+所以「换姿势」和「给姿势加运动」是两件事：同一张图能做跳、能压缩、能镜像。
+**这比老骨架多的地方**是：老骨架每个动作只有一套循环，这里姿势之间可以叠加动作、可以交叉淡化、可以换速度。
+
+`idle`、`peek_curious`（探头张望）、`surprise_hop`（弹起）、`shock_petrify`（愣住）、`dance_spin`（原地转半圈，水平压缩模拟转身）、
+`wave_hand`（挥手）、`hand_wave_no`（摆手否认）、`cheer_jump`（抛物线小跳 + squash&stretch）、`stretch`（举手拉伸）、
+`confident_hips`（叉腰挺胸）、`point_proud`（抬头指证）、`think_reading`（低头翻本子）、`camera_shutter`（两次前倾按快门）、
+`eat_onigiri`（捧碗小口吃）、`guard_bowl`（护碗）、`run_sprint`（颠簸前倾冲刺）、`walk_steps`（小步快走）、
+`cry_fountain`（抽泣起伏）、`sob_shiver`（高频小抖地哭）、`shy_fidget`（扭捏）、`heart`（送爱心）。
+
+### 逐镜表演（每镜都是四到五拍，不是一张图挂着）
+
+| 镜 | 拍的顺序 |
+|---|---|
+| L01 | 探头张望 → 被弹幕吓一跳弹起 → 原地转半圈 → 挥手 → 得意小跳（+ 问号/星芒） |
+| L02 | 举手拉伸 → 被叫大肥鱼扭捏 → 低头翻户口本 → 叉腰指证 → 得意挺胸 |
+| L10（电视窗） | 挥手（窗外版本） |
+| L16 | 哭成喷泉 → 变成站着发抖抽泣（+ 汗滴） |
+| L17 | 按快门 → 叉腰 → 抬头指证 |
+| L18 | 低头翻单子 → 摆手否认 → 叉腰 |
+| L19 | 护着碗 → 小口吃 → 抬头喊口号 → 小步走向电视 → 冲刺跑掉 |
+| 片尾 | 送爱心（浮心心） |
+
+L03–L15 的 Claude 大小姐段落沿用 v2/v3 的像素 rig 与外层 transform，本轮没有改动。
+
+### v4 顺手修掉的两个问题（都是抽帧时抓到的）
+
+1. **交叉淡化会让人变半透明**：原先两套姿势各给 50% alpha，1080p 下能透过身体看到背景，像"鬼影"（2.32s 抓到的）。
+   现在老姿势垫在下面按 `(1-blend)*0.85` 淡出、**新姿势永远满不透明**压上去，只在轮廓差的地方留一点运动残影。
+2. **L17–L19 的角标还写着「Claude 大小姐（本鲸饰）」**：`charFormAt()` 只判了 `cueIdx <= 2`，忘了 L16 褪色之后要切回鲸鱼娘。
+   已加 `if (cueIdx >= 17) return FORM.WHALE`，现在 81.7s 之后到片尾角标都是「鲸鱼娘 · 本鲸」。
+
+### v4 复核帧
+
+| 帧 | 结论 |
+|---|---|
+| `v4_2.32s_动作挥手.png` | 挥手姿势满不透明、发丝与蕾丝清楚，没有 v4 前那层"半透明鬼影" |
+| `v4_14.31s_局部刷头.png` | L03 刷染前线仍在头顶往下刷，鲸鱼尾还露在下面（变身过程没有被动作改动影响） |
+| `v4_81.70s_褪色抱哭.png` | L16 湿身哭脸、脚边湿向日葵、角标已切回「鲸鱼娘 · 本鲸」 |
+| `v4_85.24s_返工单角标.png` | L17 角标也是「鲸鱼娘 · 本鲸」（v4 修的第 2 条） |
+| `v4_92.90s_护碗吃.png` / `v4_95.11s_冲刺跑.png` | L19 五拍：护碗 → 吃 → 喊 → 走 → 冲刺，跑位不压电视主体 |
+
+复现：
+
+```bash
+cd tools/day3制作/video-fx源码快照
+node render_day3_sample.mjs --stills                                  # QA 静帧
+node render_day3_sample.mjs --out ../../../Day3/成片/无配音样片/day3_无配音样片_v4.mp4
+```
+
+校验（v4 实测）：`-f null -` 全片解码 OK；`ffprobe` = 1920×1080 / 30fps / 99.63s / **只有一条视频流、无音轨**；
+`blackdetect=d=0.30:pix_th=0.06` **0 命中**（换镜仍不黑屏）；体积 25.57MB；渲染 2989 帧约 2 分 35 秒（≈19.9fps）。
 
 ---
 
@@ -99,7 +181,7 @@ v1 被退回后的整改。**每一条都改了代码并抽帧复核**，不是�
 
 ---
 
-## 四、已抽查的静帧结论（v3，v2 的结论仍然成立）
+## 四、已抽查的静帧结论（v4 见「〇之一」，v3/v2 的结论仍然成立）
 
 | 帧 | 结论 |
 |---|---|
@@ -142,7 +224,7 @@ cd tools/day3制作/video-fx源码快照
 node ../whale_girl_src/make_sprite.mjs ../../../../dafeiyu.webp ../whale_girl_src/whale_idle.png
 
 node render_day3_sample.mjs --stills      # 出 70 张 QA 静帧
-node render_day3_sample.mjs --out ../../../Day3/成片/无配音样片/day3_无配音样片_v3.mp4
+node render_day3_sample.mjs --out ../../../Day3/成片/无配音样片/day3_无配音样片_v4.mp4
 ```
 
 渲染耗时：本机约 20.6fps，2989 帧约 2 分 26 秒。
@@ -150,8 +232,8 @@ node render_day3_sample.mjs --out ../../../Day3/成片/无配音样片/day3_无�
 验收命令（v2 已跑过）：
 
 ```bash
-ffmpeg -v error -i day3_无配音样片_v3.mp4 -f null -                      # 全片解码
-ffmpeg -i day3_无配音样片_v3.mp4 -vf blackdetect=d=0.05:pix_th=0.10 -an -f null -  # 期望 0 命中
+ffmpeg -v error -i day3_无配音样片_v4.mp4 -f null -                      # 全片解码
+ffmpeg -i day3_无配音样片_v4.mp4 -vf blackdetect=d=0.05:pix_th=0.10 -an -f null -  # 期望 0 命中
 ```
 
 补丁版引擎可以用 `DAY3_SOFT_ALPHA=1` 关掉 alpha 二值化做对照（默认开启）。
