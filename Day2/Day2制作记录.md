@@ -279,3 +279,37 @@ FFMPEG_BIN=<ffmpeg> NODE_PATH=<node_modules-with-@napi-rs/canvas> \
   node render_day2_bonus_samples.mjs --variant oldactions \
   --out '/home/user/ai-yunying/Day2/成片/样片/Day2加更_样片B_旧版加动作_完整28动作39姿势_无配音.mp4'
 ```
+
+## 十一、2026-10-26 Day2 加更《鲸鱼选鱼》最终指定 WAV 版
+
+第六节 12-cue Piper 稿和第九、十节无配音样片已被本节的 9-cue 双方案投票稿取代。最终口径是：主人没有偷偷换掉现在的本鱼；电视左边让现在的像素本鱼学习先前项目的 28 个真动作，右边展示另外新设计的鱼的 39 张完整的姿势图，最后请 1931 位住户选择。正式文案与 9 行逐行台词已更新到 `Day2加更_形象动作征集文案.md`、`Day2加更配音台词.txt`。
+
+| 文件 | 规格 | 大小 | SHA-256 |
+|---|---|---:|---|
+| `成片/加更/Day2加更_鲸鱼选鱼_最终配音版.mp4` | 105.100s、3153 帧、1920×1080、30fps、H.264 High/yuv420p、AAC LC 48kHz 立体声 160kb/s | 95,001,410 bytes | `7860f4d78a88f39a09317ecceeb6e4f4e49cf39975ba69c984b03284b7510c7b` |
+
+指定源音轨为仓库根目录 `鲸鱼选鱼_克隆配音_最终版.wav`：PCM16 双声道 40kHz、81.584s、SHA-256 `be19eac421d18b73354c72bc395162e087bfc864d652ae0720b84c4f5d82e821`。容器只有 `Lavf63.1.100`，没有可核验的合成引擎或声线元数据，因此报告和 MP4 元数据只标记 `user-provided/final-voice-wav`，不冒充晓伊。`gen_bonus_finalvoice.py` 用 Vosk 213 词时间戳做固定词段映射，再用 5ms RMS 精修 9 个 cue；源峰值 0.679443、削波 0、全片 F0 中位数 361.51Hz。生产轨只在混音中移除开头 0.360s 静音，并在 B05/B06 间插入 22.800s 无台词 BGM，使正式目录能在 10.630–64.630s 内连续播完；源 WAV 本体未改。逐 cue 生产时间、F0、峰值和源边界见 `../tools/day2加更制作/bonus_audio_final/alignment_report.json`。
+
+画面从样片 B 的素版像素主持鱼与左右双完整电视小房间继续制作，但分镜已按 9-cue 重新注册：B01/B02 无电视，B03 电视首次出现且编号目录立即开始，B04/B05 继续同一目录，41.820–64.630s 为无台词目录余段，B06 在 28/28 与 39/39 全部播完后才开始。首轮静帧发现电视顶部状态牌与方案牌在镜头缩放后被 HUD 裁切、底部 caption 又压住双进度条；最终版把电视下移为 y=112、h=456，方案牌改到电视绘制后显示，200/400 与尾帧问题改放电视底座铭牌，B07 移除误留的评论气泡，并给电视小房间补上时钟、鱼画框、选鱼海报和台灯。主角仍使用旧像素骨架及已验收的眼睛策略，没有恢复样片 A 的装饰堆叠。
+
+QA：渲染前生成并实际查看 98 张静帧（首帧、9 cue 各 15%/55%/88%、28 个动作中点、39 张姿势中点、目录余段、目录完成和尾帧），另以联系表检查全部动作/姿势无空白或严重裁切。成片完整解码退出码 0，视频流回读 3153 帧；再从 MP4 本体抽取 0.100s、2.805s、11.607s、41.900s、64.830s、65.300s、89.418s、104.300s 共 8 帧复核。生产 WAV 峰值 0.889374、削波 0；MP4 解码音频峰值 0.901093、削波 0，`volumedetect` mean/max 为 -17.8/-0.9dB，`loudnorm` 分析的输入综合响度为 -12.62 LUFS、真峰值 -0.90dBTP、LRA 17.90。48kHz 单声道 5ms RMS 包络与生产轨互相关最佳偏移为 0.000s（相关系数 0.999965），未发现可测音画偏移。按正式默认台词路径向临时目录重跑生成器后，timing、生产轨、包络、对齐报告和 9 个 cue 切片均与本次渲染输入逐字节一致；对应 SHA-256 分别为 `8498990dcb0700ca06926cae23e07549ffa037cc89d37610f33cb811f490e8c0`、`375cec0a363c99d5637296379900eac30fe000ec11ff1154190e712a2458070f`、`6b983bc841f359e7317a23b581f18cb3318753d47802a121eed7323b66cad72f`、`d2ce71d299da2479e327bfaa4a8b7f0e23f72ebe911c86c870bf5ae0015c8d17`。
+
+复现入口（在 ai-yunying 仓库根目录执行；`<video-fx>` 为 `arena/8be4c8f8-video-fx@82bede5` 检出）：
+
+```bash
+python3 'tools/day2加更制作/gen_bonus_finalvoice.py' --video-fx-root <video-fx>
+cp 'tools/day2加更制作/video-fx源码快照/day2_bonus_final_all.js' <video-fx>/src/ch/
+cp 'tools/day2加更制作/video-fx源码快照/render_day2_bonus_final.mjs' <video-fx>/
+mkdir -p <video-fx>/assets/day2_poses
+cp 'tools/day2制作/video-fx源码快照/day2_poses/'*.webp <video-fx>/assets/day2_poses/
+cp 'tools/day2制作/video-fx源码快照/day2_poses/ATTRIBUTION.md' <video-fx>/assets/day2_poses/
+cp 'tools/day2制作/video-fx源码快照/day2_poses/LICENSE-DSH-WHALE-MUSUME.txt' <video-fx>/assets/day2_poses/
+
+cd <video-fx>
+npm install @napi-rs/canvas --ignore-scripts --no-audit --no-fund
+FFMPEG_BIN=<ffmpeg> node render_day2_bonus_final.mjs --stills
+FFMPEG_BIN=<ffmpeg> node render_day2_bonus_final.mjs \
+  --out '/home/user/ai-yunying/Day2/成片/加更/Day2加更_鲸鱼选鱼_最终配音版.mp4'
+```
+
+`render_day2_bonus_final.mjs` 要求 9-cue timing 必须为 `measured=true`、`voice=true`、`voice_engine=user-provided/final-voice-wav`、首 cue 0.000s，并拒绝样片/无配音/Piper/draft 输出名。归档 timing 快照为 `../tools/day2加更制作/video-fx源码快照/day2_bonus_final_timing.js`。
