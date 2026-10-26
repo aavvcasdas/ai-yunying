@@ -24,10 +24,10 @@
 
   const {
     W, H, TAU, PAL, clamp, lerp, seg, ease, easeOut, backOut,
-    boilSeed, kf, rectPts, ellPts, rrPts, paint, inkLine,
-    camBegin, camEnd, glow, letter
+    boilSeed, kf, rectPts, ellPts, rrPts, starPts, heartPts, paint, inkLine,
+    camBegin, camEnd, glow, letter, voiceAt
   } = CORE;
-  const { whaleGirl: whaleGirlBase, feel, emotions, move } = WHALE;
+  const { whaleGirl: whaleGirlBase, feel, emotions, move, evaluateAction } = WHALE;
   const { clawd, ladyClaude, bionicPuppy, miniWhale, biliTvMascot, agentReachBot } = CAST;
 
   const C = n => TT.cues[n - 1].start;
@@ -38,12 +38,299 @@
   const frac = x => x - Math.floor(x);
   const rnd = i => frac(Math.sin(i * 127.1 + 311.7) * 43758.5453);
 
+  /**
+   * Day2 视觉升级：完整姿态图主路线（素材来源见 day2_poses/ATTRIBUTION.md）。
+   *
+   * 借鉴方法（只做视频，不做桌面宠物）：
+   * - DSH：多姿态图切换；用整体 squash 遮掩姿态跳变；按头、肚子、尾巴区分
+   *   反应；把伸懒腰、进食、游戏、工作、甩尾做成可被分镜调用的动作别名。
+   * - Baifanyu：整图换表情而不是处理脸贴片；约 2.4s 呼吸；行走时整体颠簸
+   *   与倾斜；每个姿态按自己的 alpha bbox 设定脚底锚点。
+   * 完整姿态图自带原生眼睛、嘴、服饰与尾巴，因此 L03 的 deadpan 不再经过
+   * 像素眼睑覆盖。素材缺失时仍回退旧骨架，并强制净化 lids/dead。
+   */
+  const DAY2_POSES = globalThis.DAY2_POSES || {};
+  const POSE_BY_ACTION = {
+    eat_white_rice: 'daily-eat', eat_onigiri: 'eat', coin_hug: 'success', hum_working_song: 'meme-music',
+    token_wordle_sneak: 'daily-gaming', drag_ahoge: 'react-head', sleep_curl: 'sleep', wake_stretch: 'daily-stretch',
+    ciallo_wink: 'wink', playful_fists: 'angry', confident_hips: 'bold', idol_mic_sing: 'meme-music',
+    fatfish_working: 'work-review', fatfish_transform: 'react-belly', tail_wag_dance: 'react-tail',
+    jump_joy: 'celebrate', peek_curious: 'curious', shy_fidget: 'blush', shock_petrify: 'meme-yes',
+    cry_fountain: 'meme-cry', toast_cheers: 'success', umbrella_stroll: 'idle-cute',
+    camera_shutter: 'teasing', guitar_strum: 'meme-music', rose_bouquet: 'meme-heart',
+    sparkler_firework: 'star', walk_brisk: 'running', run_sprint: 'running',
+    hold_coin: 'success', hum_song: 'meme-music', secret_game: 'daily-gaming', hold_ahoge: 'react-head',
+    sleep_curled: 'sleep', stretch: 'daily-stretch', wink: 'wink', protest: 'angry', hands_hips: 'bold',
+    sing_song: 'meme-music', knock_code: 'work-review', fat_whale: 'react-belly', dance: 'meme-music',
+    jump_celebrate: 'celebrate', peek: 'curious', petrified: 'meme-yes', cry_sob: 'meme-cry',
+    toast_cup: 'success', hold_umbrella: 'idle-cute', take_photo: 'teasing', play_guitar: 'meme-music',
+    hold_rose: 'meme-heart', sparkler: 'star', walk_in: 'running', sprint: 'running',
+    menu_call: 'success', check_account: 'work-debug', game_request: 'daily-gaming',
+    game_happy: 'game-happy', game_win: 'game-win', tail_swing: 'react-tail',
+    tail_react: 'react-tail', head_react: 'react-head', belly_react: 'react-belly',
+    idea_pop: 'work-idea', work_deadline: 'work-deadline', work_review: 'work-review',
+    greet_wave: 'greet', cool_pose: 'cool-shades', starry: 'star', level_up: 'levelup',
+    day_done: 'daily-done', eat_rice: 'daily-eat', eat_snack: 'eat',
+    think_pose: 'thinking', curious_pose: 'curious', tease_pose: 'teasing'
+  };
+  const POSE_BY_EMOTION = {
+    neutral: 'idle-cute', idle: 'idle-cute', calm: 'idle-cute', happy: 'idle-cute',
+    cheer: 'celebrate', excited: 'star', joy: 'success', laugh: 'success', smug: 'meme-smug',
+    deadpan: 'meme-doge', bored: 'meme-doge', wink: 'wink', surprised: 'meme-yes',
+    shocked: 'meme-yes', scared: 'failure', panic: 'failure', angry: 'angry', rage: 'angry',
+    flustered: 'failure', sad: 'failure', cry: 'meme-cry', thinking: 'thinking',
+    curious: 'curious', question: 'curious', idea: 'work-idea', focused: 'running',
+    typing: 'work-review', sparkle: 'star', starstruck: 'star', love: 'meme-heart',
+    sleepy: 'sleep', confident: 'bold', proud: 'bold', pout: 'angry',
+    singing: 'meme-music', stubborn: 'angry', blank: 'meme-doge', confused: 'curious',
+    nervous: 'failure', shy: 'blush', shocked_big: 'meme-yes', sob: 'meme-cry'
+  };
+  const POSE_HEIGHT_FACTOR = {
+    celebrate: 0.97, 'daily-eat': 0.98, 'daily-gaming': 0.97, 'game-happy': 0.96,
+    levelup: 0.97, 'meme-cry': 0.95, 'react-tail': 0.89, sleep: 0.93,
+    'work-deadline': 0.94, 'work-debug': 0.82
+  };
+
+  function pickDay2Pose(o) {
+    if (o.spritePose) return o.spritePose;
+    if (o.action && POSE_BY_ACTION[o.action]) return POSE_BY_ACTION[o.action];
+    const emo = o.emotion || o.emo;
+    if (emo && POSE_BY_EMOTION[emo]) return POSE_BY_EMOTION[emo];
+    if (o.poseMode === 'arms_down') return 'idle-cute';
+    if (o.poseMode === 'wave') return 'greet';
+    if (o.poseMode === 'point') return 'success';
+    if (o.poseMode === 'hips') return 'bold';
+    if (o.poseMode === 'hold') return 'running';
+    if (o.poseMode === 'laptop') return 'running';
+    if (o.poseMode === 'panic') return 'failure';
+    if (o.poseMode === 'heart') return 'meme-heart';
+    if (o.poseMode === 'wink') return o.eyes === 'wink' ? 'wink' : 'bold';
+    if (o.eyes === 'think') return 'thinking';
+    if (o.eyes === 'happy') return 'success';
+    return 'idle-cute';
+  }
+
+  function safePixelOptions(o) {
+    const safe = { ...o };
+    const emo = safe.emotion || safe.emo;
+    if (safe.eyes === 'lids' || safe.eyes === 'dead' || emo === 'deadpan' || emo === 'sleepy' || emo === 'smug') {
+      safe.eyes = 'open';
+      safe.brows = 'flat';
+      safe.mouth = safe.mouth || 'flat';
+      safe.lookY = 0.55;
+      safe.transitionBlend = 1;
+    }
+    // 像素回退时也不要让过渡 squint 触及旧骨架的整块肤色盖眼分支。
+    safe.squint = Math.min(Number(safe.squint) || 0, 0.44);
+    return safe;
+  }
+
+  function drawDay2Emote(ctx, x, u, emote, topY) {
+    if (!emote) return;
+    const ex = x + u * 1.25, ey = topY - u * 0.18;
+    if (emote === 'question') {
+      letter(ctx, '?', ex, ey, u * 0.82, '#5B7FA6', { stroke: false, ink: false });
+    } else if (emote === 'exclaim') {
+      letter(ctx, '!', ex, ey, u * 0.82, '#F278A7', { stroke: false, ink: false });
+    } else if (emote === 'note' || emote === 'music') {
+      letter(ctx, '♪', ex, ey, u * 0.78, '#5B7FA6', { stroke: false, ink: false });
+    } else if (emote === 'sleep' || emote === 'zzz' || emote === '💤') {
+      letter(ctx, 'Z', ex, ey, u * 0.72, '#5B7FA6', { stroke: false, ink: false });
+    } else if (emote === 'heart') {
+      paint(ctx, heartPts(ex, ey, u * 0.5), { wash: '#F278A7', ink: null });
+    } else if (emote === 'spark' || emote === 'sparkle' || emote === 'idea') {
+      paint(ctx, starPts(ex, ey, u * 0.42, 0.42, 4, 0.2), { wash: '#F7B733', ink: null });
+    } else if (emote === 'sweat') {
+      paint(ctx, ellPts(ex + u * 0.1, ey + u * 0.18, u * 0.18, u * 0.3, 14, 0.4, 0.25), { wash: '#7FC4E8', ink: null });
+    } else if (emote === 'anger') {
+      inkLine(ctx, [[ex - u * 0.34, ey], [ex + u * 0.34, ey]], 2.2, '#D94F5C');
+      inkLine(ctx, [[ex, ey - u * 0.34], [ex, ey + u * 0.34]], 2.2, '#D94F5C');
+      inkLine(ctx, [[ex - u * 0.24, ey - u * 0.24], [ex + u * 0.24, ey + u * 0.24]], 1.8, '#D94F5C');
+      inkLine(ctx, [[ex + u * 0.24, ey - u * 0.24], [ex - u * 0.24, ey + u * 0.24]], 1.8, '#D94F5C');
+    }
+  }
+
+  function drawDay2PoseFx(ctx, x, y, u, t, poseName, o, flip) {
+    if (o.noPoseFx) return;
+    const seed = o.seed || 0;
+    const side = flip ? -1 : 1;
+    if (['star', 'levelup', 'game-win', 'success', 'daily-done'].includes(poseName)) {
+      const spots = [[-2.2, -7.8], [2.25, -7.2], [-2.5, -4.6], [2.45, -3.9], [0.2, -8.75]];
+      spots.forEach((p, i) => {
+        const tw = 0.65 + 0.35 * Math.abs(Math.sin(t * 3.2 + i * 1.7));
+        paint(ctx, starPts(x + p[0] * u, y + p[1] * u, u * (0.3 + (i % 2) * 0.08) * tw, 0.42, 4, i * 0.31), {
+          wash: i % 2 ? '#7FC4E8' : '#F7B733', ink: null
+        });
+      });
+    }
+    if (['daily-gaming', 'game-happy', 'game-win'].includes(poseName)) {
+      const w = 1.5 + 0.4 * Math.abs(Math.sin(t * 9 + seed));
+      inkLine(ctx, [[x - u * 1.45, y - u * 3.25], [x - u * 1.05, y - u * 3.05], [x - u * 1.45, y - u * 2.85]], w, '#39A7D8');
+      inkLine(ctx, [[x + u * 1.45, y - u * 3.25], [x + u * 1.05, y - u * 3.05], [x + u * 1.45, y - u * 2.85]], w, '#F278A7');
+    }
+    if (['eat', 'daily-eat'].includes(poseName)) {
+      [-0.34, 0.02, 0.36].forEach((dx, i) => {
+        const drift = Math.sin(t * 2.6 + i * 2.1 + seed) * 0.055;
+        inkLine(ctx, [
+          [x + dx * u, y - u * 3.92],
+          [x + (dx + drift) * u, y - u * 4.16],
+          [x + (dx - drift) * u, y - u * 4.38]
+        ], 1.05, '#C7DCEA');
+      });
+    }
+    if (['work-review', 'work-deadline', 'work-debug', 'running'].includes(poseName)) {
+      const tickX = (Math.floor(t * 8 + seed) % 3 - 1) * 0.48;
+      letter(ctx, '·', x + tickX * u, y - u * 3.08, u * 0.72, '#39A7D8', { stroke: false, ink: false });
+    }
+    if (poseName === 'daily-stretch') {
+      [[-2.1, -8.45], [-0.9, -9.15], [0.55, -9.25], [1.85, -8.5]].forEach(p => {
+        inkLine(ctx, [[x + p[0] * u, y + p[1] * u], [x + p[0] * 1.2 * u, y + (p[1] - 0.42) * u]], 1.6, '#F278A7');
+      });
+    }
+    if (['tail-swing', 'react-tail'].includes(poseName)) {
+      paint(ctx, ellPts(x + side * u * 2.55, y - u * 1.2, u * 0.75, u * 0.24, 16, 0.4, side * -0.5), {
+        wash: '#7FC4E8', washOp: 105, ink: null
+      });
+    }
+    if (poseName === 'meme-yes' && (o.action === 'petrified' || ['shocked', 'scared', 'shocked_big'].includes(o.emotion || o.emo))) {
+      for (let i = -2; i <= 2; i++) {
+        inkLine(ctx, [[x + i * u * 0.38, y - u * 7.85], [x + i * u * 0.38, y - u * 6.85]], 1.2, '#5B7FA6');
+      }
+    }
+    if (typeof o.walk === 'number' && Math.abs(o.walk) > 0.001) {
+      const gait = o.walk;
+      const washOp = 55 + Math.round(45 * Math.abs(Math.sin(gait)));
+      paint(ctx, ellPts(x - u * 0.55, y - u * 0.05, u * 0.42, u * 0.12, 12, 0.3, 0), { wash: '#BFD3E2', washOp, ink: null });
+      paint(ctx, ellPts(x + u * 0.55, y - u * 0.05, u * 0.42, u * 0.12, 12, 0.3, 0), { wash: '#BFD3E2', washOp, ink: null });
+    }
+  }
+
+  function drawDay2Sprite(ctx, x, y, u, o) {
+    const t = Number(o.t) || 0;
+    const poseName = pickDay2Pose(o);
+    const pose = DAY2_POSES[poseName];
+    if (!pose || !pose.img || !pose.bbox) return false;
+    const actionMod = o.action && typeof evaluateAction === 'function'
+      ? evaluateAction(o.action, t, o)
+      : null;
+    const effectiveWalk = (Number(o.walk) || 0) + (actionMod ? (Number(actionMod.walk) || 0) : 0);
+    const motionO = effectiveWalk === (Number(o.walk) || 0) ? o : { ...o, walk: effectiveWalk };
+    const seed = o.seed || 0;
+    const flip = o.flipX === true || o.flip === true || o.face === -1;
+    const baseSq = clamp(
+      (Number(o.sq) || 0) + (actionMod ? (Number(actionMod.sq) || 0) : 0),
+      -0.35, 0.35
+    );
+    let dx = ((Number(o.dx) || 0) + (actionMod ? (Number(actionMod.dx) || 0) : 0)) * u;
+    let dy = ((Number(o.dy) || 0) + (actionMod ? (Number(actionMod.dy) || 0) : 0)) * u;
+    let sx = 1 + baseSq * 0.38;
+    let sy = 1 - baseSq * 0.5;
+    let rot = (Number(o.rot) || 0)
+      + ((Number(o.headTilt) || 0) + (actionMod ? (Number(actionMod.headTilt) || 0) : 0)) * 0.28
+      + (actionMod ? (Number(actionMod.rot) || 0) * 0.35 : 0)
+      + (actionMod ? (Number(actionMod.tailWag) || 0) * 0.045 : 0);
+
+    const swapK = o.poseBlend === undefined ? 1 : clamp(Number(o.poseBlend) || 0, 0, 1);
+    const squintK = clamp(Number(o.squint) || 0, 0, 1);
+    sy *= (0.94 + 0.06 * swapK) * (1 - squintK * 0.03);
+    sx *= 1.035 - 0.035 * swapK;
+    dy += (1 - swapK) * u * 0.1 + squintK * u * 0.04;
+
+    const breathPhase = t * (TAU / 2.4) + seed * 1.37;
+    dy += Math.sin(breathPhase) * u * 0.045;
+    sy *= 1 + Math.sin(breathPhase * 2) * 0.007;
+    rot += Math.sin(t * (TAU / 6) + seed * 0.71) * 0.021;
+    dx += (o.lookX || 0) * u * 0.055;
+    dy += (o.lookY || 0) * u * 0.025;
+
+    if (typeof voiceAt === 'function') {
+      const frameStep = 1 / 30;
+      const speech = (voiceAt(Math.max(0, t - frameStep)) + 2 * voiceAt(t) + voiceAt(t + frameStep)) / 4;
+      const speechK = clamp((speech - 0.04) / 0.55, 0, 1);
+      sy *= 1 + speechK * 0.005;
+      dy -= speechK * u * 0.018;
+    }
+
+    if (Math.abs(effectiveWalk) > 0.001) {
+      const gait = effectiveWalk;
+      dy -= Math.abs(Math.sin(gait)) * u * 0.045;
+      rot += Math.sin(gait) * 0.05;
+      sy *= 1 + Math.sin(gait * 2) * 0.01;
+    }
+    if (['celebrate', 'levelup', 'game-win'].includes(poseName)) {
+      dy -= Math.abs(Math.sin(t * 5.2 + seed)) * u * 0.15;
+    } else if (['daily-gaming', 'game-happy'].includes(poseName)) {
+      dy -= Math.abs(Math.sin(t * 7.2 + seed)) * u * 0.035;
+      rot += Math.sin(t * 7.2 + seed) * 0.028;
+    } else if (['work-review', 'work-deadline', 'running'].includes(poseName)) {
+      dy += Math.sin(t * 18 + seed) * u * 0.012;
+    } else if (['curious', 'work-debug', 'thinking'].includes(poseName)) {
+      dx += (o.lookX || 0) * u * 0.045;
+      rot += Math.sin(t * 2.2 + seed) * 0.018;
+    } else if (['blush', 'teasing'].includes(poseName)) {
+      rot += Math.sin(t * 4 + seed) * 0.03;
+    } else if (['angry', 'meme-no'].includes(poseName)) {
+      dy -= Math.abs(Math.sin(t * 8 + seed)) * u * 0.045;
+      dx += Math.sin(t * 36 + seed) * u * 0.012;
+    } else if (poseName === 'meme-yes') {
+      dx += Math.sin(t * 42 + seed) * u * 0.026;
+    } else if (['meme-cry', 'failure'].includes(poseName)) {
+      dy += u * 0.045;
+      rot += Math.sin(t * 1.8 + seed) * 0.014;
+    } else if (poseName === 'daily-stretch') {
+      sy *= 1 + Math.max(0, Math.sin(t * 2.4 + seed)) * 0.028;
+    } else if (poseName === 'sleep') {
+      dy += u * 0.04;
+      sy *= 1 + Math.sin(t * (TAU / 3.2) + seed) * 0.008;
+    } else if (['tail-swing', 'react-tail'].includes(poseName)) {
+      rot += Math.sin(t * 4.6 + seed) * 0.04;
+    } else if (['eat', 'daily-eat'].includes(poseName)) {
+      sy *= 1 + Math.sin(t * 11 + seed) * 0.01;
+      dy -= Math.abs(Math.sin(t * 5.5 + seed)) * u * 0.03;
+    }
+
+    const bbox = pose.bbox;
+    const heightFactor = (POSE_HEIGHT_FACTOR[poseName] || 1) * (o.spriteHeightFactor || 1);
+    const targetH = u * 9.65 * heightFactor;
+    const drawScale = targetH / bbox.h;
+    const drawW = pose.img.width * drawScale;
+    const drawH = pose.img.height * drawScale;
+    const bboxCenterX = (bbox.x + bbox.w / 2) * drawScale;
+    const bboxBottom = (bbox.y + bbox.h) * drawScale;
+    const drawX = x + dx - bboxCenterX;
+    const drawY = y + dy - bboxBottom;
+    const visualTop = y + dy - targetH * sy;
+    const oldSmoothing = ctx.imageSmoothingEnabled;
+    const oldQuality = ctx.imageSmoothingQuality;
+
+    paint(ctx, ellPts(x + dx, y + u * 0.08, u * (poseName === 'sleep' ? 3.4 : 2.9), u * 0.42, 20, 0.5, 0), {
+      wash: '#5A8CB4', washOp: 56, ink: null
+    });
+    ctx.save();
+    ctx.globalAlpha *= o.alpha === undefined ? 1 : clamp(o.alpha, 0, 1);
+    ctx.translate(x + dx, y + dy);
+    ctx.rotate(rot);
+    ctx.scale((flip ? -1 : 1) * sx, sy);
+    ctx.translate(-(x + dx), -(y + dy));
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(pose.img, drawX, drawY, drawW, drawH);
+    ctx.restore();
+
+    drawDay2PoseFx(ctx, x + dx, y + dy, u, t, poseName, motionO, flip);
+    drawDay2Emote(ctx, x + dx, u, o.emote, visualTop);
+    ctx.imageSmoothingEnabled = oldSmoothing;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = oldQuality;
+    return true;
+  }
+
   function whaleGirl(ctx, x, y, u, o = {}) {
+    if (!o.useLegacyPixels && drawDay2Sprite(ctx, x, y, u, o)) return true;
     return whaleGirlBase(ctx, x, y, u, {
       style: 'pixel',
       showActionBadge: false,
       tailScale: 1.0,
-      ...o
+      ...safePixelOptions(o)
     });
   }
 
@@ -326,7 +613,12 @@
       [SD(2) * 0.5, 'shy'],
       [SD(2) * 0.82, 'deadpan']
     ]);
-    whaleGirl(ctx, 866, 568, 27, { ...md, ...move('bounce', t, 4), t });
+    whaleGirl(ctx, 866, 568, 27, {
+      ...md,
+      spritePose: sp < 0.5 ? 'bold' : (sp < 0.82 ? 'blush' : 'meme-doge'),
+      ...move('bounce', t, 4),
+      t
+    });
     controller(ctx, 824, 618, 1.08, 0.03 + Math.sin(t * 4.4) * 0.014);
     camEnd(ctx);
   }
@@ -359,6 +651,7 @@
     ]);
     whaleGirl(ctx, 1012, 568, 26, {
       ...md,
+      spritePose: sp < 0.3 ? 'thinking' : (sp < 0.62 ? 'curious' : (sp < 0.86 ? 'failure' : 'meme-doge')),
       action: sp > 0.58 ? 'shy_fidget' : undefined,
       headTilt: (md.headTilt || 0) + 0.06,
       t
@@ -429,6 +722,7 @@
     ]);
     whaleGirl(ctx, 930, 572, 27, {
       ...md,
+      spritePose: sp < 0.42 ? 'failure' : (sp < 0.55 ? 'angry' : 'daily-eat'),
       action: sp >= 0.55 ? 'eat_white_rice' : 'playful_fists',
       ...move('bounce', t, 1),
       t
@@ -471,6 +765,7 @@
     ]);
     whaleGirl(ctx, 716, 574, 26, {
       ...md,
+      spritePose: sp < 0.2 ? 'meme-yes' : (sp < 0.9 ? 'angry' : 'meme-cry'),
       action: sp >= 0.42 ? 'playful_fists' : undefined,
       ...move('bounce', t, 5),
       t
@@ -507,6 +802,7 @@
     ]);
     whaleGirl(ctx, 945, 574, 27, {
       ...md,
+      spritePose: sp < 0.18 ? 'angry' : (sp < 0.44 ? 'running' : (sp < 0.8 ? 'bold' : 'meme-smug')),
       action: sp < 0.36 ? 'playful_fists' : 'confident_hips',
       ...move('bounce', t, 4),
       t
@@ -541,7 +837,13 @@
       });
     }
     const md = emotions(lt, [[0, 'proud', 'sparkle'], [SD(8) * 0.55, 'joy', 'heart']]);
-    whaleGirl(ctx, 1072, 574, 25, { ...md, action: 'confident_hips', ...move('bounce', t, 1), t });
+    whaleGirl(ctx, 1072, 574, 25, {
+      ...md,
+      spritePose: sp < 0.55 ? 'bold' : 'celebrate',
+      action: 'confident_hips',
+      ...move('bounce', t, 1),
+      t
+    });
     camEnd(ctx);
   }
 
@@ -578,7 +880,13 @@
       [SD(9) * 0.34, 'question'],
       [SD(9) * 0.62, 'idea', 'sparkle']
     ]);
-    whaleGirl(ctx, 1018, 574, 26, { ...md, action: 'peek_curious', lookX: -1, t });
+    whaleGirl(ctx, 1018, 574, 26, {
+      ...md,
+      spritePose: sp < 0.34 ? 'failure' : (sp < 0.62 ? 'work-debug' : 'work-idea'),
+      action: 'peek_curious',
+      lookX: -1,
+      t
+    });
     camEnd(ctx);
   }
 
@@ -618,6 +926,7 @@
     ]);
     whaleGirl(ctx, 920, 574, 28, {
       ...md,
+      spritePose: sp < 0.68 ? 'curious' : (sp < 0.9 ? 'meme-yes' : 'meme-doge'),
       action: sp >= 0.68 && sp < 0.9 ? 'shock_petrify' : 'peek_curious',
       t
     });
@@ -684,7 +993,9 @@
     ]);
     whaleGirl(ctx, 690, 574, 27, {
       ...md,
-      action: sp < 0.34 ? 'eat_white_rice' : (sp < 0.72 ? 'peek_curious' : 'shy_fidget'),
+      // 地面上的大饭碗会推到她身边；本镜始终用无碗姿态，避免手里再多一碗。
+      spritePose: sp < 0.34 ? 'success' : (sp < 0.52 ? 'curious' : (sp < 0.8 ? 'thinking' : 'blush')),
+      action: sp < 0.34 ? 'jump_joy' : (sp < 0.72 ? 'peek_curious' : 'shy_fidget'),
       ...move('bounce', t, 1),
       t
     });
@@ -739,6 +1050,7 @@
     ]);
     whaleGirl(ctx, 920, 574, 27, {
       ...md,
+      spritePose: sp < 0.38 ? 'work-idea' : (sp < 0.76 ? 'running' : 'bold'),
       action: sp < 0.74 ? 'peek_curious' : 'confident_hips',
       ...move('bounce', t, 3),
       t
@@ -800,6 +1112,7 @@
     ]);
     whaleGirl(ctx, wx, wy, 24, {
       ...md,
+      spritePose: sp < 0.24 ? 'daily-stretch' : (sp < 0.42 ? 'eat' : (sp < 0.76 ? 'sleep' : 'meme-doge')),
       action: sp < 0.39 ? 'walk_brisk' : (sp < 0.62 ? 'sleep_curl' : 'shy_fidget'),
       ...move(sp < 0.39 ? 'walk' : 'bounce', t, 2),
       flip: Math.sin(swimK * TAU * 2) > 0,
@@ -838,7 +1151,13 @@
       [SD(15) * 0.48, 'nervous', 'sweat'],
       [SD(15) * 0.76, 'starstruck', 'sparkle']
     ]);
-    whaleGirl(ctx, 1018, 576, 26, { ...md, action: 'shy_fidget', ...move('bounce', t, 6), t });
+    whaleGirl(ctx, 1018, 576, 26, {
+      ...md,
+      spritePose: sp < 0.48 ? 'blush' : (sp < 0.76 ? 'failure' : 'star'),
+      action: 'shy_fidget',
+      ...move('bounce', t, 6),
+      t
+    });
     camEnd(ctx);
   }
 
@@ -864,6 +1183,7 @@
     });
     whaleGirl(ctx, 760, 570, 27, {
       ...feel(sp > 0.74 ? 'joy' : 'happy', t),
+      spritePose: sp > 0.74 ? 'wink' : 'greet',
       ...move('wave', t),
       t
     });
@@ -897,29 +1217,33 @@
       });
     }
 
-    let wx = W / 2, wy = 566, action = 'confident_hips';
+    let wx = W / 2, wy = 566, action = 'confident_hips', spritePose = 'bold';
     let mood = feel('proud', t);
     if (sp >= 0.31 && sp < 0.62) {
       wx = 720;
       mood = feel('deadpan', t);
       action = 'shy_fidget';
+      spritePose = 'meme-doge';
       bowlAt(ctx, 920, 470, 0.95, t);
     } else if (sp >= 0.62 && sp < 0.85) {
       wx = 820;
       mood = feel('happy', t);
       action = 'eat_white_rice';
+      spritePose = 'daily-eat';
     } else if (sp >= 0.85) {
       const a = -Math.PI / 2 + popAt(t, 17, 0.85, 1.0) * TAU;
       wx = W / 2 + Math.cos(a) * 285;
       wy = 520 + Math.sin(a) * 48;
       mood = feel(sp > 0.97 ? 'wink' : 'joy', t);
       action = 'walk_brisk';
+      spritePose = sp < 0.93 ? 'celebrate' : (sp < 0.97 ? 'react-tail' : 'wink');
       paint(ctx, ellPts(W / 2, 520, 300, 58, 44), {
         wash: null, ink: '#38BDF8', sw: 1.2
       });
     }
     whaleGirl(ctx, wx, wy, 26, {
       ...mood,
+      spritePose,
       action,
       ...move(sp >= 0.85 ? 'walk' : 'bounce', t, 1),
       flip: sp >= 0.85 && Math.cos(-Math.PI / 2 + popAt(t, 17, 0.85, 1.0) * TAU) < 0,
