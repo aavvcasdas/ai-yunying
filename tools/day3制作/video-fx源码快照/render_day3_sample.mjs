@@ -72,7 +72,12 @@ const RIG = require(path.join(VFX, 'src/whale_girl_rig_data.js'));
 if (RIG?.poses?.wink && RIG?.poses?.heart?.backHair) RIG.poses.wink.backHair = RIG.poses.heart.backHair;
 if (RIG?.poses?.wink && RIG?.poses?.wave?.head) RIG.poses.wink.head = RIG.poses.wave.head;
 const ACTIONS = require(path.join(VFX, 'src/whale_girl_actions.js'));
-const WHALE = require(path.join(VFX, 'src/whale_girl.js'));
+// v2：引擎补丁（鳍耳蝴蝶结可关 / 五官吸附像素格 / 盖眼肤色块可关 / 去掉半像素补边），
+// 见 engine_patches.mjs。上游 checkout 保持原样，只 require 补丁后的副本。
+const { buildPatchedWhaleGirl } = await import('./engine_patches.mjs');
+const _patched = buildPatchedWhaleGirl(VFX);
+if (_patched.applied.length) console.log('引擎补丁：', _patched.applied.join(', '));
+const WHALE = require(_patched.file);
 const CLAWD = require(path.join(VFX, 'src/clawd.js'));
 const CAST = require(path.join(VFX, 'src/cast.js'));
 const PROPS = require(path.join(VFX, 'src/props.js'));
@@ -149,44 +154,114 @@ CORE.DURATION = DURATION;
 // ---------------------------------------------------------------------------
 // 2. 形象包装：鲸鱼娘 / Claude 大小姐
 // ---------------------------------------------------------------------------
-// 眼睛白线门禁：固定 eyes=open、squint=0.01、tailScale=1.0；用 transitionBlend
-// 关掉自动情绪覆盖，情绪只走显式 emotion + 头顶 emote。
+// 眼睛白线门禁（v2 强化）：eyes/squint/mouth/talking **在合并完调用参数之后再强制**，
+// 因为 emotions() 在表情切换时会返回 squint≈1（盖眼肤色块）和 mouth='waveO'（红方块）。
+// v1 把这些默认值写在 spread 之前，于是被镜头传进来的 md 覆盖掉了 —— 这正是用户截图里
+// "眼睛上白补丁 / 嘴上红方块"的直接原因。
+const FACE_GATE = {
+  eyes: 'open',
+  squint: 0.01,
+  mouth: 'smile',
+  talking: false,
+  noFinBows: true,   // 鳍耳青蓝蝴蝶结：原片形象没有，v1 被看成"眼上多余青色标记"
+  eyePatch: false    // 过渡眨眼不再铺肤色矩形
+};
+
+// ---------------------------------------------------------------------------
+// 2.0 形象层：像素必须落在整数设备像素上
+// ---------------------------------------------------------------------------
+// v1 发糊的根因：整幅画布 `setTransform(1.5)` 再叠镜头 zoom（1.42 等），
+// 骨块边界 = 非整数设备像素 → 每个像素格都被抗锯齿抹成灰边。
+// v2 的做法：先把角色画进一张**设备分辨率**的离屏画布（格宽 cellDev 取整，
+// 角色脚点取整），再用 `imageSmoothingEnabled=false` 整张贴回主画布。
+// 这样角色本体是干净的正方格，镜头推进只影响位置与格子宽度，不再产生灰边。
+const PIXEL_ALPHA_SNAP = process.env.DAY3_SOFT_ALPHA !== '1';
+const charLayerCache = new Map();
+function charLayer(w, h) {
+  const key = `${w}x${h}`;
+  let c = charLayerCache.get(key);
+  if (!c) {
+    const canvas = createCanvas(w, h);
+    c = { canvas, ctx: canvas.getContext('2d') };
+    charLayerCache.set(key, c);
+  }
+  return c;
+}
+
+// 角色包围盒（单位：u）。取两套形象的并集再留余量，动作/表情不会顶边裁掉。
+const CHAR_BOX = { halfW: 5.4, top: -10.4, bottom: 1.4 };
+
+function blitChar(ctx, x, y, u, draw, o = {}) {
+  // 地面投影：引擎自带的投影是 paint() 画的柔边椭圆，进了像素层会被 alpha 二值化切得坑坑洼洼，
+  // 所以统一在这里的**场景空间**补一个正经投影（和房间其它影子同一套笔触）。
+  if (o.shadow !== false) {
+    paint(ctx, ellPts(x, y + 0.12 * u, 2.4 * u, 0.46 * u, 16), { wash: PAL.ink, washOp: 60, ink: null });
+  }
+  const m = ctx.getTransform();
+  const s = Math.hypot(m.a, m.b);                       // 当前有效缩放（含 SCALE 与镜头 zoom）
+  const cellDev = Math.max(2, Math.round((u * s) / 10)); // 每格 = 整数设备像素
+  const uDev = cellDev * 10;
+  const lw = Math.ceil(CHAR_BOX.halfW * 2 * uDev);
+  const lh = Math.ceil((CHAR_BOX.bottom - CHAR_BOX.top) * uDev);
+  const { canvas, ctx: g } = charLayer(lw, lh);
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, lw, lh);
+  const bx = Math.round(CHAR_BOX.halfW * uDev);
+  const by = Math.round(-CHAR_BOX.top * uDev);
+  draw(g, bx, by, uDev);
+  // 骨架里有轻微旋转（headBob / hairSway / armRot），旋转边会被抗锯齿磨成半透明，
+  // 放大后看着像"糊边"。这里把 alpha 二值化：半透明边缘切掉、实心像素钉成 255，
+  // 颜色保持原样（不做调色板吸附，避免把金色配饰调偏）。
+  if (PIXEL_ALPHA_SNAP) {
+    const img = g.getImageData(0, 0, lw, lh);
+    const d = img.data;
+    for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 110 ? 255 : 0;
+    g.putImageData(img, 0, 0);
+  }
+
+  const fx = m.a * x + m.c * y + m.e;
+  const fy = m.b * x + m.d * y + m.f;
+  const noRot = Math.abs(m.b) < 1e-9 && Math.abs(m.c) < 1e-9 && Math.abs(m.a - m.d) < 1e-9;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  if (noRot) {
+    // 纯平移缩放（本片 19 个镜头 + 镜头 zoom 都属于这种）：直接按设备像素 1:1 贴
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(canvas, Math.round(fx - bx), Math.round(fy - by));
+  } else {
+    // 有旋转/挤压（L15 扎水、LCG 呼吸 squash）：退回用户空间矩形，仍是最近邻硬边
+    ctx.drawImage(canvas, x - bx / s, y - by / s, lw / s, lh / s);
+  }
+  ctx.restore();
+}
+
 function WGF(ctx, x, y, u, o = {}) {
   const { t = 0, ...rest } = o;
-  whaleGirl(ctx, x, y, u, {
-    eyes: 'open',
-    squint: 0.01,          // 绕开 rig 的肤色盖眼补丁（白线门禁）
-    tailScale: 1,
-    transitionBlend: 1,    // 情绪只走显式 emotion，不自动串戏
-    // 原图自带小嘴；上游 o/waveO/flat 等嘴型会先盖肤色矩形再画红色块，
-    // 在侧脸/低头姿势上会像嘴边贴了个异物（Day2 加更已确认过的坑），
-    // 这里只保留 sprite 自己的笑嘴。
-    mouth: 'smile',
-    talking: false,
-    showActionBadge: false,
-    t,
-    ...rest
-  });
+  const opts = { ...FACE_GATE, transitionBlend: 1, tailScale: 1, showActionBadge: false, t, ...rest };
+  Object.assign(opts, FACE_GATE);   // ← 强制项必须在 spread 之后（v1 的坑）
+  opts.noShadow = true;             // 投影由 blitChar 在场景里画
+  blitChar(ctx, x, y, u, (g, bx, by, uDev) => whaleGirl(g, bx, by, uDev, opts), { shadow: o.shadow });
 }
 
 // Claude 大小姐：cast 里的 16-bit 立绘（金色螺旋卷、黑丝绒蝴蝶结、绛红长裙、折扇），
 // 本体只有一套骨架，所以用外层 transform 做呼吸 / 倾斜 / squash，绝不换脸。
+// 同样走设备像素层，保证大小姐也是硬的像素质感。
 function LCG(ctx, x, y, u, o = {}) {
   const { t = 0, sq = 0, rot = 0, alpha = 1 } = o;
   ctx.save();
   ctx.globalAlpha *= alpha;
   ctx.translate(x, y);
   if (rot) ctx.rotate(rot);
-  ctx.scale(1 + sq * 0.45, 1 - sq * 0.55);
+  if (sq) ctx.scale(1 + sq * 0.45, 1 - sq * 0.55);
   ctx.translate(-x, -y);
-  ladyClaude(ctx, x, y, u, {
+  blitChar(ctx, x, y, u, (g, bx, by, uDev) => ladyClaude(g, bx, by, uDev, {
     t,
     dy: o.dy ?? (-0.06 - Math.abs(Math.sin(t * 2.2)) * 0.03),
     emote: o.emote,
     emoteK: o.emoteK,
     flip: o.flip,
-    noShadow: o.noShadow
-  });
+    noShadow: true
+  }), { shadow: o.noShadow ? false : true });
   ctx.restore();
 }
 
@@ -352,11 +427,27 @@ function miniRoom(ctx, w, h, t, o = {}) {
   }
 }
 
+// 新版鲸鱼娘立绘（day2 的 dsh-whale-state-*.webp）。
+// 规矩：**电视机里 = 新版形象**；电视外我们一直画的骨骼像素鲸 = 旧版（L01–L02 / L17–L19）。
+// feetY = 立绘脚底要落在的 y（立绘图片自带上下留白，这里按实测包围盒 0.967 对齐）
+function drawPose(ctx, key, cx, feetY, targetH, rot = 0, alpha = 1) {
+  const img = (globalThis.DAY3_POSES || {})[key];
+  if (!img) return false;
+  const h = targetH, w = h * (img.width / img.height);
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.translate(cx, feetY);
+  if (rot) ctx.rotate(rot);
+  ctx.drawImage(img, -w / 2, -h * 0.967, w, h);
+  ctx.restore();
+  return true;
+}
+
 // 水下 / 褪色辅助
-function waterOverlay(ctx, t, y0, alpha = 1) {
+function waterOverlay(ctx, t, y0, alpha = 1, washOp = 90) {
   ctx.save();
   ctx.globalAlpha = alpha;
-  paint(ctx, rectPts(-120, y0, W + 240, H - y0 + 120, 2), { wash: '#1E6FA8', washOp: 90, ink: null });
+  paint(ctx, rectPts(-120, y0, W + 240, H - y0 + 120, 2), { wash: '#1E6FA8', washOp, ink: null });
   for (let i = 0; i < 9; i++) {
     const x = -40 + i * 160 + Math.sin(t * 1.2 + i) * 20;
     inkLine(ctx, [[x, y0 + 12], [x + 90, y0 + 26 + Math.sin(t * 1.6 + i) * 8]], 2.2, 'rgba(125,211,252,0.55)', 'inkfine', 0.4);
@@ -421,23 +512,29 @@ function egg(ctx, x, y, s = 1, stamped = false, rot = 0) {
   if (stamped) stamp(ctx, '批', 0, 4, -0.16, '#D8232A');
   ctx.restore();
 }
+// 染色刷：真正的"刷头"——刷毛 + 金属箍 + 木柄，刷毛尖落在 (x, y)。
+// v1 是一根横贯全屏的橙线，看不出是刷子在刷；v2 改成局部刷头，能压住人物。
 function dyeBrush(ctx, x, y, s = 1, rot = 0) {
   ctx.save();
-  ctx.translate(x, y); ctx.rotate(rot);
+  ctx.translate(x, y);
+  ctx.rotate(rot);
   const u = 26 * s;
-  // 瓶
-  paint(ctx, rrPts(-u * 0.9, -u * 0.1, u * 1.8, u * 1.5, 8, 1), { wash: '#F2A679', fill: '#E07A5F', fillOp: 120, ink: PAL.ink, sw: 1.3 });
-  paint(ctx, rrPts(-u * 0.28, -u * 0.62, u * 0.56, u * 0.54, 5, 1), { wash: '#94A3B8', ink: PAL.ink, sw: 1.1 });
-  ctx.save();
-  ctx.font = 'bold 13px "NotoSansSC", sans-serif';
-  ctx.fillStyle = PAL.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('不防水', 0, u * 0.66);
-  ctx.restore();
-  // 刷
-  inkLine(ctx, [[0, -u * 0.6], [u * 0.5, -u * 1.5]], 4, '#B45309', 'ink', 0);
-  paint(ctx, rrPts(u * 0.3, -u * 2.0, u * 0.9, u * 0.7, 6, 1), { wash: '#F2C14E', ink: PAL.ink, sw: 1.2 });
+  // 刷毛（含染料）
+  paint(ctx, [
+    [-u * 0.46, 0], [u * 0.46, 0], [u * 0.30, -u * 0.62], [-u * 0.30, -u * 0.62]
+  ], { wash: '#F2A679', fill: '#E07A5F', fillOp: 110, ink: PAL.ink, sw: 1.3 });
+  for (let i = 0; i < 5; i++) {
+    const bx = -u * 0.34 + i * u * 0.17;
+    inkLine(ctx, [[bx, -u * 0.06], [bx * 0.82, -u * 0.56]], 1.6, 'rgba(255,236,214,0.75)', 'inkfine', 0);
+  }
+  // 金属箍
+  paint(ctx, rrPts(-u * 0.30, -u * 0.86, u * 0.60, u * 0.26, 3, 1), { wash: '#CBD5E1', fill: '#94A3B8', fillOp: 120, ink: PAL.ink, sw: 1.1 });
+  // 木柄
+  paint(ctx, rrPts(-u * 0.17, -u * 2.35, u * 0.34, u * 1.52, 5, 1), { wash: '#B45309', fill: '#92400E', fillOp: 110, ink: PAL.ink, sw: 1.3 });
+  paint(ctx, rrPts(-u * 0.05, -u * 2.24, u * 0.08, u * 1.30, 4, 0), { wash: 'rgba(253,230,138,0.5)', ink: null });
   ctx.restore();
 }
+
 function foldingFan(ctx, x, y, s = 1, open = 1) {
   const u = 30 * s;
   ctx.save();
@@ -618,12 +715,14 @@ function shotL02(ctx, t, lt, p) {
 }
 
 // L03：染色瞬间 → 真变成 Claude 大小姐
+// v2 改动（用户退回项 #3）：不再用一条横贯全屏的橙线，而是**局部刷头**贴着人物自上而下刷，
+// 刷痕与刷子都画在人物之上，能实打实压住人物；刷到底才露完整的大小姐。
 function shotL03(ctx, t, lt, p) {
   camBegin(ctx, 620, 350, 1.12);
   room(ctx, t);
   const sweep = clamp((p - 0.2) / 0.46);
+  const charX = 600, charY = 632, uW = 32, uC = 32;
   const frontY = lerp(210, 720, ease(sweep));
-  const charY = 632, uW = 34, uC = 30;
   const mdW = emotions(lt, [[0, 'surprised', 'sweat'], [SD(3) * 0.6, 'panic', 'exclaim']]);
   const bobL = -Math.abs(Math.sin(t * 2.2)) * 0.02;
 
@@ -631,32 +730,60 @@ function shotL03(ctx, t, lt, p) {
     // 下半：还是鲸鱼娘
     ctx.save();
     ctx.beginPath(); ctx.rect(-200, frontY, W + 400, H - frontY + 200); ctx.clip();
-    WGF(ctx, 600, charY, uW, { ...mdW, t, action: 'shock_petrify', lookX: 0.2 });
+    WGF(ctx, charX, charY, uW, { ...mdW, t, action: 'shock_petrify', lookX: 0.2 });
     ctx.restore();
     // 上半：已经是大小姐
     ctx.save();
     ctx.beginPath(); ctx.rect(-200, -200, W + 400, frontY + 200); ctx.clip();
-    LCG(ctx, 600, charY, uC, { t, dy: bobL, emote: 'sweat', alpha: 0.98 });
+    LCG(ctx, charX, charY, uC, { t, dy: bobL, emote: 'sweat', alpha: 0.98 });
     ctx.restore();
-    // 染色前线：橙色染带 + 滴落
-    inkLine(ctx, [[-100, frontY], [200, frontY + 8], [520, frontY - 6], [860, frontY + 10], [W + 100, frontY - 4]], 8, 'rgba(242,166,121,0.9)', 'ink', 0.2);
+
+    // —— 局部刷头：刷幅≈人物宽度，画在人物之上，能压住遮挡（退回项 #3）——
+    const brushX = charX + Math.sin(t * 2.4) * 7;
+    const bw = 76;                        // 半刷幅 = 76 → 总宽 152 ≈ 人物宽度（不是全屏）
+    ctx.save();
+    // 湿颜料带：上沿略高、下沿略低，做两道叠起来像刷过的痕
+    paint(ctx, [
+      [brushX - bw, frontY - 8], [brushX + bw, frontY - 10],
+      [brushX + bw, frontY + 6], [brushX - bw, frontY + 8]
+    ], { wash: 'rgba(242,166,121,0.92)', ink: null });
+    paint(ctx, [
+      [brushX - bw * 0.86, frontY + 4], [brushX + bw * 0.92, frontY + 2],
+      [brushX + bw * 0.8, frontY + 13], [brushX - bw * 0.78, frontY + 15]
+    ], { wash: 'rgba(230,122,95,0.75)', ink: null });
+    // 亮边（刚刷上去的湿光）
+    inkLine(ctx, [[brushX - bw * 0.92, frontY - 5], [brushX + bw * 0.9, frontY - 7]], 2.2, 'rgba(255,244,224,0.85)', 'inkfine', 0.2);
+    // 刷毛痕
     for (let i = 0; i < 9; i++) {
-      const x = 200 + i * 90 + Math.sin(t * 4 + i) * 8;
-      const dy = ((t * 240 + i * 47) % 120);
-      paint(ctx, ellPts(x, frontY + dy, 4.5, 7.5, 10), { wash: 'rgba(230,122,95,0.9)', ink: null });
+      const bx = brushX - bw * 0.86 + (i * bw * 1.72) / 8;
+      inkLine(ctx, [[bx, frontY - 3], [bx + 2, frontY + 8]], 1.3, 'rgba(255,236,214,0.5)', 'inkfine', 0);
     }
+    // 滴落（只在刷幅内）
+    for (let i = 0; i < 4; i++) {
+      const dx = brushX - bw * 0.6 + (i * bw * 1.2) / 3;
+      const dy = 16 + ((t * 250 + i * 57) % 104);
+      paint(ctx, ellPts(dx, frontY + dy, 3.2, 6.4, 10), { wash: 'rgba(230,122,95,0.8)', ink: null });
+    }
+    ctx.restore();
+    // 刷子本体：刷毛尖落在刷痕中间偏右，柄朝右上
+    dyeBrush(ctx, brushX + bw * 0.42, frontY - 14, 2.6, 0.42 + Math.sin(t * 2) * 0.05);
   } else {
-    LCG(ctx, 600, charY, uC, { t, dy: bobL, emote: 'sparkle' });
-    // 变身完成星屑
+    // 刷完：完整的大小姐 + 变身星屑
+    LCG(ctx, charX, charY, uC, { t, dy: bobL, emote: 'sparkle' });
     for (let i = 0; i < 10; i++) {
       const a = i * 0.62 + t * 0.9;
       const rr = 90 + 30 * Math.sin(t * 3 + i);
-      paint(ctx, starPts(600 + Math.cos(a) * rr * 1.4, 400 + Math.sin(a) * rr, 6, 3, 5), { wash: PAL.gold, ink: null });
+      paint(ctx, starPts(charX + Math.cos(a) * rr * 1.4, 400 + Math.sin(a) * rr, 6, 3, 5), { wash: PAL.gold, ink: null });
+    }
+    // 刷子收工：抬到右上并淡出
+    const outK = clamp((p - 0.66) / 0.2);
+    if (outK < 1) {
+      ctx.save();
+      ctx.globalAlpha = 1 - outK;
+      dyeBrush(ctx, lerp(charX + 150, charX + 360, outK), lerp(640, 120, outK), 2.6, 0.5);
+      ctx.restore();
     }
   }
-  // 染色刷与瓶
-  const brushY = lerp(150, 610, ease(sweep));
-  dyeBrush(ctx, 806, sweep < 1 ? brushY : 190, 1.15, -0.35 + Math.sin(t * 2) * 0.06);
   if (sweep > 0.9 && sweep < 1) flash(ctx, 0.22 * (1 - (sweep - 0.9) * 10), PAL.cream);
   if (p > 0.72) {
     letter(ctx, 'Claude 大小姐（本鲸染色态）', 640, 168, 26, PAL.cream, { pop: popAt(t, 3, 0.72, 0.86), rot: -0.02 });
@@ -869,38 +996,26 @@ function shotL10(ctx, t, lt, p) {
   camBegin(ctx, 640, 352, 1.02);
   room(ctx, t);
   const tvRect = { x: 726, y: 232, w: 452, h: 292 };
+  // 电视机里 = **新版鲸鱼娘**（day2 的新版立绘，大图、清晰）。
+  // v1 这里是一格旧版像素小鲸、一格方图，用户反馈"电视里那只太小又糊"（退回项 #4）。
   tvPanel(ctx, tvRect.x, tvRect.y, tvRect.w, tvRect.h, t, (g, tt, mw, mh) => {
     miniRoom(g, mw, mh, tt);
-    // 左格：现在的本鲸（缩小，真动作）
+    // 台口灯
+    glow(g, mw * 0.5, 54, 120, PAL.gold, 0.18);
+    const hop = Math.abs(Math.sin(tt * 2.2)) * 7;
+    drawPose(g, 'greet', mw * 0.5, 208 - hop, 210, 0);
+    // 台标字幕条
     g.save();
-    g.beginPath(); g.rect(0, 0, mw / 2, mh); g.clip();
-    WGF(g, 118, 236, 16, { t: tt, action: 'wave', ...move('wave', tt, 1), emotion: 'happy' });
-    g.restore();
-    // 右格：新设计的鲸（DSH 静态姿势，标清"静态"）
-    g.save();
-    g.beginPath(); g.rect(mw / 2, 0, mw / 2, mh); g.clip();
-    paint(g, rectPts(mw / 2, 0, mw / 2, mh, 1), { wash: 'rgba(20,34,64,0.6)', ink: null });
-    if (globalThis.DAY3_POSE) {
-      const img = globalThis.DAY3_POSE;
-      const hh = 176, ww = hh * (img.width / img.height);
-      paint(g, ellPts(mw * 0.75, 244, 46, 12, 14), { wash: 'rgba(0,0,0,0.3)', ink: null });
-      g.drawImage(img, mw * 0.75 - ww / 2, 246 - hh, ww, hh);
-    }
-    g.font = 'bold 12px "NotoSansSC", sans-serif';
+    paint(g, rrPts(mw * 0.5 - 92, 16, 184, 30, 8, 1), { wash: 'rgba(10,20,38,0.9)', fill: '#0B1D3A', fillOp: 200, ink: '#48C8FF', sw: 1.2 });
+    g.font = 'bold 15px "ZCOOLKuaiLe", "NotoSansSC", sans-serif';
     g.fillStyle = PAL.cream; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('新设计的鲸（静态姿势）', mw * 0.75, 262);
+    g.fillText('新版鲸鱼娘 · 电视台', mw * 0.5, 32);
     g.restore();
-    g.strokeStyle = 'rgba(72,200,255,0.8)';
-    g.lineWidth = 1.6;
-    g.beginPath(); g.moveTo(mw / 2, 10); g.lineTo(mw / 2, mh - 10); g.stroke();
-    g.font = 'bold 12px "NotoSansSC", sans-serif';
-    g.fillStyle = PAL.whaleCyan; g.textAlign = 'center';
-    g.fillText('现在的本鲸（骨骼动作）', mw * 0.25, 22);
-  }, { caption: '电视台 · 主持位仍在左边' });
+  }, { caption: '电视台 · 新设计的鲸上班了' });
   LCG(ctx, 430, 628, 30, { t, emote: 'exclaim', flip: true });
-  if (p > 0.35) {
-    label(ctx, '主持：现在的本鲸', 300, 250, { h: 28, font: 'bold 16px "NotoSansSC", sans-serif', stroke: '#48C8FF' });
-    label(ctx, '新鲸：电视台', 300, 288, { h: 28, font: 'bold 16px "NotoSansSC", sans-serif', stroke: '#F2C14E' });
+  if (p > 0.3) {
+    label(ctx, '主持：现在的本鲸', 268, 250, { h: 28, font: 'bold 16px "NotoSansSC", sans-serif', stroke: '#48C8FF' });
+    label(ctx, '新版：电视台', 268, 288, { h: 28, font: 'bold 16px "NotoSansSC", sans-serif', stroke: '#F2C14E' });
   }
   camEnd(ctx);
 }
@@ -961,35 +1076,37 @@ function shotL12(ctx, t, lt, p) {
 function shotL13(ctx, t, lt, p) {
   camBegin(ctx, 640, 350, 1.03);
   room(ctx, t);
+  // 电视机里 = 新版鲸鱼娘（MV 里的新形象）；电视外是本鲸现在的形态。
   tvPanel(ctx, 690, 214, 500, 312, t, (g, tt, mw, mh) => {
     miniRoom(g, mw, mh, tt);
     // 小舞台
     paint(g, rectPts(0, mh * 0.66, mw, mh * 0.34, 1), { wash: '#5A3A22', ink: null });
-    // 旋转的鲸鱼娘：转完圈才收到歌词
+    glow(g, mw * 0.5, 120, 130, PAL.whaleCyan, 0.2);
     const spinP = clamp((p - 0.05) / 0.4);
     const done = spinP >= 1;
+    const rot = done ? Math.sin(tt * 2) * 0.03 : spinP * 6.28;
+    const hop = done ? Math.abs(Math.sin(tt * 2.6)) * 5 : 0;
     g.save();
-    g.translate(mw * 0.42, 250);
-    g.rotate(done ? 0 : spinP * 6.28);
-    WGF(g, 0, 0, 14, { t: tt, emotion: done ? 'proud' : 'excited', action: done ? 'confident_hips' : 'tail_wag_dance' });
+    g.translate(mw * 0.5, 104 - hop);
+    g.rotate(rot);
+    drawPose(g, done ? 'celebrate' : 'music', 0, 100, 200, 0);
     g.restore();
     // 迟到的歌词条
     const arrive = popAt(t, 13, 0.52, 0.72);
     if (arrive > 0) {
       g.save();
       g.globalAlpha = arrive;
-      g.translate(mw * (0.42 + 0.14 * (1 - arrive)), mh * 0.62);
+      g.translate(mw * (0.5 + 0.14 * (1 - arrive)), mh * 0.62);
       paint(g, rrPts(-104, -17, 208, 34, 8, 1), { wash: 'rgba(10,20,38,0.94)', fill: '#0B1D3A', fillOp: 200, ink: '#F2C14E', sw: 1.4 });
       g.font = 'bold 13px "NotoSansSC", sans-serif';
       g.fillStyle = '#FDE68A'; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText('转完圈了，歌词才追上来', 0, 1);
       g.restore();
-      // 气喘吁吁的小速度线
       for (let i = 0; i < 3; i++) {
-        inkLine(g, [[mw * 0.30 - i * 10, mh * 0.62 + 22], [mw * 0.30 - 44 - i * 10, mh * 0.62 + 26]], 2, 'rgba(255,255,255,0.7)', 'inkfine', 0.4);
+        inkLine(g, [[mw * 0.5 - 96 - i * 10, mh * 0.62 + 24], [mw * 0.5 - 140 - i * 10, mh * 0.62 + 26]], 2, 'rgba(255,255,255,0.7)', 'inkfine', 0.4);
       }
     }
-  }, { caption: 'MV_v0.1 · 别发' });
+  }, { caption: 'MV_v0.1 · 新版形象 · 别发' });
   LCG(ctx, 400, 628, 29, { t, emote: 'sweat', flip: true });
   if (p > 0.6) letter(ctx, '做得不好？先看节拍', 300, 250, 22, PAL.cream, { pop: popAt(t, 13, 0.6, 0.74) });
   camEnd(ctx);
@@ -1058,47 +1175,65 @@ function shotL15(ctx, t, lt, p) {
 }
 
 // L16：褪色 → 变回鲸鱼娘
+// v2 改动（用户退回项 #6）：水面**接住 L15 结尾的水位**（300）继续往上，不再从画面底部
+// 重新涨一遍；镜头 zoom 与 L15 对齐（1.02），人物站位也接住 L15（780,600），
+// 所以"水漫上来"是同一场戏的延续，不是突然换分镜。
 function shotL16(ctx, t, lt, p) {
-  camBegin(ctx, 640, 350, 1.06);
+  camBegin(ctx, 640, 350, 1.02);
   room(ctx, t);
-  const reveal = ease(clamp((p - 0.14) / 0.62));
-  const frontY = lerp(H + 80, 150, reveal);
+  const charX = 780, charY = 600, uC = 30, uW = 30;
+  const reveal = ease(clamp((p - 0.14) / 0.6));
+  const frontY = lerp(H + 80, 150, reveal);              // 褪色前沿：自下而上把颜色冲掉
+  const waterY = lerp(300, 172, ease(clamp(p / 0.9)));   // 水面：从 L15 的 300 接着涨
   const md = emotions(lt, [[0, 'shocked', 'sweat'], [SD(16) * 0.6, 'surprised'], [SD(16) * 0.85, 'proud', 'sparkle']]);
   // 上半：还是大小姐，逐渐淡出
   ctx.save();
   ctx.beginPath(); ctx.rect(-200, -200, W + 400, frontY + 200); ctx.clip();
-  LCG(ctx, 600, 634, 31, { t, alpha: 1 - 0.55 * reveal, emote: 'sweat', rot: -0.05 * reveal });
+  LCG(ctx, charX, charY, uC, { t, alpha: 1 - 0.55 * reveal, emote: 'sweat', rot: -0.05 * reveal });
   ctx.restore();
   // 下半：已经变回鲸鱼娘
   ctx.save();
   ctx.beginPath(); ctx.rect(-200, frontY, W + 400, H - frontY + 200); ctx.clip();
-  WGF(ctx, 600, 634, 34, { ...md, t, action: 'cry_fountain', ...move('shiver', t, 3), lookX: 0.1 });
+  WGF(ctx, charX, charY, uW, { ...md, t, action: 'cry_fountain', ...move('shiver', t, 3), lookX: 0.1 });
   ctx.restore();
   // 水面 / 染料 / 气泡
-  waterOverlay(ctx, t, frontY, 0.7);
-  dyeRibbons(ctx, t, frontY, 1 - reveal * 0.7);
-  bubbles(ctx, t, 360, 860, frontY + 30, 16, 0.7);
-  inkLine(ctx, [[-100, frontY], [200, frontY + 8], [520, frontY - 6], [860, frontY + 10], [W + 100, frontY - 4]], 5, 'rgba(242,166,121,0.85)', 'ink', 0.2);
-  // 只剩湿向日葵
+  waterOverlay(ctx, t, waterY, 0.7 + 0.2 * reveal, 130);
+  dyeRibbons(ctx, t, waterY + 60, 1 - reveal * 0.75);
+  bubbles(ctx, t, 420, 980, waterY + 40, 18, 0.75);
+  // 褪色前线：只在还有颜色可冲的时候画，冲干净就收线（不给全屏留一条橙线）
+  const frontA = (1 - reveal) * 0.9;
+  if (frontA > 0.03) {
+    inkLine(ctx, [[-100, frontY], [200, frontY + 8], [520, frontY - 6], [860, frontY + 10], [W + 100, frontY - 4]], 5, `rgba(242,166,121,${frontA})`, 'ink', 0.2);
+  }
+  // 只剩湿向日葵（掉在刚才站着的地方）
   if (reveal > 0.6) {
     const s = 1.0;
     ctx.save();
     ctx.globalAlpha = (reveal - 0.6) / 0.4;
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * TAU;
-      paint(ctx, ellPts(700 + Math.cos(a) * 13 * s, 372 + Math.sin(a) * 13 * s, 9 * s, 7 * s, 10), { wash: '#FBBF24', ink: PAL.ink, sw: 1 });
+      paint(ctx, ellPts(charX + 12 + Math.cos(a) * 13 * s, 380 + Math.sin(a) * 13 * s, 9 * s, 7 * s, 10), { wash: '#FBBF24', ink: PAL.ink, sw: 1 });
     }
-    paint(ctx, ellPts(700, 372, 9, 9, 10), { wash: '#92400E', ink: PAL.ink, sw: 1 });
+    paint(ctx, ellPts(charX + 12, 380, 9, 9, 10), { wash: '#92400E', ink: PAL.ink, sw: 1 });
     ctx.restore();
-    letter(ctx, '只剩湿向日葵', 826, 300, 20, PAL.cream, { pop: popAt(t, 16, 0.7, 0.84), alpha: 0.9 });
+    letter(ctx, '只剩湿向日葵', charX + 140, 306, 20, PAL.cream, { pop: popAt(t, 16, 0.7, 0.84), alpha: 0.9 });
   }
-  if (p > 0.72) letter(ctx, '染色剂不防水！', 300, 330, 28, PAL.gold, { pop: popAt(t, 16, 0.72, 0.86), rot: -0.04 });
+  if (p > 0.72) letter(ctx, '染色剂不防水！', charX - 300, 330, 28, PAL.gold, { pop: popAt(t, 16, 0.72, 0.86), rot: -0.04 });
   camEnd(ctx);
 }
 
 function shotL17(ctx, t, lt, p) {
   camBegin(ctx, 640, 350, 1.03);
   room(ctx, t);
+  // 接住 L16 结尾满上来的水：开场水还在，前 18% 退掉，地面留湿痕。
+  // 这样 1:21–1:22 是"同一场戏继续"，不是黑屏后突然换场（退回项 #5/#6）。
+  const drain = clamp(p / 0.18);
+  if (drain < 1) {
+    waterOverlay(ctx, t, lerp(430, 720, ease(drain)), 1 - drain, 120);
+    bubbles(ctx, t, 380, 900, 640, 8, 0.5 * (1 - drain));
+  } else {
+    paint(ctx, rectPts(260, 664, 760, 26, 4), { wash: 'rgba(56,189,248,0.16)', ink: null });
+  }
   WGF(ctx, 470, 628, 30, {
     t, emotion: 'focused',
     action: p < 0.5 ? 'camera_shutter' : 'confident_hips',
@@ -1243,9 +1378,19 @@ function renderFrame(ctx, t) {
   } else if (t >= ENDCARD.start && t < ENDCARD.end) {
     form = FORM.WHALE;
     shotEndCard(ctx, t, t - ENDCARD.start, clamp((t - ENDCARD.start) / (ENDCARD.end - ENDCARD.start)));
+  } else if (t < ENDCARD.start) {
+    // 镜头之间的 GAP（0.18s）以前画的是纯深色底 → 每次换镜都黑闪一下，
+    // 用户就是在 1:21–1:22（L16 尾→L17 头）看到了这个黑屏（退回项 #5）。
+    // 现在改为「上一镜停在 p=1 继续呼吸」，画面不断、不黑。
+    const prev = CUES.reduce((acc, c, i) => (t >= c.end && i > acc ? i : acc), -1);
+    const i = prev >= 0 ? prev : 0;
+    form = charFormAt(i + 1);
+    if (i === 2) form = cueP(t, 3) > 0.66 ? FORM.CLAUDE : FORM.WHALE;
+    if (i === 15) form = cueP(t, 16) > 0.5 ? FORM.WHALE : FORM.CLAUDE;
+    SHOTS[i](ctx, t, t - CUES[i].start, 1);
   } else {
     form = FORM.WHALE;
-    paint(ctx, rectPts(-120, -120, W + 240, H + 240, 2), { wash: '#0B1224', ink: null });
+    room(ctx, t);
   }
   hud(ctx, t, form);
   drawSubtitle(ctx, t);
@@ -1254,13 +1399,24 @@ function renderFrame(ctx, t) {
 // ---------------------------------------------------------------------------
 // 6. 渲染入口
 // ---------------------------------------------------------------------------
-const POSE_FILE = path.resolve(__dirname, '../../day2制作/video-fx源码快照/day2_poses/dsh-whale-state-idle-cute.webp');
+// 电视机里的新版形象：greet=招呼（L10 电视台）、music=听歌（L13 转圈前）、celebrate=庆祝
+const POSE_DIR = path.resolve(__dirname, '../../day2制作/video-fx源码快照/day2_poses');
+const POSE_KEYS = {
+  greet: 'dsh-whale-state-greet.webp',
+  music: 'dsh-whale-state-meme-music.webp',
+  celebrate: 'dsh-whale-state-celebrate.webp',
+  idle: 'dsh-whale-state-idle-cute.webp'
+};
 async function loadPose() {
-  if (!fs.existsSync(POSE_FILE)) {
-    console.warn('⚠️ 未找到 DSH 姿势图，L10 电视右格将留空：', POSE_FILE);
-    return;
+  globalThis.DAY3_POSES = {};
+  for (const [key, file] of Object.entries(POSE_KEYS)) {
+    const f = path.join(POSE_DIR, file);
+    if (!fs.existsSync(f)) continue;
+    globalThis.DAY3_POSES[key] = await loadImage(f);
   }
-  globalThis.DAY3_POSE = await loadImage(POSE_FILE);
+  const n = Object.keys(globalThis.DAY3_POSES).length;
+  if (!n) console.warn('⚠️ 未找到 DSH 新版立绘，电视里会留空：', POSE_DIR);
+  else console.log(`新版鲸鱼娘立绘：${n} 张（${Object.keys(globalThis.DAY3_POSES).join('/')}）`);
 }
 
 function prepareFrame(ctx) {
@@ -1282,8 +1438,12 @@ async function renderStills() {
       [`l${String(i + 1).padStart(2, '0')}_58`, c.start + (c.end - c.start) * 0.58],
       [`l${String(i + 1).padStart(2, '0')}_90`, c.start + (c.end - c.start) * 0.9]
     ]),
+    ['l03_35', CUES[2].start + (CUES[2].end - CUES[2].start) * 0.35],
     ['l03_42', CUES[2].start + (CUES[2].end - CUES[2].start) * 0.42],
+    ['l03_50', CUES[2].start + (CUES[2].end - CUES[2].start) * 0.50],
     ['l03_70', CUES[2].start + (CUES[2].end - CUES[2].start) * 0.70],
+    ['gap16_17', CUES[15].end + 0.06],
+    ['l16_95', CUES[15].end - 0.2],
     ['l16_38', CUES[15].start + (CUES[15].end - CUES[15].start) * 0.38],
     ['l16_75', CUES[15].start + (CUES[15].end - CUES[15].start) * 0.75],
     ['endcard', ENDCARD.start + 1.6]
