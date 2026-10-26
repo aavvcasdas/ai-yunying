@@ -1,11 +1,13 @@
 // render_day2.mjs — 【Day 2】主人说我不干活，我打开主人自己的号 · 渲染器
-// 用法: node render_day2.mjs [--out whale_day2.mp4] [--style clean] | --stills
-// 默认 clean = 背景/文字原生清晰绘制 + 1920×1080；主角使用
-// assets/day2_poses/ 中 39 张 512×512 MIT 姿势立绘做整图切换，
-// 像素骨架仅保留为缺素材时的安全回退。
+// 用法: node render_day2.mjs [--out whale_day2.mp4] [--style clean]
+//       [--character original|candidate|mixed] | --stills
+// 默认 clean = 背景/文字原生清晰绘制 + 1920×1080；
+// 默认 --character original，继续使用原像素鲸鱼娘，严禁静默替换正式形象。
+// candidate 才把本集主角整体切到高清动作候选；mixed 默认原形象，只允许
+// 单个镜头用 characterMode:'candidate' 展示候选，适合形象征集加更。
 // 前置: gen_day2_finalvoice.py 已生成 src/day2_timing.js、src/lyrics.js、
-// assets/day2_track.wav 与 assets/day2_envelope.js；并已把快照中的
-// day2_poses/ 复制到 video-fx 的 assets/day2_poses/。
+// assets/day2_track.wav 与 assets/day2_envelope.js。candidate/mixed 还须把
+// 快照中的 day2_poses/ 复制到 video-fx 的 assets/day2_poses/。
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,6 +15,17 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
+
+const CLI_ARGS = process.argv.slice(2);
+function cliValue(name) {
+  const idx = CLI_ARGS.indexOf(name);
+  return idx >= 0 ? CLI_ARGS[idx + 1] : undefined;
+}
+const CHARACTER_MODE = cliValue('--character') || 'original';
+if (!['original', 'candidate', 'mixed'].includes(CHARACTER_MODE)) {
+  throw new Error(`--character 只接受 original|candidate|mixed，实得 ${CHARACTER_MODE}`);
+}
+globalThis.DAY2_CHARACTER_MODE = CHARACTER_MODE;
 
 let canvasPkg;
 try { canvasPkg = require('@napi-rs/canvas'); }
@@ -74,9 +87,10 @@ PROPS.drawTopHud = (ctx) => {
   ctx.restore();
 };
 
-// Day2 高清姿势库：源文件为 512×512 WebP。启动时逐张测 alpha 包围盒，
-// 分镜层只按包围盒做脚底锚定和等高缩放，姿势/表情始终整图切换，避免旧像素
-// 骨架在眼睛上叠肤色矩形造成白眼和错位。素材来源/许可见快照 day2_poses/。
+// 高清动作候选姿势库：源文件为 512×512 WebP。candidate/mixed 启动时逐张
+// 测 alpha 包围盒，分镜层只按包围盒做脚底锚定和等高缩放，姿势/表情整图
+// 切换。original 不加载这批候选素材，原像素路径另有白眼净化。素材来源/
+// 许可见快照 day2_poses/。
 const DAY2_POSE_NAMES = [
   'idle-cute', 'curious', 'thinking', 'running', 'success', 'failure', 'blush',
   'angry', 'eat', 'celebrate', 'sleep', 'greet', 'wink', 'bold', 'star',
@@ -124,8 +138,9 @@ async function loadDay2Poses() {
   }));
   return out;
 }
-globalThis.DAY2_POSES = await loadDay2Poses();
-globalThis.DAY2_POSE_COUNT = DAY2_POSE_NAMES.length;
+const SHOULD_LOAD_CANDIDATE_POSES = CHARACTER_MODE !== 'original';
+globalThis.DAY2_POSES = SHOULD_LOAD_CANDIDATE_POSES ? await loadDay2Poses() : {};
+globalThis.DAY2_POSE_COUNT = SHOULD_LOAD_CANDIDATE_POSES ? DAY2_POSE_NAMES.length : 0;
 
 require('./src/ch/day2_all.js');
 
@@ -225,7 +240,7 @@ async function renderVideo(style, outFile) {
   const { width, height, scale } = outputSizeFor(style);
   const isClean = style === 'clean';
   console.log(
-    `Day2 rendering ${TOTAL_FRAMES} frames (${DURATION}s) style=${style} ` +
+    `Day2 rendering ${TOTAL_FRAMES} frames (${DURATION}s) style=${style} character=${CHARACTER_MODE} ` +
     `output=${width}x${height} scale=${scale} voice_engine=${DAY2_TIMING.voice_engine} ` +
     `synthesis_engine_verified=${DAY2_TIMING.synthesis_engine_verified === true} -> ${outFile}`
   );

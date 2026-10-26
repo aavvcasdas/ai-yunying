@@ -39,17 +39,24 @@
   const rnd = i => frac(Math.sin(i * 127.1 + 311.7) * 43758.5453);
 
   /**
-   * Day2 视觉升级：完整姿态图主路线（素材来源见 day2_poses/ATTRIBUTION.md）。
+   * Day2 形象边界：原像素鲸鱼娘仍是正式形象，也是默认渲染结果。
+   * 本节的完整姿态图只是“高清动作候选”，供加更展示和征求观众意见；
+   * 只有渲染器显式传入 candidate，或单个镜头显式写
+   * characterMode: 'candidate' 时才会启用，不能静默替换原形象。
    *
    * 借鉴方法（只做视频，不做桌面宠物）：
    * - DSH：多姿态图切换；用整体 squash 遮掩姿态跳变；按头、肚子、尾巴区分
    *   反应；把伸懒腰、进食、游戏、工作、甩尾做成可被分镜调用的动作别名。
    * - Baifanyu：整图换表情而不是处理脸贴片；约 2.4s 呼吸；行走时整体颠簸
    *   与倾斜；每个姿态按自己的 alpha bbox 设定脚底锚点。
-   * 完整姿态图自带原生眼睛、嘴、服饰与尾巴，因此 L03 的 deadpan 不再经过
-   * 像素眼睑覆盖。素材缺失时仍回退旧骨架，并强制净化 lids/dead。
+   * 原形象路径继续使用像素骨架，但会净化会盖住虹膜的 lids/dead 眼型。
    */
   const DAY2_POSES = globalThis.DAY2_POSES || {};
+  function resolveDay2CharacterMode(o = {}) {
+    if (o.useLegacyPixels || o.characterMode === 'original') return 'original';
+    if (o.characterMode === 'candidate') return 'candidate';
+    return globalThis.DAY2_CHARACTER_MODE === 'candidate' ? 'candidate' : 'original';
+  }
   const POSE_BY_ACTION = {
     eat_white_rice: 'daily-eat', eat_onigiri: 'eat', coin_hug: 'success', hum_working_song: 'meme-music',
     token_wordle_sneak: 'daily-gaming', drag_ahoge: 'react-head', sleep_curl: 'sleep', wake_stretch: 'daily-stretch',
@@ -325,7 +332,7 @@
   }
 
   function whaleGirl(ctx, x, y, u, o = {}) {
-    if (!o.useLegacyPixels && drawDay2Sprite(ctx, x, y, u, o)) return true;
+    if (resolveDay2CharacterMode(o) === 'candidate' && drawDay2Sprite(ctx, x, y, u, o)) return true;
     return whaleGirlBase(ctx, x, y, u, {
       style: 'pixel',
       showActionBadge: false,
