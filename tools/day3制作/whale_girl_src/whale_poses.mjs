@@ -38,7 +38,22 @@ export const POSES = {
   tail_wag_dance:    { file: 'whale_tail_wag_dance.png',    foot: 0.991, tag: '摇尾跳舞' },
   jump_joy:          { file: 'whale_jump_joy.png',          foot: 0.979, tag: '跳跃' },
   toast_cheers:      { file: 'whale_toast_cheers.png',      foot: 0.989, tag: '举杯' },
-  umbrella_stroll:   { file: 'whale_umbrella_stroll.png',   foot: 0.987, tag: '撑伞' }
+  umbrella_stroll:   { file: 'whale_umbrella_stroll.png',   foot: 0.987, tag: '撑伞' },
+
+  // ---- v8：重出的三张（玫瑰重画；走路/跑步给了明确的迈步姿势，腿再由骨架摆）----
+  rose_bouquet: { file: 'whale_rose_bouquet.png', foot: 0.984, tag: '捧玫瑰' },
+  walk_a:       { file: 'whale_walk_a.png',       foot: 0.982, tag: '迈步 A' },
+  walk_b:       { file: 'whale_walk_b.png',       foot: 0.982, tag: '迈步 B' },
+  run_a:        { file: 'whale_run_a.png',        foot: 0.979, tag: '奔跑 A' },
+  run_b:        { file: 'whale_run_b.png',        foot: 0.985, tag: '奔跑 B' },
+
+  // ---- v8：最后 4 个复用别人立绘的动作，补上专属图 ----
+  guitar_strum:       { file: 'whale_guitar_strum.png',       foot: 0.989, tag: '弹吉他' },
+  sparkler_firework:  { file: 'whale_sparkler_firework.png',  foot: 0.989, tag: '仙女棒' },
+  shock_petrify:      { file: 'whale_shock_petrify.png',      foot: 0.988, tag: '石化' },
+  cry_fountain:       { file: 'whale_cry_fountain.png',       foot: 0.989, tag: '大哭' },
+  fatfish_transform:  { file: 'whale_fatfish_transform.png',  foot: 0.987, tag: '变身' },
+  drag_ahoge_swing:   { file: 'whale_drag_ahoge_swing.png',   foot: 0.970, tag: '悬空乱蹬' }
 };
 
 export const POSE_NAMES = Object.keys(POSES);

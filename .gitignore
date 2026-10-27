@@ -19,3 +19,15 @@ tools/day3制作/whale_girl_src/rig_preview/
 
 # Day3 渲染器运行时生成的引擎补丁副本（改 engine_patches.mjs 再重建，不入库）
 video-fx/src/whale_girl.day3.js
+
+# Day2 加更成片重渲时临时拷进 video-fx 检出的运行期文件（源在 tools/day2加更制作/）
+video-fx/assets/day2_poses/
+video-fx/assets/day2_bonus_final_envelope.js
+video-fx/assets/day2_bonus_final_track.wav
+video-fx/src/day2_bonus_final_timing.js
+video-fx/src/ch/day2_bonus_final_all.js
+video-fx/render_day2_bonus_final.mjs
+video-fx/stills/
+
+# 复刻样片的单帧复检图（成片才是交付物）
+Day3/成片/旧动作复刻样片/still_*.png

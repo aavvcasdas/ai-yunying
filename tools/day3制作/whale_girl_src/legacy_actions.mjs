@@ -134,6 +134,40 @@ const M = {
     const a = sin(t * 3.6);
     return { root: { dx: 6 * a, rot: 0.03 * a }, bones: { ...hair(t, 0.14), armL: { rot: -0.85 - 0.15 * a }, armR: { rot: 0.85 + 0.15 * a }, head: { rot: -0.05 * a }, tail: { rot: 0.22 * sin(t * 3.0) } } };
   },
+  // 走路（腿骨驱动）：两步一拍，交替摆腿 + 上下起伏 + 手臂反向摆；位移由外层 dx 给
+  walk_cycle: (t) => {
+    const ph = (t * 2.6) % (Math.PI * 2);
+    const swing = Math.sin(ph);
+    return {
+      root: { dy: -4 * Math.abs(Math.cos(ph)) },
+      bones: {
+        legL: { rot: 0.30 * swing }, legR: { rot: -0.30 * swing },
+        armL: { rot: -0.22 * swing }, armR: { rot: 0.22 * swing },
+        spine: { rot: 0.03 + 0.015 * swing },
+        head: { rot: -0.02 - 0.01 * swing },
+        hairL: { rot: 0.12 * Math.sin(ph - 0.9) }, hairR: { rot: -0.12 * Math.sin(ph - 0.9) },
+        tail: { rot: 0.18 * Math.sin(ph - 1.1) }
+      },
+      lift: 0.10 * Math.abs(Math.sin(ph))
+    };
+  },
+  // 冲刺（腿骨驱动）：幅度更大、前倾更多、头发后飘
+  run_cycle: (t) => {
+    const ph = (t * 7.4) % (Math.PI * 2);
+    const swing = Math.sin(ph);
+    return {
+      root: { dy: -9 - 7 * Math.abs(Math.cos(ph)), rot: 0.07 },
+      bones: {
+        legL: { rot: 0.52 * swing }, legR: { rot: -0.52 * swing },
+        armL: { rot: -0.45 * swing }, armR: { rot: 0.45 * swing },
+        spine: { rot: 0.09 + 0.02 * swing },
+        head: { rot: -0.07 },
+        hairL: { rot: 0.26 + 0.08 * Math.sin(ph - 1.0) }, hairR: { rot: 0.26 - 0.08 * Math.sin(ph - 1.0) },
+        tail: { rot: 0.24 * Math.sin(ph - 1.2) }
+      },
+      lift: 0.35 * Math.abs(Math.sin(ph))
+    };
+  },
   walk_step: (t) => {
     const a = sin(t * 4.2);
     return { root: { dx: 16 * clamp(t / 1.6) * 0.6 + 4 * a, dy: -4 * abs(a) }, bones: { ...hair(t, 0.09), legL: { rot: 0.16 * a }, legR: { rot: -0.16 * a }, armL: { rot: 0.14 * a }, armR: { rot: -0.14 * a }, spine: { rot: -0.02 * a }, head: { rot: 0.02 * a }, tail: { rot: 0.12 * sin(t * 4.2 - 0.6) } }, lift: 0.15 * abs(a) };
@@ -151,7 +185,7 @@ export const LEGACY_ACTIONS = [
   { id: 'coin_hug', zh: '抱大金币财迷', dur: 2.6, poses: [{ at: 0, pose: 'coin_hug' }], motion: 'hug_sway', emote: 'sparkle' },
   { id: 'hum_working_song', zh: '哼唱工作歌', dur: 2.6, poses: [{ at: 0, pose: 'hum_working_song' }], motion: 'sing_sway', emote: 'note' },
   { id: 'token_wordle_sneak', zh: '偷吃 Token 玩游戏', dur: 2.8, poses: [{ at: 0, pose: 'token_wordle_sneak' }, { at: 0.62, pose: 'shock' }], motion: 'sneak_look', emote: 'question' },
-  { id: 'drag_ahoge', zh: '拎呆毛悬空', dur: 2.6, poses: [{ at: 0, pose: 'drag_ahoge' }, { at: 0.6, pose: 'playful_fists' }], motion: 'ahoge_pull', emote: 'sweat' },
+  { id: 'drag_ahoge', zh: '拎呆毛悬空', dur: 2.6, poses: [{ at: 0, pose: 'drag_ahoge' }, { at: 0.6, pose: 'drag_ahoge_swing' }], motion: 'ahoge_pull', emote: 'sweat' },
   { id: 'sleep_curl', zh: '蜷尾侧睡流口水', dur: 2.8, poses: [{ at: 0, pose: 'sleep_curl' }], motion: 'sleep_curl', emote: 'sleep' },
   { id: 'wake_stretch', zh: '睡醒伸懒腰', dur: 2.6, poses: [{ at: 0, pose: 'wake_stretch' }], motion: 'stretch_up', emote: null },
   { id: 'ciallo_wink', zh: 'Ciallo～比耶眨眼', dur: 2.4, poses: [{ at: 0, pose: 'ciallo_wink' }], motion: 'wink_pop', emote: 'sparkle' },
@@ -159,21 +193,21 @@ export const LEGACY_ACTIONS = [
   { id: 'confident_hips', zh: '叉腰得意小肥鱼', dur: 2.6, poses: [{ at: 0, pose: 'confident_hips' }], motion: 'hips_cocky', emote: 'sparkle' },
   { id: 'idol_mic_sing', zh: '张开双手握麦高歌', dur: 2.6, poses: [{ at: 0, pose: 'idol_mic_sing' }], motion: 'mic_open', emote: 'note' },
   { id: 'fatfish_working', zh: '狂敲代码打工鱼', dur: 2.6, poses: [{ at: 0, pose: 'fatfish_working' }], motion: 'type_keys', emote: null },
-  { id: 'fatfish_transform', zh: '召唤蓝色大肥鱼', dur: 2.4, poses: [{ at: 0, pose: 'idle' }, { at: 0.42, pose: 'jump_joy' }], motion: 'transform_pop', emote: 'sparkle' },
+  { id: 'fatfish_transform', zh: '召唤蓝色大肥鱼', dur: 2.4, poses: [{ at: 0, pose: 'fatfish_transform' }], motion: 'transform_pop', emote: 'sparkle' },
   { id: 'tail_wag_dance', zh: '摇尾欢快偶像舞', dur: 2.8, poses: [{ at: 0, pose: 'tail_wag_dance' }, { at: 0.5, pose: 'wave' }], motion: 'tail_dance', emote: 'heart' },
   { id: 'jump_joy', zh: '蓄力高跳摘星', dur: 2.6, poses: [{ at: 0, pose: 'idle' }, { at: 0.28, pose: 'jump_joy' }], motion: 'jump_arc', emote: 'sparkle' },
   { id: 'peek_curious', zh: '探头放大镜观察', dur: 2.6, poses: [{ at: 0, pose: 'peek_curious' }], motion: 'peek_tilt', emote: 'question' },
   { id: 'shy_fidget', zh: '害羞对手指扭捏', dur: 2.6, poses: [{ at: 0, pose: 'shy_fidget' }], motion: 'shy_wiggle', emote: 'sweat' },
-  { id: 'shock_petrify', zh: '石化震惊掉下巴', dur: 2.4, poses: [{ at: 0, pose: 'shock' }], motion: 'petrify_shake', emote: 'exclaim' },
-  { id: 'cry_fountain', zh: '暴风哭泣喷泉泪', dur: 2.8, poses: [{ at: 0, pose: 'cry' }], motion: 'cry_sob', emote: 'sweat' },
+  { id: 'shock_petrify', zh: '石化震惊掉下巴', dur: 2.4, poses: [{ at: 0, pose: 'shock_petrify' }], motion: 'petrify_shake', emote: 'exclaim' },
+  { id: 'cry_fountain', zh: '暴风哭泣喷泉泪', dur: 2.8, poses: [{ at: 0, pose: 'cry_fountain' }], motion: 'cry_sob', emote: 'sweat' },
   { id: 'toast_cheers', zh: '举杯畅饮碰杯', dur: 2.6, poses: [{ at: 0, pose: 'toast_cheers' }], motion: 'toast_up', emote: 'sparkle' },
   { id: 'umbrella_stroll', zh: '撑鲸鱼伞漫步听雨', dur: 2.8, poses: [{ at: 0, pose: 'umbrella_stroll' }], motion: 'umbrella_walk', emote: null },
   { id: 'camera_shutter', zh: '举拍立得定格拼图', dur: 2.6, poses: [{ at: 0, pose: 'camera_shutter' }], motion: 'shutter_lean', emote: 'sparkle' },
-  { id: 'guitar_strum', zh: '抱鲸鱼吉他弹唱', dur: 2.6, poses: [{ at: 0, pose: 'wave' }], motion: 'strum_rhythm', emote: 'note' },
-  { id: 'rose_bouquet', zh: '捧红玫瑰凝望落瓣', dur: 2.6, poses: [{ at: 0, pose: 'point' }], motion: 'bouquet_present', emote: 'heart' },
-  { id: 'sparkler_firework', zh: '挥舞双仙女棒烟花', dur: 2.6, poses: [{ at: 0, pose: 'cheer' }], motion: 'fireworks_wave', emote: 'sparkle' },
-  { id: 'walk_brisk', zh: '轻快迈步走', dur: 2.6, poses: [{ at: 0, pose: 'run' }], motion: 'walk_step', emote: null },
-  { id: 'run_sprint', zh: '全力冲刺奔跑', dur: 2.4, poses: [{ at: 0, pose: 'run' }], motion: 'run_fast', emote: null }
+  { id: 'guitar_strum', zh: '抱鲸鱼吉他弹唱', dur: 2.6, poses: [{ at: 0, pose: 'guitar_strum' }], motion: 'strum_rhythm', emote: 'note' },
+  { id: 'rose_bouquet', zh: '捧红玫瑰凝望落瓣', dur: 2.6, poses: [{ at: 0, pose: 'rose_bouquet' }], motion: 'bouquet_present', emote: 'sparkle' },
+  { id: 'sparkler_firework', zh: '挥舞双仙女棒烟花', dur: 2.6, poses: [{ at: 0, pose: 'sparkler_firework' }], motion: 'fireworks_wave', emote: 'sparkle' },
+  { id: 'walk_brisk', zh: '轻快迈步走', dur: 2.6, poses: [{ at: 0, pose: 'walk_a' }, { at: 0.5, pose: 'walk_b' }], motion: 'walk_cycle', emote: null, travel: 320 },
+  { id: 'run_sprint', zh: '全力冲刺奔跑', dur: 2.4, poses: [{ at: 0, pose: 'run_a' }, { at: 0.5, pose: 'run_b' }], motion: 'run_cycle', emote: null, travel: 560 }
 ];
 
 export const LEGACY_MOTIONS = M;

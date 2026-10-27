@@ -214,13 +214,25 @@ function drawAction(ctx, idx, lt) {
   const anim = motionAt(a, lt);
   const rig = rigs[pose];
   if (!rig) return;
-  const u = 62, x = 1150, y = 900;
-  if (prev && rigs[prev] && blend < 1) {
-    drawRigged(ctx, rigs[prev], x, y, u, { anim: motionAt(a, lt - 0.001), alpha: 0.45 * (1 - blend) });
+  const u = 62, y = 900;
+  // 走路/跑步要在画面里真的移动：按 travel 从右往左走（读者视线方向），
+  // 起终点都留在安全区内，不撞骨架小窗和底部字幕条。
+  const travel = a.travel || 0;
+  const x = travel
+    ? 1400 - travel * Math.min(1, lt / Math.max(0.6, a.dur * 0.92))
+    : 1150;
+  // 交叉淡化：普通动作按动作表的 span 渐变；走路/跑步两拍交替太快，
+  // 用 0.12s 的短淡化盖掉硬切，避免出现“双人叠影”。
+  const ghost = a.travel
+    ? (prev && rigs[prev] && lt >= a.dur * 0.5
+        ? 0.40 * (1 - Math.min(1, (lt - a.dur * 0.5) / 0.12)) : 0)
+    : (prev && rigs[prev] ? 0.45 * (1 - blend) : 0);
+  if (ghost > 0.02) {
+    drawRigged(ctx, rigs[prev], x, y, u, { anim: motionAt(a, lt - 0.001), alpha: ghost });
   }
   drawRigged(ctx, rig, x, y, u, { anim });
   // 骨架视图：单独一个右上小窗，不叠在人物身上（叠上去像乱线，看不清动作）
-  const bx = 372, by = 700, bu = 21;
+  const bx = travel ? Math.max(300, Math.min(372, x - 700)) : 372, by = 700, bu = 21;
   ctx.save();
   ctx.fillStyle = 'rgba(8,16,32,0.45)';
   ctx.strokeStyle = 'rgba(96,165,250,0.30)';
@@ -325,7 +337,7 @@ async function renderStills() {
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
-  const pick = ['peek_curious', 'shy_fidget', 'ciallo_wink', 'camera_shutter', 'coin_hug', 'playful_fists'];
+  const pick = ['peek_curious', 'shy_fidget', 'ciallo_wink', 'camera_shutter', 'coin_hug', 'playful_fists', 'rose_bouquet', 'walk_brisk', 'run_sprint'];
   for (const id of pick) {
     const idx = LEGACY_ACTIONS.findIndex(a => a.id === id);
     if (idx < 0) continue;

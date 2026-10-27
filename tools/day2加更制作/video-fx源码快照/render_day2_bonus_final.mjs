@@ -14,7 +14,7 @@ import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // Snapshot convention: this renderer may be copied either to the video-fx
@@ -126,6 +126,27 @@ async function loadDay2Poses() {
 }
 globalThis.DAY2_POSES = await loadDay2Poses();
 globalThis.DAY2_POSE_COUNT = DAY2_POSE_NAMES.length;
+
+// ---------------------------------------------------------------------------
+// 高清说话人：老 rig 的 pixel whaleGirl 只剩「画说话人」这一个用途，把同一签名的
+// 调用换成 Day3 的高清立绘 + 10 骨骨架；电视里那 28/39 个目录项不动，它们本来就
+// 是「旧画质」的对照组。DAY2_HD_SPEAKER=0 可以退回像素版做对比。
+// ---------------------------------------------------------------------------
+const HD_SPEAKER = process.env.DAY2_HD_SPEAKER !== '0';
+if (HD_SPEAKER) {
+  const hdDir = process.env.DAY3_SPRITE_DIR ||
+    path.resolve(ROOT, '..', 'tools', 'day3制作', 'whale_girl_src');
+  const packUrl = pathToFileURL(path.join(hdDir, 'hd_speaker_pack.mjs')).href;
+  const { createHdSpeaker } = await import(packUrl);
+  const hdSpeaker = await createHdSpeaker({ createCanvas, loadImage, dir: hdDir, onLog: console.log });
+  await hdSpeaker.preload();
+  const WG = globalThis.WHALE_GIRL || {};
+  const baseWhale = WG.whaleGirl;
+  WG.whaleGirl = (ctx, x, y, u, o = {}) =>
+    hdSpeaker.draw(ctx, x, y, u, o) || baseWhale.call(WG, ctx, x, y, u, o);
+  globalThis.WHALE_GIRL = WG;
+  globalThis.HD_SPEAKER_PACK = hdSpeaker;
+}
 
 const FINAL_SCENE_REL = fs.existsSync(path.join(HERE, 'day2_bonus_final_all.js'))
   ? './day2_bonus_final_all.js'
@@ -325,6 +346,7 @@ function drawHud(t) {
   text(`非官方同人 · AI 生成内容 · ${t.toFixed(1)}s`, WIDTH - 16, 26, 17, '#E2E8F0', 'right', 700);
 }
 function drawFrame(t) {
+  globalThis.__HD_T = t;               // 高清说话人的骨骼动画时钟
   ctx.save();
   ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
   ctx.clearRect(0, 0, WIDTH, HEIGHT);

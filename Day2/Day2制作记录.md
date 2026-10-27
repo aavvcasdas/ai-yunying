@@ -329,3 +329,58 @@ FFMPEG_BIN=<ffmpeg> node render_day2_bonus_final.mjs \
 41 秒后的长停顿已删除：生产轨不再插入 22.800s 无台词段，B06 从旧版 65.080s 提前到源 WAV 原有节奏的 42.280s，B07–B09 同步回位到 52.825s、60.260s、72.565s。电视目录改为 10.630–52.630s 共 42.000s，左侧 28 个动作每项 1.500000s、右侧 39 张姿势每项 1.076923s；它在 B06 台词下方继续播放，并于 B06/B07 的实测间隔内完成。B06 镜头不再用 `peek_curious/shock_petrify/curious/failure` 覆盖目录项目，只叠加评论气泡、计数牌与电视底座计数。
 
 QA：渲染前生成并实际查看 138 张静帧（首帧、9 cue 各三点、39 个分句字幕中点、28 个动作中点、39 张姿势中点、B05/B06 衔接、B06 目录重叠、目录完成和尾帧），另对 B01 的 `thinking` 与多处 `peek_curious` 做脸部近景放大，确认红色嘴部方块和下巴横线贴片消失。成片完整解码退出码 0，视频流回读 2469 帧；再从 MP4 本体抽取 0.100s、2.805s、4.488s、13.650s、41.700s、42.500s、47.455s、52.730s、65.000s、81.500s 共 10 帧复核。生产 WAV 峰值 0.889236、削波 0；MP4 解码音频峰值 0.881927、削波 0，`volumedetect` mean/max 为 -17.1/-1.1dB，`loudnorm` 输入综合响度 -12.92 LUFS、真峰值 -1.09dBTP、LRA 2.90。48kHz 单声道 5ms RMS 包络最佳偏移 0.000s（相关系数 0.999967）。新 timing、生产轨、包络和对齐报告 SHA-256 分别为 `a62213af5c059d6eec07abb5aa8cbb3fcec8419c9dd33b56ea4094b3de2fef3a`、`9946c074eb82cbf17b5b04a907b57c8a1244091e994fd0e80363b4030822c60b`、`7d2523ed47c0f1952dd8f3d3f460cfd8cfcac8d3089ab0a8e84632d4316f7f2c`、`e8bfb4bdb247ee8daa943df4c81c133503eee21d5c489204edda8767eb24bc41`。复现命令同第十一节，渲染器现额外拒绝 `insert_duration != 0`、缺少分句字幕或 `script_pause_inserted != false` 的旧 timing。
+
+## 十三、2026-10-27 按指定 WAV 重渲：说话人换高清立绘，电视目录保持原素材
+
+用户要求「按仓库根目录 `鲸鱼选鱼_克隆配音_最终版.wav` 重新生成带配音的视频」，并确认画面方案为
+**说话人换新版高清立绘、电视里那 28/39 个目录项保持原素材**（那正是片子里“旧画质”的对照组）。
+
+### 1. 音源核对
+
+`鲸鱼选鱼_克隆配音_最终版.wav` 的 SHA-256 为 `be19eac421d18b73354c72bc395162e087bfc864d652ae0720b84c4f5d82e821`，
+与 `tools/day2加更制作/bonus_audio_final/alignment_report.json` 记录的 `source_sha256` 完全一致——
+第十二节那版成片本来就是这支 WAV 渲的。本轮重跑 `gen_bonus_finalvoice.py` 得到同一份 9-cue 实测 timing
+（B01 0.000 / B02 5.685 / B03 10.280 / B04 19.965 / B05 28.795 / B06 42.280 / B07 52.825 / B08 60.260 / B09 72.565，
+尾保 80.700–82.300），没有任何时间被重算成估算值。
+
+### 2. 说话人：像素 rig → 高清立绘 + 10 骨骨架
+
+老场景统一用 `WHALE_GIRL.whaleGirl(ctx, x, y, u, o)` 画鲸鱼娘，`o.action` 就是 `ACTION_LIST` 的旧动作 id。
+新增 `tools/day3制作/whale_girl_src/hd_speaker_pack.mjs`，保持同一签名，把内部实现换成
+Day3 的高清立绘 + 10 骨骨架（`drawRigged`），动作映射沿用 `MAIN_POSE_TO_PIXEL`（`peek_curious / jump_joy /
+confident_hips / eat_white_rice / wake_stretch / token_wordle_sneak / shock_petrify / shy_fidget`）。
+`render_day2_bonus_final.mjs` 在 require 场景之前替换 `WHALE_GIRL.whaleGirl`（场景是解构取值，必须抢在前面），
+每帧把时间写进 `globalThis.__HD_T` 供骨骼动画取时钟；`DAY2_HD_SPEAKER=0` 可退回像素版做对照。
+
+两处坐标口径要换算，否则人物会跑到画面外或脚下悬空：
+
+- `drawRigged` 的 `x` 是**立绘左缘**，场景给的 `x` 是人物**中线** → 按内容包围盒 `bbox.x + bbox.w/2` 反推；
+- 像素 rig 的 `u` 与高清立绘不同量级，`spriteH` 取 **8.6u** 才和原构图等高（人物站姿高度、脚底线、影子都回到原位）。
+
+电视左右两格（28 个动作 / 39 张姿势）继续用 `assets/day2_poses/dsh-whale-state-*.webp`，一张没换。
+
+### 3. 重渲结果
+
+```bash
+cp tools/day2加更制作/video-fx源码快照/{day2_bonus_final_all.js} video-fx/src/ch/
+cp tools/day2加更制作/video-fx源码快照/render_day2_bonus_final.mjs video-fx/
+cp tools/day2制作/video-fx源码快照/day2_poses/*.webp video-fx/assets/day2_poses/
+/tmp/venv/bin/python tools/day2加更制作/gen_bonus_finalvoice.py --video-fx-root video-fx
+FFMPEG_BIN=<ffmpeg> node render_day2_bonus_final.mjs --out 'Day2/成片/加更/Day2加更_鲸鱼选鱼_最终配音版.mp4'
+```
+
+| 文件 | 规格 | 大小 | SHA-256 |
+|---|---|---:|---|
+| `成片/加更/Day2加更_鲸鱼选鱼_最终配音版.mp4` | 82.300s、2469 帧、1920×1080、30fps、H.264 High/yuv420p 7656kb/s、AAC LC 48kHz 立体声 160kb/s | 80,509,007 bytes | `01b6ad96c51f9b0bef412977e43402e2d6629ab4bd2235394eb359ab439888de` |
+
+### 4. QA
+
+- 全片 `ffmpeg -f null -` 解码退出码 0；`blackdetect=d=0.05:pix_th=0.10` 命中 **0** 处；
+- 视频流回读 2469 帧、`Duration 00:01:22.30`，音轨 48kHz 立体声；
+- 抽出成片音轨的 PCM（48kHz/16bit/立体声）与第十二节旧成片逐样比对，**md5 完全相同**（`f8a2525…`），
+  证明重渲没有动过配音轨；
+- 静帧复核 B01/B03/B04/B05/B06/B08/B09/尾保共 138 张，说话人已是高清立绘，动作对得上台词
+  （B05「白饭碗都还在」时正抱着饭碗、B09 边吃边等）。
+
+重渲前的像素版成片只保留为历史，不再作为交付文件。
+
