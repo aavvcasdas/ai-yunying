@@ -29,6 +29,8 @@ import { buildRig, drawRigged } from '../whale_girl_src/whale_rig.mjs';
 import { LEGACY_MOTIONS } from '../whale_girl_src/legacy_actions.mjs';
 // Claude 大小姐改用素材库立绘（CC BY-NC-SA 4.0，见 tools/day3制作/claude_src/ATTRIBUTION.md）
 import { CLAUDE_POSES, CLAUDE_SHOT_POSE, CLAUDE_ACTION_POSE } from '../claude_src/claude_poses.mjs';
+// 项目统一字幕（Day2 加更版）：见 tools/字幕/day2_style_sub.mjs
+import { createDay2Subtitle, speakerFor } from '../../字幕/day2_style_sub.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -177,6 +179,25 @@ const cueP = (t, n) => clamp((t - C(n)) / Math.max(0.001, SD(n)));
 const popAt = (t, n, a, b) => seg(cueP(t, n), a, b);
 
 const FPS = 30;
+// ---------------------------------------------------------------------------
+// 项目级默认值（用户 2026-10-27 定：这些不用再问，默认就走这套）
+//   字幕 = Day2 加更版：短分句 + 说话人小标签 + 紧凑对话条，一屏一句，
+//          **不做逐字点亮**（逐字只在 DAY3_SUB_STYLE=karaoke 时可用，历史对照用）
+//   角色 = 现在的：鲸鱼娘走 whale_girl_src 的高清姿势 + 骨架（34×54 网格），
+//          Claude 大小姐走 claude_src/chibi 的 Q 版贴纸；正比例 full/ 与几何像素立绘
+//          都不再作为默认或回退。
+// 覆盖方式只有环境变量，不写死在镜头里：
+//   DAY3_SUB_STYLE      day2（默认）| karaoke | plain
+//   DAY3_WHALE_DIR      鲸鱼娘姿势目录，默认 ../whale_girl_src
+//   DAY3_CLAUDE_DIR     大小姐姿势目录，默认 ../claude_src/chibi
+// ---------------------------------------------------------------------------
+const SUB_STYLE = (process.env.DAY3_SUB_STYLE || 'day2').toLowerCase();
+const DEFAULTS = {
+  subStyle: SUB_STYLE,
+  whaleDir: process.env.DAY3_WHALE_DIR ? path.basename(process.env.DAY3_WHALE_DIR) : 'whale_girl_src',
+  claudeDir: process.env.DAY3_CLAUDE_DIR ? path.basename(process.env.DAY3_CLAUDE_DIR) : 'claude_src/chibi'
+};
+
 const BASE_W = W, BASE_H = H;              // 1280×720 逻辑栅格
 const SCALE = 1.5;                          // 输出 1920×1080
 const OUT_W = Math.round(BASE_W * SCALE), OUT_H = Math.round(BASE_H * SCALE);
@@ -753,16 +774,35 @@ const CLAUDE_MOTION = {
   idle: 'idle_breathe', explain: 'type_keys', wave_hand: 'toast_up', refuse: 'fists_shake',
   present: 'bouquet_present', mic: 'mic_open', shocked: 'ahoge_pull', flustered: 'petrify_shake', signoff: 'hips_cocky'
 };
+let CLAUDE_MISS_WARNED = false;
 function LCG(ctx, x, y, u, o = {}) {
   const { t = 0, sq = 0, rot = 0, alpha = 1 } = o;
-  // 姿势优先级：显式 pose > 动作语义 > 当前镜头默认图 > greet
+  // 姿势优先级：显式 pose > 动作语义 > 当前镜头默认图 > 表里任一可用图
+  // 默认只认 claude_src/chibi 的 Q 版；**不再回退几何像素立绘**（v10/v11 两个画风事故
+  // 都是这个静默回退造成的：17s 变身段、片尾卡各出现过一次块状像素大小姐）。
   let pose = o.pose;
   if (!pose && o.action && CLAUDE_ACTION_POSE[o.action]) pose = CLAUDE_ACTION_POSE[o.action];
-  if (!pose) pose = CLAUDE_SHOT_POSE[o.cue ?? CURRENT_CUE] || 'greet';
-  if (!CLAUDE_IMGS[pose]) pose = 'greet';
+  if (!pose) pose = CLAUDE_SHOT_POSE[o.cue ?? CURRENT_CUE];
+  if (!pose || !CLAUDE_IMGS[pose]) {
+    // 优先按「就近镜头」找一张，再退到 curtsy / cheer，最后取已加载的第一张
+    for (let k = 1; k <= 19 && !CLAUDE_IMGS[pose]; k++) {
+      for (const q of [(o.cue ?? CURRENT_CUE) - k, (o.cue ?? CURRENT_CUE) + k]) {
+        if (q > 0 && CLAUDE_SHOT_POSE[q] && CLAUDE_IMGS[CLAUDE_SHOT_POSE[q]]) {
+          pose = CLAUDE_SHOT_POSE[q];
+          break;
+        }
+      }
+    }
+    if (!CLAUDE_IMGS[pose]) pose = CLAUDE_IMGS.curtsy ? 'curtsy' : Object.keys(CLAUDE_IMGS)[0];
+    if (!CLAUDE_IMGS[pose]) console.warn('⚠️ 大小姐素材一张都没加载，本帧不画大小姐');
+    if (!CLAUDE_MISS_WARNED && o.pose !== pose) {
+      CLAUDE_MISS_WARNED = true;
+      console.warn(`  提示：镜头 ${o.cue ?? CURRENT_CUE} 没有专属姿势，改用 ${pose}`);
+    }
+  }
   const img = CLAUDE_IMGS[pose];
   if (!img) {
-    // —— 兜底：素材没加载时仍用原来的几何立绘 ——
+    // —— 只有「素材完全没加载」才走这里；正常渲染不会到这里 ——
     ctx.save();
     ctx.globalAlpha *= alpha;
     ctx.translate(x, y);
@@ -1416,23 +1456,64 @@ function drawKaraokeSub(ctx, t, cue, vis) {
   ctx.restore();
 }
 
+// ---------------------------------------------------------------------------
+// 字幕：默认走 **Day2 加更版**（用户 2026-10-27 定死）
+//
+// 形状与 Day2 加更《鲸鱼选鱼》完全一致：
+//   · 短分句上屏（一屏一个子句），按**标点**分句，不按字数硬切；
+//   · 每屏一个小圆角对话条：填充 rgba(9,22,54,0.92) + 1.6px #48C8FF 描边 + r12；
+//   · 左上角一枚说话人小标签（#1E40AF 底 + #FACC15 描边 + #FDE68A 字）；
+//   · 正文白色 800 字重，28px 起，超 1040 宽自动缩字号（最小 800 宽仍放不下才换行）；
+//   · 分句一直显示到下一句开始（不做逐字点亮、不做整句一屏）。
+//
+// 逐字（卡拉OK）版本保留在 DAY3_SUB_STYLE=karaoke 下，供对照与历史复现；
+// 默认不再走它 —— 用户明确要「以后所有默认走 Day2 加更版」。
+// ---------------------------------------------------------------------------
+const SUB_FONT = '"NotoSansSC", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif';
+const subFontOf = (size, weight) => `${weight} ${size}px ${SUB_FONT}`;
+// 只用来量字宽的小画布（不参与绘制，避免污染主 ctx 的 save/restore 栈）
+const subMeasureCtx = createCanvas(8, 8).getContext('2d');
+const SUB = createDay2Subtitle({ fontOf: subFontOf, measureCtx: subMeasureCtx });
+
+// 分句表按 cue 缓存（同一 cue 每帧都会问一次）
+function buildClauseSegments(cue) {
+  if (!cue._clauses) cue._clauses = SUB.clauses(cue.text, cue.chars, cue.start, cue.end);
+  return cue._clauses;
+}
+
+function speakerOf(cueIdx) {
+  return speakerFor({ isClaude: charFormAt(cueIdx + 1) === FORM.CLAUDE });
+}
+
 function drawSubtitle(ctx, t) {
   const idx = CUES.findIndex(c => t >= c.start && t < c.end);
   if (idx < 0) return;
   const cue = CUES[idx];
+  const enter = easeOut(clamp((t - cue.start) / 0.16));
+  const exit = 1 - ease(clamp((t - (cue.end - 0.14)) / 0.14));
+  const vis = enter * exit;
+  if (vis < 0.02) return;
+
+  // —— 默认：Day2 加更版（短分句 + 说话人标签）——
+  if (SUB_STYLE === 'day2') {
+    const segs = buildClauseSegments(cue);
+    const seg = SUB.segmentAt(segs, t);
+    SUB.draw(ctx, { lines: SUB.wrap(seg.text), speaker: speakerOf(idx), vis, W, H });
+    return;
+  }
+
+  // —— 历史对照 1：逐字（卡拉OK）——
+  if (SUB_STYLE === 'karaoke' && cue.chars) {
+    if (!cue.chunks) cue.chunks = buildSubChunks(cue.chars);
+    if (cue.chunks) { drawKaraokeSub(ctx, t, cue, vis); return; }
+  }
+
+  // —— 历史对照 2：整句一屏（v1 的做法）——
   const spec = SUBS[idx];
   const localP = clamp((t - cue.start) / Math.max(0.001, cue.end - cue.start));
   const txt = Array.isArray(spec)
     ? (spec.filter(([p0]) => localP >= p0).pop() || spec[0])[1]
     : spec;
-  const enter = easeOut(clamp((t - cue.start) / 0.16));
-  const exit = 1 - ease(clamp((t - (cue.end - 0.14)) / 0.14));
-  const vis = enter * exit;
-  if (vis < 0.02) return;
-  if (cue.chars) {
-    if (!cue.chunks) cue.chunks = buildSubChunks(cue.chars);
-    if (cue.chunks) { drawKaraokeSub(ctx, t, cue, vis); return; }
-  }
   ctx.save();
   ctx.font = 'bold 26px "NotoSansSC", "ZCOOLKuaiLe", sans-serif';
   const tw = ctx.measureText(txt).width;
@@ -2450,6 +2531,8 @@ async function renderVideo(outFile) {
 
 const args = process.argv.slice(2);
 await loadPose();
+console.log(`字幕样式：${DEFAULTS.subStyle === 'day2' ? 'Day2 加更版（分句 + 说话人标签，默认）' : DEFAULTS.subStyle}`);
+console.log(`角色默认：鲸鱼娘 ${DEFAULTS.whaleDir}（高清姿势 + 骨架）／大小姐 ${DEFAULTS.claudeDir}（Q 版）`);
 const timesArg = argOf('--times');
 if (timesArg) {
   const dir = path.resolve(__dirname, 'day3_stills');
