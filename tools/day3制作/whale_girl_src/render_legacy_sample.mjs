@@ -217,9 +217,13 @@ function drawAction(ctx, idx, lt) {
   const u = 62, y = 900;
   // 走路/跑步要在画面里真的移动：按 travel 从右往左走（读者视线方向），
   // 起终点都留在安全区内，不撞骨架小窗和底部字幕条。
-  const travel = a.travel || 0;
+  const travel = process.env.STRIP_NO_TRAVEL ? 0 : (a.travel || 0);
+  // drawRigged 的 x 是立绘左缘；这里按人物中线算起点，让走/跑从和其他卡片一样的位置出发，
+  // 再沿中线向左走 travel 像素。
+  const spriteH = 12 * u;
+  const cxo = (rig.bbox.x + rig.bbox.w / 2) * (spriteH / rig.h);
   const x = travel
-    ? 1400 - travel * Math.min(1, lt / Math.max(0.6, a.dur * 0.92))
+    ? 1500 - travel * Math.min(1, lt / Math.max(0.6, a.dur * 0.92)) - cxo
     : 1150;
   // 交叉淡化：普通动作按动作表的 span 渐变；走路/跑步两拍交替太快，
   // 用 0.12s 的短淡化盖掉硬切，避免出现“双人叠影”。
@@ -333,6 +337,42 @@ async function renderAll() {
   console.log(`✓ ${OUT_FILE} (${(fs.statSync(OUT_FILE).size / 1e6).toFixed(2)} MB)`);
 }
 
+// 快速验收：把某个动作卡片内的 12 帧拼成一张联络表，用来判断腿到底动没动
+async function renderStrip(actionId) {
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  const idx = LEGACY_ACTIONS.findIndex(a => a.id === actionId);
+  if (idx < 0) throw new Error(`no such action: ${actionId}`);
+  const cv = createCanvas(W, H);
+  const ctx = cv.getContext('2d');
+  const COLS = 4, ROWS = 3;
+  const crop = (process.env.STRIP_CROP || '').split(',').map(Number);
+  const useCrop = crop.length === 4 && crop.every((v) => Number.isFinite(v));
+  const CW = useCrop ? crop[2] : Math.round(W / COLS / 2);
+  const CH = useCrop ? crop[3] : Math.round(H / ROWS / 2);
+  const sheet = createCanvas(CW * COLS, CH * ROWS);
+  const sctx = sheet.getContext('2d');
+  const a = LEGACY_ACTIONS[idx];
+  const start = INTRO + idx * CARD;
+  for (let i = 0; i < COLS * ROWS; i++) {
+    const t = start + (a.dur * (i + 0.5)) / (COLS * ROWS);
+    drawScene(ctx, t);
+    if (useCrop) {
+      sctx.drawImage(cv, crop[0], crop[1], crop[2], crop[3],
+        (i % COLS) * CW, Math.floor(i / COLS) * CH, CW, CH);
+    } else {
+      sctx.drawImage(cv, (i % COLS) * CW, Math.floor(i / COLS) * CH, CW, CH);
+    }
+    sctx.fillStyle = 'rgba(0,0,0,0.55)';
+    sctx.fillRect((i % COLS) * CW, Math.floor(i / COLS) * CH, 74, 20);
+    sctx.fillStyle = '#fff';
+    sctx.font = 'bold 13px sans-serif';
+    sctx.fillText(`+${(t - start).toFixed(2)}s`, (i % COLS) * CW + 5, Math.floor(i / COLS) * CH + 15);
+  }
+  const out = path.join(OUT_DIR, `strip_${actionId}.png`);
+  fs.writeFileSync(out, sheet.toBuffer('image/png'));
+  console.log(`strip ${actionId} -> ${out}`);
+}
+
 async function renderStills() {
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const canvas = createCanvas(W, H);
@@ -349,4 +389,11 @@ async function renderStills() {
 }
 
 if (process.argv.includes('--stills')) await renderStills();
+const stripArg = process.argv.indexOf('--strip');
+if (stripArg >= 0) {
+  for (const id of process.argv.slice(stripArg + 1).filter((v) => !v.startsWith('--'))) {
+    await renderStrip(id);
+  }
+  process.exit(0);
+}
 else await renderAll();

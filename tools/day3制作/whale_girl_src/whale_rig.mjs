@@ -134,8 +134,9 @@ export function buildRig(img, opts = {}) {
   const m = opts.mask || measureMask(img, ctxFactory);
   const bones = skeletonFromMask(m);
   const { w, h, bbox: B } = m;
-  const nx = opts.nx || 18, ny = opts.ny || 26;
+  const nx = opts.nx || 34, ny = opts.ny || 54;
 
+  const cxB = bones.root.head.x;   // 人物中线（腿骨左右分界用）
   const verts = [];
   const weights = [];
   for (let j = 0; j <= ny; j++) {
@@ -153,6 +154,18 @@ export function buildRig(img, opts = {}) {
         // root 是"兜底骨"，给一个不会死掉的底权重
         let wgt = Math.exp(-Math.pow(d / s, 2));
         if (name === 'root') wgt = Math.max(wgt, 0.10);
+        // 腿骨不许影响髋线以上的部分：否则摆腿会把腰和裙摆一起扯变形。
+        if (name === 'legL' || name === 'legR') {
+          const hipY = bones.root.head.y;
+          // 髋线以上完全归躯干；髋线以下把腿骨权重放大，免得被 root/spine 摊平成“腿不动”。
+          // 髋线到裙摆下缘之间归躯干（裙子不许被腿扯变形），只有裙摆以下的小腿/鞋才吃腿骨。
+          let below = clamp((py - (hipY + 0.125 * h)) / (0.06 * h));
+          below = below * below * (3 - 2 * below);
+          wgt *= below * 3.0;
+          // 左右腿之间也别互相拽：按中线做软分界。
+          const side = name === 'legL' ? (cxB - px) : (px - cxB);
+          wgt *= clamp(0.5 + side / (0.06 * h));
+        }
         ws.push([name, wgt]);
         sum += wgt;
       }

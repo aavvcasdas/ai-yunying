@@ -134,38 +134,51 @@ const M = {
     const a = sin(t * 3.6);
     return { root: { dx: 6 * a, rot: 0.03 * a }, bones: { ...hair(t, 0.14), armL: { rot: -0.85 - 0.15 * a }, armR: { rot: 0.85 + 0.15 * a }, head: { rot: -0.05 * a }, tail: { rot: 0.22 * sin(t * 3.0) } } };
   },
-  // 走路（腿骨驱动）：两步一拍，交替摆腿 + 上下起伏 + 手臂反向摆；位移由外层 dx 给
+  // 走路（腿骨驱动）：站立底图不动，两条腿在裙摆以下交替“抬起 + 外撇”，
+  // 配合身体起伏、手臂反相和整身位移 —— 就是旧版 hipL/hipR 的那套读法。
   walk_cycle: (t) => {
-    const ph = (t * 2.6) % (Math.PI * 2);
-    const swing = Math.sin(ph);
+    const ph = (t * 7.2) % (Math.PI * 2);
+    const raw = Math.sin(ph), c = Math.cos(ph);
+    // 用 sign·|sin|^0.65 把摆动在前后两端多停一会儿，落地感更像“迈步”而不是匀速摆
+    const s = Math.sign(raw) * Math.pow(Math.abs(raw), 0.65);
+    // 摆腿会让脚离地 L*(1-cosθ)（L≈髋到脚 0.24 立绘高）；这里补回去，
+    // 脚底始终贴着地面线，否则脚一抬就被裙摆的三角面挡住，看起来像“腿没了”。
+    const rotW = 0.46 * s;
+    const groundFix = 0.24 * 1024 * (1 - Math.cos(rotW));
     return {
-      root: { dy: -4 * Math.abs(Math.cos(ph)) },
+      root: { dy: -6 * Math.abs(c), rot: 0.015 * s },
       bones: {
-        legL: { rot: 0.30 * swing }, legR: { rot: -0.30 * swing },
-        armL: { rot: -0.22 * swing }, armR: { rot: 0.22 * swing },
-        spine: { rot: 0.03 + 0.015 * swing },
-        head: { rot: -0.02 - 0.01 * swing },
-        hairL: { rot: 0.12 * Math.sin(ph - 0.9) }, hairR: { rot: -0.12 * Math.sin(ph - 0.9) },
-        tail: { rot: 0.18 * Math.sin(ph - 1.1) }
+        legL: { rot: rotW, dy: groundFix },
+        legR: { rot: -rotW, dy: groundFix },
+        armL: { rot: -0.26 * s }, armR: { rot: 0.26 * s },
+        spine: { rot: 0.02 + 0.015 * s },
+        head: { rot: -0.02 - 0.012 * s },
+        hairL: { rot: 0.14 * Math.sin(ph - 0.9) }, hairR: { rot: -0.14 * Math.sin(ph - 0.9) },
+        tail: { rot: 0.20 * Math.sin(ph - 1.1) }
       },
-      lift: 0.10 * Math.abs(Math.sin(ph))
+      lift: 0.10 * Math.abs(s)
     };
   },
-  // 冲刺（腿骨驱动）：幅度更大、前倾更多、头发后飘
+  // 冲刺（腿骨驱动）：同样的交替抬腿，幅度更大、前倾更多、腾空更高
   run_cycle: (t) => {
-    const ph = (t * 7.4) % (Math.PI * 2);
-    const swing = Math.sin(ph);
+    const ph = (t * 11.0) % (Math.PI * 2);
+    const raw = Math.sin(ph), c = Math.cos(ph);
+    const s = Math.sign(raw) * Math.pow(Math.abs(raw), 0.6);
+    const rotR = 0.64 * s;
+    // 跑的时候允许离地，但也补掉七成，免得脚整条被裙摆吞掉
+    const groundFix = 0.7 * 0.24 * 1024 * (1 - Math.cos(rotR));
     return {
-      root: { dy: -9 - 7 * Math.abs(Math.cos(ph)), rot: 0.07 },
+      root: { dy: -16 - 22 * Math.abs(c), rot: 0.075 },
       bones: {
-        legL: { rot: 0.52 * swing }, legR: { rot: -0.52 * swing },
-        armL: { rot: -0.45 * swing }, armR: { rot: 0.45 * swing },
-        spine: { rot: 0.09 + 0.02 * swing },
+        legL: { rot: rotR, dy: groundFix },
+        legR: { rot: -rotR, dy: groundFix },
+        armL: { rot: -0.42 * s }, armR: { rot: 0.42 * s },
+        spine: { rot: 0.09 + 0.02 * s },
         head: { rot: -0.07 },
-        hairL: { rot: 0.26 + 0.08 * Math.sin(ph - 1.0) }, hairR: { rot: 0.26 - 0.08 * Math.sin(ph - 1.0) },
-        tail: { rot: 0.24 * Math.sin(ph - 1.2) }
+        hairL: { rot: 0.26 + 0.10 * Math.sin(ph - 1.0) }, hairR: { rot: 0.26 - 0.10 * Math.sin(ph - 1.0) },
+        tail: { rot: 0.26 * Math.sin(ph - 1.2) }
       },
-      lift: 0.35 * Math.abs(Math.sin(ph))
+      lift: 0.38 * Math.abs(s)
     };
   },
   walk_step: (t) => {
@@ -194,7 +207,7 @@ export const LEGACY_ACTIONS = [
   { id: 'idol_mic_sing', zh: '张开双手握麦高歌', dur: 2.6, poses: [{ at: 0, pose: 'idol_mic_sing' }], motion: 'mic_open', emote: 'note' },
   { id: 'fatfish_working', zh: '狂敲代码打工鱼', dur: 2.6, poses: [{ at: 0, pose: 'fatfish_working' }], motion: 'type_keys', emote: null },
   { id: 'fatfish_transform', zh: '召唤蓝色大肥鱼', dur: 2.4, poses: [{ at: 0, pose: 'fatfish_transform' }], motion: 'transform_pop', emote: 'sparkle' },
-  { id: 'tail_wag_dance', zh: '摇尾欢快偶像舞', dur: 2.8, poses: [{ at: 0, pose: 'tail_wag_dance' }, { at: 0.5, pose: 'wave' }], motion: 'tail_dance', emote: 'heart' },
+  { id: 'tail_wag_dance', zh: '摇尾欢快偶像舞', dur: 2.8, poses: [{ at: 0, pose: 'tail_wag_dance' }, { at: 0.5, pose: 'wave' }], motion: 'tail_dance', emote: null },
   { id: 'jump_joy', zh: '蓄力高跳摘星', dur: 2.6, poses: [{ at: 0, pose: 'idle' }, { at: 0.28, pose: 'jump_joy' }], motion: 'jump_arc', emote: 'sparkle' },
   { id: 'peek_curious', zh: '探头放大镜观察', dur: 2.6, poses: [{ at: 0, pose: 'peek_curious' }], motion: 'peek_tilt', emote: 'question' },
   { id: 'shy_fidget', zh: '害羞对手指扭捏', dur: 2.6, poses: [{ at: 0, pose: 'shy_fidget' }], motion: 'shy_wiggle', emote: 'sweat' },
@@ -206,8 +219,8 @@ export const LEGACY_ACTIONS = [
   { id: 'guitar_strum', zh: '抱鲸鱼吉他弹唱', dur: 2.6, poses: [{ at: 0, pose: 'guitar_strum' }], motion: 'strum_rhythm', emote: 'note' },
   { id: 'rose_bouquet', zh: '捧红玫瑰凝望落瓣', dur: 2.6, poses: [{ at: 0, pose: 'rose_bouquet' }], motion: 'bouquet_present', emote: 'sparkle' },
   { id: 'sparkler_firework', zh: '挥舞双仙女棒烟花', dur: 2.6, poses: [{ at: 0, pose: 'sparkler_firework' }], motion: 'fireworks_wave', emote: 'sparkle' },
-  { id: 'walk_brisk', zh: '轻快迈步走', dur: 2.6, poses: [{ at: 0, pose: 'walk_a' }, { at: 0.5, pose: 'walk_b' }], motion: 'walk_cycle', emote: null, travel: 320 },
-  { id: 'run_sprint', zh: '全力冲刺奔跑', dur: 2.4, poses: [{ at: 0, pose: 'run_a' }, { at: 0.5, pose: 'run_b' }], motion: 'run_cycle', emote: null, travel: 560 }
+  { id: 'walk_brisk', zh: '轻快迈步走', dur: 2.6, poses: [{ at: 0, pose: 'walk_stand' }], motion: 'walk_cycle', emote: null, travel: 320 },
+  { id: 'run_sprint', zh: '全力冲刺奔跑', dur: 2.4, poses: [{ at: 0, pose: 'run_stand' }], motion: 'run_cycle', emote: null, travel: 560 }
 ];
 
 export const LEGACY_MOTIONS = M;

@@ -52,8 +52,12 @@ export const POSES = {
   sparkler_firework:  { file: 'whale_sparkler_firework.png',  foot: 0.989, tag: '仙女棒' },
   shock_petrify:      { file: 'whale_shock_petrify.png',      foot: 0.988, tag: '石化' },
   cry_fountain:       { file: 'whale_cry_fountain.png',       foot: 0.989, tag: '大哭' },
-  fatfish_transform:  { file: 'whale_fatfish_transform.png',  foot: 0.987, tag: '变身' },
-  drag_ahoge_swing:   { file: 'whale_drag_ahoge_swing.png',   foot: 0.970, tag: '悬空乱蹬' }
+  fatfish_transform:  { file: 'whale_fatfish_transform.png',  foot: 0.988, tag: '召唤大肥鱼' },
+  drag_ahoge_swing:   { file: 'whale_drag_ahoge_swing.png',   foot: 0.970, tag: '悬空乱蹬' },
+
+  // ---- v9：走/跑的“站立底图”，迈步完全交给腿骨 ----
+  walk_stand:         { file: 'whale_walk_stand.png',         foot: 0.989, tag: '站立底图（走）' },
+  run_stand:          { file: 'whale_run_stand.png',          foot: 0.988, tag: '站立底图（跑）' }
 };
 
 export const POSE_NAMES = Object.keys(POSES);

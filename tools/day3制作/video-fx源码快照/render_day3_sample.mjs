@@ -133,16 +133,34 @@ const SUBS = [
   [[0, '鲸鱼绝不摸鱼！'], [0.36, '先把蛋吃完，再去吃饭']]
 ];
 
+// ---- 配音版：用实测 cue 表替换占位节奏，并可把用户提供的 WAV 直接混进成片 ----
+const ARGV = process.argv.slice(2);
+const argOf = (flag) => {
+  const i = ARGV.indexOf(flag);
+  return i >= 0 && i + 1 < ARGV.length ? ARGV[i + 1] : null;
+};
+const CUES_JSON = argOf('--cues');
+const AUDIO_WAV = argOf('--audio');
+const VOICE_CUES = CUES_JSON ? JSON.parse(fs.readFileSync(CUES_JSON, 'utf8')) : null;
+if (VOICE_CUES && VOICE_CUES.cue_count !== LINES.length) {
+  throw new Error(`cue 表 ${CUES_JSON} 有 ${VOICE_CUES.cue_count} 条，台词有 ${LINES.length} 条`);
+}
+
 const RATE = 5.6; // 占位：字/秒，只用于无声样片排节奏
 const GAP = 0.18;
 const SAMPLE_CUE_LEN = LINES.map(l => Math.max(2.6, Math.round((l.replace(/[\s，。！？…—：；、]/g, '').length / RATE + 0.6) * 10) / 10));
 const CUES = [];
-let _t = 0;
-for (const len of SAMPLE_CUE_LEN) {
-  CUES.push({ start: Math.round(_t * 100) / 100, end: Math.round((_t + len) * 100) / 100 });
-  _t += len + GAP;
+if (VOICE_CUES) {
+  // cue 起止 = 实测静音缝的两端（见 tools/day3制作/align_day3_voice.py）
+  for (const c of VOICE_CUES.cues) CUES.push({ start: c.start, end: c.end });
+} else {
+  let _t = 0;
+  for (const len of SAMPLE_CUE_LEN) {
+    CUES.push({ start: Math.round(_t * 100) / 100, end: Math.round((_t + len) * 100) / 100 });
+    _t += len + GAP;
+  }
 }
-const ENDCARD = { start: _t, end: _t + 4.0 };
+const ENDCARD = { start: CUES[CUES.length - 1].end + 0.4, end: CUES[CUES.length - 1].end + 4.4 };
 const DURATION = ENDCARD.end;
 const C = n => CUES[n - 1].start;
 const CE = n => CUES[n - 1].end;
@@ -2010,11 +2028,17 @@ async function renderVideo(outFile) {
   const ffmpeg = resolveFfmpeg();
   fs.mkdirSync(path.dirname(path.resolve(outFile)), { recursive: true });
   const total = Math.round(DURATION * FPS);
-  console.log(`Day3 sample: ${total} frames (${DURATION.toFixed(2)}s, 占位节奏，无音轨) -> ${outFile}`);
+  const audioArgs = AUDIO_WAV
+    ? ['-i', AUDIO_WAV, '-map', '0:v:0', '-map', '1:a:0', '-c:a', 'aac', '-b:a', '192k',
+       '-af', 'apad', '-t', DURATION.toFixed(3)]
+    : ['-an'];
+  console.log(`Day3 sample: ${total} frames (${DURATION.toFixed(2)}s, ` +
+    `${VOICE_CUES ? '实测 cue 表' : '占位节奏'}，${AUDIO_WAV ? '含用户配音' : '无音轨'}) -> ${outFile}`);
   const ff = spawn(ffmpeg, [
     '-y', '-f', 'rawvideo', '-vcodec', 'rawvideo', '-pix_fmt', 'rgba',
     '-s', `${OUT_W}x${OUT_H}`, '-r', String(FPS), '-i', '-',
-    '-an', '-c:v', 'libx264', '-preset', 'medium', '-tune', 'animation',
+    ...audioArgs,
+    '-c:v', 'libx264', '-preset', 'medium', '-tune', 'animation',
     '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', outFile
   ], { stdio: ['pipe', 'ignore', 'pipe'] });
   let err = '';
