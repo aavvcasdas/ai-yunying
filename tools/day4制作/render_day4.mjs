@@ -656,12 +656,35 @@ function mvPip(ctx, sx, sy, sw, sh, tt) {
   ctx.fillStyle = '#F87171';
   ctx.textAlign = 'right';
   ctx.fillText('0.35×', sx + sw - 7, sy + 11);
-  // 底部播放条
-  const bw = sw - 26;
-  ctx.fillStyle = 'rgba(255,255,255,0.3)';
-  ctx.fillRect(sx + 11, sy + sh - 10, bw, 2.4);
-  ctx.fillStyle = '#4ADE80';
-  ctx.fillRect(sx + 11, sy + sh - 10, bw * (0.18 + 0.5 * ((tt * 0.05) % 1)), 2.4);
+  // 只留一个「正在播」的小红点，不画任何进度/音量条
+  const blink = 0.55 + 0.45 * Math.sin(tt * 4);
+  ctx.globalAlpha = blink;
+  ctx.fillStyle = '#F87171';
+  ctx.beginPath();
+  ctx.arc(sx + sw - 76, sy + 11, 3.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// 电视还没接上 MV 时的雪花屏（不放歌词、不放音量条、不放进度条）
+function snowScreen(ctx, sx, sy, sw, sh, tt) {
+  ctx.save();
+  ctx.fillStyle = '#0A1428';
+  ctx.fillRect(sx, sy, sw, sh);
+  for (let i = 0; i < 240; i++) {
+    const x = sx + Math.floor(hash(i * 3.7 + Math.floor(tt * 14)) * sw);
+    const y = sy + Math.floor(hash(i * 7.1 + Math.floor(tt * 14) * 1.7) * sh);
+    ctx.fillStyle = `rgba(255,255,255,${0.05 + hash(i) * 0.16})`;
+    ctx.fillRect(x, y, 2, 1);
+  }
+  ctx.fillStyle = 'rgba(226,232,240,0.75)';
+  ctx.font = 'bold 13px "NotoSansSC", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('雪花 · 无信号', sx + sw / 2, sy + sh / 2);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
   ctx.restore();
 }
 
@@ -717,13 +740,9 @@ function shoddyMV(ctx, sx, sy, sw, sh, tt) {
   g.fillText('MV v4', 5, 9);
   g.fillStyle = '#F87171';
   g.fillText('慢放 0.35×', LW - 52, 9);
-  g.fillStyle = 'rgba(255,255,255,0.35)';
-  g.fillRect(5, LH - 7, 62, 3);
-  g.fillStyle = '#4ADE80';
-  g.fillRect(5, LH - 7, 62 * 0.12, 3);
-  g.fillStyle = 'rgba(255,255,255,0.7)';
+  g.fillStyle = 'rgba(255,255,255,0.55)';
   g.font = 'bold 7px "NotoSansSC", sans-serif';
-  g.fillText('♪ 12%', 72, LH - 5);
+  g.fillText('雪花 · 无信号', 5, LH - 5);
   // 雪花
   for (let i = 0; i < 90; i++) {
     const x = Math.floor(hash(i * 3.7 + Math.floor(tt * 12)) * LW);
@@ -741,12 +760,6 @@ function shoddyMV(ctx, sx, sy, sw, sh, tt) {
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(layer.canvas, sx, sy, sw, sh);
-  ctx.restore();
-  // 节拍线：曲子每 0.462s 一拍，画面每 1.9s 才动一次 → 直观的「卡不上点」
-  const beatPhase = (tt % TV_BEAT) / TV_BEAT;
-  ctx.save();
-  ctx.globalAlpha = 0.5 * (1 - beatPhase);
-  inkLine(ctx, [[sx + 6, sy + sh - 3], [sx + sw - 6, sy + sh - 3]], 2, '#F2C14E', 'inkfine', 0);
   ctx.restore();
 }
 
@@ -944,17 +957,17 @@ function shotC02(ctx, t, lt, p) {
   camBegin(ctx, 640, 440, zoom, 0);
   bg(ctx, t);
   const TV = { x: 286, y: 292, w: 344, h: 182 };
-  // 鱼进电视的时序：0 → 0.30 从右边游来；0.30 → 0.46 钻进去；之后屏幕亮起放 MV
-  const swim = clamp(p / 0.30);
-  const dive = clamp((p - 0.30) / 0.16);
-  const playing = p > 0.44;
+  // 鱼进电视的时序：先在圆窗里，再从圆窗游出来、越过电视机顶，然后一头扎进屏幕
+  const swim = clamp(p / 0.34);
+  const dive = clamp((p - 0.34) / 0.18);
+  const playing = p > 0.50;
   // 电视：进去之前是雪花，进去之后放画中画 MV
   if (NO_TV) {
     label(ctx, '（--no-tv 对照：本镜不画电视）', 430, 380, { h: 30 });
   } else {
     tvSet(ctx, TV.x, TV.y, TV.w, TV.h, (g, sx, sy, sw, sh, tt) => {
       if (playing) mvPip(g, sx, sy, sw, sh, tt);
-      else shoddyMV(g, sx, sy, sw, sh, tt);
+      else snowScreen(g, sx, sy, sw, sh, tt);
     }, { tt: t });
   }
   // 本鲸站在电视右边看着
@@ -964,35 +977,56 @@ function shotC02(ctx, t, lt, p) {
     headTilt: p < 0.45 ? 0.12 : -0.03,
     dx: Math.sin(t * 1.8) * 0.05
   });
-  // 鱼：从右上角游向屏幕中心，最后缩成一点钻进电视
+  // 鱼：从左上圆窗游出来 → 越过电视机顶 → 一头扎进屏幕（贝塞尔弧线，不是直线平移）
+  const P0 = { x: 152, y: 232 };                        // 圆窗中心
+  const P1 = { x: 690, y: 96 };                         // 控制点：绕到电视机上方
+  const P2 = { x: TV.x + TV.w * 0.5, y: TV.y + 14 };    // 屏幕顶边中点
+  const P3 = { x: TV.x + TV.w * 0.5, y: TV.y + TV.h * 0.5 };
   if (swim < 1 || dive < 1) {
-    const sx0 = 1080, sy0 = 330;
-    const tx = TV.x + TV.w * 0.5, ty = TV.y + TV.h * 0.5;
-    const fx = lerp(sx0, tx, ease(swim));
-    const fy = lerp(sy0, ty, ease(swim)) + Math.sin(t * 4) * 9;
-    const u = lerp(26, 9, ease(swim)) * (1 - dive * 0.85);
-    ctx.save();
-    ctx.globalAlpha = 1 - dive * 0.75;
-    // 泡泡尾迹
-    for (let i = 1; i <= 4; i++) {
-      const bx = fx + i * 22, by = fy - Math.sin(t * 5 + i) * 6;
-      ctx.globalAlpha = (1 - dive * 0.75) * (0.5 - i * 0.1);
-      paint(ctx, ellPts(bx, by, 3.4 - i * 0.4, 3.4 - i * 0.4, 8), { wash: '#BFE8FF', ink: null });
+    const k = ease(swim);
+    let fx = (1 - k) * (1 - k) * P0.x + 2 * (1 - k) * k * P1.x + k * k * P2.x;
+    let fy = (1 - k) * (1 - k) * P0.y + 2 * (1 - k) * k * P1.y + k * k * P2.y;
+    if (dive > 0) {
+      fx = lerp(P2.x, P3.x, ease(dive));
+      fy = lerp(P2.y, P3.y, ease(dive));
     }
-    ctx.globalAlpha = 1 - dive * 0.75;
-    pixelFish(ctx, fx, fy, u, t, { flip: true });
+    fy += Math.sin(t * 4.2) * 6;
+    const u = lerp(30, 15, ease(swim)) * (1 - dive * 0.9);
+    const a = 1 - dive * 0.9;
+    ctx.save();
+    // 泡泡尾迹（沿运动方向拖）
+    for (let i = 1; i <= 5; i++) {
+      const q = Math.max(0, k - i * 0.05);
+      const bx = (1 - q) * (1 - q) * P0.x + 2 * (1 - q) * q * P1.x + q * q * P2.x;
+      const by = (1 - q) * (1 - q) * P0.y + 2 * (1 - q) * q * P1.y + q * q * P2.y;
+      ctx.globalAlpha = a * (0.55 - i * 0.09);
+      paint(ctx, ellPts(bx, by - i * 2, 4.2 - i * 0.55, 4.2 - i * 0.55, 8), { wash: '#CFEFFF', ink: null });
+    }
+    ctx.globalAlpha = a;
+    // 朝运动方向稍微抬头
+    const nx = (1 - k) * (P1.x - P0.x) + k * (P2.x - P1.x);
+    const ny = (1 - k) * (P1.y - P0.y) + k * (P2.y - P1.y);
+    pixelFish(ctx, fx, fy, u, t, { flip: true, rot: Math.atan2(ny, nx) * 0.35 });
     ctx.restore();
   }
-  // 钻进瞬间：屏幕白闪
+  // 钻进瞬间：屏幕白闪 + 两圈涟漪
   if (dive > 0 && dive < 1) {
     ctx.save();
     ctx.globalAlpha = 0.55 * Math.sin(dive * Math.PI);
     paint(ctx, rrPts(TV.x + 8, TV.y + 6, TV.w - 16, TV.h - 12, 8, 1), { wash: '#FFFFFF', ink: null });
+    ctx.globalAlpha = 0.8 * (1 - dive);
+    ctx.strokeStyle = '#BFE8FF';
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 2; i++) {
+      ctx.beginPath();
+      ctx.ellipse(TV.x + TV.w * 0.5, TV.y + TV.h * 0.5, 20 + ease(dive) * (70 + i * 60), 14 + ease(dive) * (46 + i * 40), 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     ctx.restore();
   }
   // 电视名牌
   if (!NO_TV) {
-    label(ctx, playing ? '电视里：本鲸做的《朋友的酒》MV' : '电视：先给本鲸留个位置', 458, 246,
+    label(ctx, playing ? '电视里：本鲸做的《朋友的酒》MV' : '电视：本鲸这就进去', 458, 246,
       { h: 24, font: 'bold 14px "NotoSansSC", sans-serif', stroke: '#F2C14E' });
   }
   // 一版一锅米：桌上空碗一个个冒出来（第 4 句）
