@@ -23,6 +23,7 @@
 //   VIDEO_FX_DIR=.../video-fx node tools/day3制作/render_mv_qtan.mjs \
 //       --audio /tmp/vfx/朋友的酒.mp3 --from 18 --dur 42 --out /tmp/mv.mp4
 //   node ... --hook "所有人！保持Q弹！" --hook-out /tmp/hook_a.mp4 --hook-dur 4   # 只出前 4 秒做 A/B
+//   node ... --cameo --out Day3/成片/MV/朋友的酒_Q弹MV_大小姐客串版.mp4            # 加 Claude 大小姐嘉宾画中画
 //   node ... --times 0.5,3,10                                                     # 抽帧自查
 // ============================================================================
 import fs from 'node:fs';
@@ -32,6 +33,7 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 
 import { createDay2Subtitle } from '../字幕/day2_style_sub.mjs';
+import { CLAUDE_POSES } from './claude_src/claude_poses.mjs';
 
 const require = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -78,14 +80,21 @@ const BPM = Number(argOf('--bpm', '130.4'));
 const BEAT = 60 / BPM;
 const HOOK_TEXT = argOf('--hook', '所有人！\n保持Q弹！');
 const HOOK_DUR = Number(argOf('--hook-dur', '4'));
+const CAMEO = ARGV.includes('--cameo');
 const LIMIT = ARGV.includes('--hook-out') ? Math.min(DUR, HOOK_DUR) : DUR;
-const OUT = argOf('--hook-out', argOf('--out', path.join(REPO, 'Day3/成片/MV/朋友的酒_Q弹MV_v1.mp4')));
+const OUT = argOf('--hook-out', argOf('--out', CAMEO
+  ? path.join(REPO, 'Day3/成片/MV/朋友的酒_Q弹MV_大小姐客串版.mp4')
+  : path.join(REPO, 'Day3/成片/MV/朋友的酒_Q弹MV_v1.mp4')));
 
 const C = {
   bg0: '#050B1E', bg1: '#0E1B3F', bg2: '#173A63',
   cyan: '#6FD8E8', blue: '#7FB4FF', gold: '#FFC94A', cream: '#FFF4DC', ink: '#0B1224',
   pink: '#FF8FB1'
 };
+
+// 客串版：Claude 大小姐 Q 版立绘（opsCar/claude-daxiaojie-assets，CC BY-NC-SA 4.0，署名见 claude_src/ATTRIBUTION.md）
+// 只作「嘉宾画中画」出现，不替代主角、不暗示她参与制作。
+const CAMEO_LIST = ['wave_hi', 'cheer', 'dance', 'sing', 'megaphone', 'ok_hand', 'curtsy', 'pointing_viewer'];
 
 // 歌词时间轴：沿用 video-fx 里已有的《朋友的酒》LRC/Vosk 时间轴
 // （`video-fx/src/mv_pengyou_de_jiu.js` 的 SUBTITLES），这里只取用到的那几句、并减去 --from。
@@ -137,6 +146,7 @@ function textLine(ctx, str, x, y, size, color, o = {}) {
 
 // ---------------------------------------------------------------- 场景
 let IMGS = {};
+const CLAUDE_IMGS = {};
 
 function bg(ctx, t) {
   const g = ctx.createLinearGradient(0, 0, W * 0.4, H);
@@ -327,6 +337,68 @@ function drawHook(ctx, t) {
   }
 }
 
+// 圆角矩形路径
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// 大小姐客串画中画：左下角圆角面板，Q 弹同步 + 每 8 拍换姿势，自带 CC 署名
+function drawClaudeCameo(ctx, t) {
+  if (t < 2.6) return;                       // 等开场大字结束后才请嘉宾出场
+  const appear = easeOut(clamp((t - 2.6) / 0.45));
+  const px = 46, py = H - 600, pw = 372, ph = 556;
+  const bob = Math.sin(t * 2.4) * 5;
+  const { sy, sx } = qtan(t, 0.5);           // 与主角同拍但错半拍，画面不呆
+  ctx.save();
+  ctx.globalAlpha = appear;
+  // 面板底
+  roundRect(ctx, px, py, pw, ph, 24);
+  ctx.fillStyle = 'rgba(8,16,40,0.74)';
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = C.gold;
+  ctx.stroke();
+  // 裁切到面板内
+  ctx.save();
+  roundRect(ctx, px + 2, py + 2, pw - 4, ph - 4, 22);
+  ctx.clip();
+  // 标题
+  ctx.fillStyle = C.gold;
+  ctx.font = '800 30px "NotoSansSC", sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('嘉宾 · Claude 大小姐', px + 18, py + 14);
+  // 姿势（按 foot 元数据把脚底钉在面板底部）
+  const key = CAMEO_LIST[Math.floor(t / (BEAT * 8)) % CAMEO_LIST.length];
+  const pose = CLAUDE_IMGS[key];
+  if (pose) {
+    const img = pose.img, foot = pose.foot;
+    const targetH = (ph - 118) * sy;         // 给标题和 CC 行留白
+    const scale = targetH / img.height;
+    const w = img.width * scale * sx;
+    const h = img.height * scale * sy;
+    const x = px + pw / 2;
+    const footY = py + ph - 26 + bob;
+    const drawY = footY - h * foot;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(img, x - w / 2, drawY, w, h);
+  }
+  // 面板内 CC 署名（仓库 ATTRIBUTION 要求必须带）
+  ctx.fillStyle = 'rgba(255,244,220,0.7)';
+  ctx.font = '600 18px "NotoSansSC", sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('素材 CC BY-NC-SA 4.0', px + 18, py + ph - 12);
+  ctx.restore();                             // 取消裁切
+  ctx.restore();
+}
+
 function renderFrame(ctx, t) {
   const pulse = bg(ctx, t);
   const DANCE = ['cheer', 'idol_mic_sing', 'tail_wag_dance', 'toast_cheers', 'playful_fists',
@@ -358,9 +430,25 @@ function renderFrame(ctx, t) {
       ctx.restore();
     }
   }
+  // 大小姐客串画中画（Q 弹同步、随拍换姿势，CC 署名在面板内）
+  if (CAMEO) drawClaudeCameo(ctx, t);
+
   // 底部水印
-  textLine(ctx, '非官方同人 · AI 生成 · 音乐版权见发布说明', W / 2, H - 70, 24, 'rgba(255,244,220,0.55)',
-    { weight: 700, sw: 4 });
+  if (CAMEO) {
+    ctx.save();
+    ctx.font = '700 24px "NotoSansSC", sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(4,10,26,0.9)';
+    ctx.strokeText('非官方同人 · AI 生成', W - 40, H - 70);
+    ctx.fillStyle = 'rgba(255,244,220,0.55)';
+    ctx.fillText('非官方同人 · AI 生成', W - 40, H - 70);
+    ctx.restore();
+  } else {
+    textLine(ctx, '非官方同人 · AI 生成 · 音乐版权见发布说明', W / 2, H - 70, 24, 'rgba(255,244,220,0.55)',
+      { weight: 700, sw: 4 });
+  }
 }
 
 // ---------------------------------------------------------------- 输出
@@ -426,6 +514,15 @@ async function main() {
   }
   if (!IMGS.cheer) throw new Error('缺少 tools/day3制作/whale_girl_src/pose_cheer.png');
   console.log(`鲸鱼娘姿势：${Object.keys(IMGS).join(' / ')}（白底已抠）`);
+
+  if (CAMEO) {
+    for (const k of CAMEO_LIST) {
+      const f = path.join(HERE, 'claude_src/chibi', CLAUDE_POSES[k].file);
+      if (fs.existsSync(f)) CLAUDE_IMGS[k] = { img: await loadImage(f), foot: CLAUDE_POSES[k].foot, tag: CLAUDE_POSES[k].tag };
+    }
+    if (Object.keys(CLAUDE_IMGS).length === 0) throw new Error('缺少 tools/day3制作/claude_src/chibi 立绘（客串版需要）');
+    console.log(`大小姐客串：${Object.keys(CLAUDE_IMGS).join(' / ')}（CC BY-NC-SA 4.0）`);
+  }
 
   const times = argOf('--times');
   if (times) {

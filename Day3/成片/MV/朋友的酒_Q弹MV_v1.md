@@ -121,4 +121,26 @@ node tools/day3制作/render_mv_qtan.mjs --audio ... --from 66 --dur 30
   **本轮没有对这条音频做声学复核**（人声不在中间声道、无法做 M/S 分离），所以只当参考；
   若复核出偏差，改渲染器里的 `LYRICS` 一处即可。
 - 横屏 1920×1080 版没出（渲染器目前是竖屏布局）。
-- 大小姐客串版没做。
+- 大小姐客串版 **已出**（见第八节）：`朋友的酒_Q弹MV_大小姐客串版.mp4`，左下角加 Claude 大小姐 Q 版嘉宾画中画。
+
+## 八、大小姐客串版（Claude 大小姐 · 嘉宾画中画）
+
+主角不变，仍是鲸鱼娘 Q 弹独舞；Claude 大小姐只在**左下角圆角面板**里当「嘉宾」客串（口径：不替换主角、不暗示大小姐参与制作，见 `agent.md` §0.1 / 第 7 条）：
+
+- 面板 2.6s 后淡入（等开场大字结束），尺寸 372×556，深蓝底 + 金边；
+- 内部随拍 Q 弹（与主角同拍、错半拍），每 8 拍换一张 Q 版姿势：
+  `wave_hi → cheer → dance → sing → megaphone → ok_hand → curtsy → pointing_viewer`；
+- 脚底用 `tools/day3制作/claude_src/claude_poses.mjs` 里每张图的 `foot` 元数据钉在面板底，不浮空；
+- 面板内自带 CC 署名「素材 CC BY-NC-SA 4.0」，右下角主水印改为右对齐「非官方同人 · AI 生成」，不与面板重叠；
+- 立绘来自 `opsCar/claude-daxiaojie-assets`（**CC BY-NC-SA 4.0**），出处与署名见 `tools/day3制作/claude_src/ATTRIBUTION.md`。
+
+### 重跑命令
+
+```bash
+VIDEO_FX_DIR=$PWD/video-fx node tools/day3制作/render_mv_qtan.mjs --cameo \
+  --audio /tmp/vfx/朋友的酒.mp3 --from 18 --dur 42 \
+  --out Day3/成片/MV/朋友的酒_Q弹MV_大小姐客串版.mp4
+```
+
+参数同 v1，只多一个 `--cameo` 开关；`--hook` / `--from` / `--dur` / `--bpm` / `--size` / `--crf` 全部照常生效。
+成片实测：1080×1920 / 42.00s / 30fps / H.264+AAC，全片解码 0 错。
