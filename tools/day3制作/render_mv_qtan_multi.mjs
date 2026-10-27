@@ -900,15 +900,12 @@ function drawHookAndBadge(ctx, t, beatFloat, sec) {
     strokeFillText(ctx, '《朋友的酒 · Q弹版》', 0, 0, 58, '#FFFFFF', {
       italic: true, sw: 13, strokeColor: '#091322', shadow: true
     });
-    strokeFillText(ctx, `本鲸通透小曲 · ${waveLabel}`, 0, 64, 30, '#FFE885', {
-      sw: 7, strokeColor: '#091322', shadow: true
-    });
     ctx.restore();
   }
   ctx.restore();
 }
 
-// ---------------------------------------------------------------- 字幕与合规角标绘制
+// ---------------------------------------------------------------- 字幕绘制（已按要求移除顶部计数与底部类水印文字）
 function drawSubtitlesAndWatermark(ctx, t) {
   const refT = MODE === 'ref-dj' ? t : (t + FROM);
   const ly = LYRICS.find((l) => refT >= l.t0 && refT < l.t1);
@@ -923,18 +920,6 @@ function drawSubtitlesAndWatermark(ctx, t) {
       ctx.restore();
     }
   }
-
-  // 合规标识（agent.md §0.6 & §0.1 版权署名）
-  const wmY = IS_VERT ? H - 56 : H - 24;
-  strokeFillText(
-    ctx,
-    '非官方同人 · AI 生成 · DSH表情包(MIT) / Q版大小姐(CC BY-NC-SA 4.0) · 音乐版权归原作者',
-    W / 2,
-    wmY,
-    IS_VERT ? 21 : 18,
-    'rgba(255,252,235,0.72)',
-    { weight: 700, sw: 4, strokeColor: 'rgba(6,20,10,0.85)' }
-  );
 }
 
 // ---------------------------------------------------------------- 单帧主渲染管线
