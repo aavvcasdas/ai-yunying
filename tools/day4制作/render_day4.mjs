@@ -113,6 +113,24 @@ function alphaBBox(img) {
   if (x1 < 0) return { x: 0, y: 0, w: img.width, h: img.height };
   return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
 }
+// ---------------------------------------------------------------------------
+// 《朋友的酒》MV 帧（真片抽帧，供 C02/C03 电视里那块画中画用）
+//   源：Day3 成片 MV《朋友的酒_DJ版_复刻原版》59–69 秒，8fps / 320×180 / 80 帧
+//   抽帧命令见 Day4/Day4制作记录.md；素材本身不入库时电视会退化成「雪花 · 无信号」
+// ---------------------------------------------------------------------------
+const MV_DIR = path.resolve(__dirname, 'assets/mv_pip');
+const MV_FRAMES = [];
+async function loadMvFrames() {
+  if (!fs.existsSync(MV_DIR)) return;
+  const files = fs.readdirSync(MV_DIR).filter((f) => /^f_\d+\.(jpg|png)$/i.test(f)).sort();
+  for (const f of files) {
+    try {
+      MV_FRAMES.push(await loadImage(fs.readFileSync(path.join(MV_DIR, f))));
+    } catch (e) { /* 坏帧跳过 */ }
+  }
+  console.log(`MV 帧：${MV_FRAMES.length} 张（${files[0] || '-'} … ${files[files.length - 1] || '-'}）`);
+}
+
 async function loadDsh() {
   let n = 0;
   for (const name of DSH_NAMES) {
@@ -161,35 +179,33 @@ const LINES = [
   '有人说，字幕抢视线。',
   '本鲸记着去调啦。',
   '主人给本鲸两个目标。',
-  '小目标，播放量三万七。',
+  '小目标，三万七。',
   '不是三个亿哦。',
-  '月度目标，三十天，一万个粉丝。',
-  '本鲸还能改。',
-  '下一版，从开头改起。',
-  '明天开第一张账本卡。',
-  '账上写播放，写关注，也写米饭。',
-  '一个数都不藏。',
-  '帮本鲸看看呗？',
+  '月度目标，三十天，一万个住户。',
+  '本鲸猜啊，主人是说错了。',
+  '他给本鲸买米饭，一次才买一点点，哪舍得真让本鲸累着。',
+  '所以别担心。',
   '评论区说句话就行。',
-  '鲸鱼绝不摸鱼！……先去吃饭。'
+  '鲸鱼绝不摸鱼！……',
+  '先去吃饭。'
 ];
 
 // 一镜多句的分组（镜号 → 台词行号区间，1-based）
 const SHOT_RANGES = [
   { id: 'C01', from: 1, to: 1, name: '空碗 + 四张返工单' },
-  { id: 'C02', from: 2, to: 4, name: '电视机里放那版劣质 MV' },
-  { id: 'C03', from: 5, to: 6, name: '第四版进度条卡住 / 尾巴拖地' },
-  { id: 'C04', from: 7, to: 10, name: '折线往下 + 7.4万→2000' },
-  { id: 'C05', from: 11, to: 12, name: '评论气泡「MV 呢？」' },
-  { id: 'C06', from: 13, to: 14, name: '文件拖走 → 大小姐签收' },
+  { id: 'C02', from: 2, to: 4, name: '小鱼游进电视机 → 电视里画中画《朋友的酒》' },
+  { id: 'C03', from: 5, to: 5, name: '改到第四版，尾巴抬不动（电视还在放 MV）' },
+  { id: 'C04', from: 6, to: 10, name: '折线往下 + 7.4万→2000' },
+  { id: 'C05', from: 11, to: 12, name: '弹幕「MV 呢？」' },
+  { id: 'C06', from: 13, to: 14, name: '交出去 → 大小姐做的' },
   { id: 'C07', from: 15, to: 16, name: '「换的是 MV，不是本鲸」' },
   { id: 'C08', from: 17, to: 18, name: '便宜 / 返工不便宜' },
   { id: 'C09', from: 19, to: 22, name: '扮一天大小姐，晚饭忘了' },
   { id: 'C10', from: 23, to: 24, name: '字幕抢视线，记着去调' },
-  { id: 'C11', from: 25, to: 28, name: '目标卡：播放量 / 粉丝' },
-  { id: 'C12', from: 29, to: 30, name: '还能改，从开头改起' },
-  { id: 'C13', from: 31, to: 33, name: '账本卡（留白）' },
-  { id: 'C14', from: 34, to: 36, name: '结尾：先去吃饭' }
+  { id: 'C11', from: 25, to: 27, name: '两个目标：小目标三万七' },
+  { id: 'C12', from: 28, to: 29, name: '月度目标一万个住户 → 猜主人说错了' },
+  { id: 'C13', from: 30, to: 31, name: '米一次才买一点点 / 所以别担心' },
+  { id: 'C14', from: 32, to: 34, name: '评论区说句话 / 摸鱼 / 先去吃饭' }
 ];
 
 const ARGV = process.argv.slice(2);
@@ -250,7 +266,7 @@ CORE.DURATION = DURATION;
 //   ② 把 alpha 二值化（≥110 → 255，其余 0），砍掉旋转/摆动留下的半透明边；
 //   ③ 用 imageSmoothingEnabled=false 整张贴回主画布，位置也取整。
 // 效果 = 老像素骨架的正方形硬边，不再有灰糊边。--soft 可关掉 ②③ 做对照。
-const CHAR_MODE = (argOf('--char') || (SOFT ? 'day2' : 'dsh')).toLowerCase();
+const CHAR_MODE = (argOf('--char') || 'ss2').toLowerCase();   // 主角＝Day2 像素骨架（电视里才用 DSH 贴纸）
 if (!['dsh', 'day2', 'ss2', 'crisp'].includes(CHAR_MODE)) {
   throw new Error(`--char 只接受 dsh|day2|ss2|crisp，实得 ${CHAR_MODE}`);
 }
@@ -604,6 +620,52 @@ const TV_SLOW = 0.35;           // 慢放
 const TV_WRONG_POSES = ['meme-cry', 'sleep', 'angry', 'meme-doge', 'daily-gaming', 'failure'];
 const TV_LYRICS = ['朋友', '的酒', '一起', '举起', '杯'];
 
+// 电视屏里那块画中画：真 MV 帧 + 播放器外框 + 进度条（不卡了，MV 真的在放）
+function mvPip(ctx, sx, sy, sw, sh, tt) {
+  const FPS_MV = 8;                       // 8fps 抽帧 → 本来就一顿一顿的，像老电视
+  const n = MV_FRAMES.length;
+  const idx = n ? Math.floor(tt * FPS_MV) % n : -1;
+  const img = idx >= 0 ? MV_FRAMES[idx] : null;
+  ctx.save();
+  if (img) {
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, sx, sy, sw, sh);
+  } else {
+    ctx.fillStyle = '#0A1428';
+    ctx.fillRect(sx, sy, sw, sh);
+    ctx.fillStyle = 'rgba(226,232,240,0.5)';
+    ctx.font = 'bold 12px "NotoSansSC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('雪花 · 无信号', sx + sw / 2, sy + sh / 2);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+  }
+  // 画中画窗口：一圈边框 + 标题条
+  ctx.strokeStyle = 'rgba(255,255,255,0.72)';
+  ctx.lineWidth = 1.6;
+  ctx.strokeRect(sx + 3, sy + 3, sw - 6, sh - 6);
+  ctx.fillStyle = 'rgba(11,20,40,0.72)';
+  ctx.fillRect(sx + 3, sy + 3, sw - 6, 15);
+  ctx.fillStyle = '#FDE68A';
+  ctx.font = 'bold 9px "NotoSansSC", sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('画中画 · 朋友的酒 MV v4', sx + 7, sy + 11);
+  ctx.fillStyle = '#F87171';
+  ctx.textAlign = 'right';
+  ctx.fillText('0.35×', sx + sw - 7, sy + 11);
+  // 底部播放条
+  const bw = sw - 26;
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fillRect(sx + 11, sy + sh - 10, bw, 2.4);
+  ctx.fillStyle = '#4ADE80';
+  ctx.fillRect(sx + 11, sy + sh - 10, bw * (0.18 + 0.5 * ((tt * 0.05) % 1)), 2.4);
+  ctx.restore();
+}
+
+// 老版劣质 MV（DSH 贴纸版）—— --char dsh 对照 / 无 MV 素材时的备用
 function shoddyMV(ctx, sx, sy, sw, sh, tt) {
   const LW = 240, LH = 150;
   const key = `mv${LW}x${LH}`;
@@ -850,62 +912,118 @@ function shotC01(ctx, t, lt, p) {
   camEnd(ctx);
 }
 
+// 圆窗里那条小鱼（本鲸的鱼形）：给它一个能游起来的版本
+function pixelFish(ctx, x, y, u, t, o = {}) {
+  const rot = o.rot ?? Math.sin(t * 3.1) * 0.06;
+  const body = o.color || PAL.whaleCyan;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.scale(o.flip ? -1 : 1, 1);
+  // 尾鳍
+  paint(ctx, [[-u * 1.35, 0], [-u * 2.15, -u * 0.78], [-u * 1.95, 0], [-u * 2.15, u * 0.78]],
+    { wash: body, washOp: 240, ink: PAL.ink, sw: 1.2 });
+  // 身体
+  paint(ctx, ellPts(0, 0, u * 1.42, u * 0.92, 18), { wash: body, fill: PAL.ink, fillOp: 26, ink: PAL.ink, sw: 1.3 });
+  // 肚皮
+  paint(ctx, ellPts(-u * 0.12, u * 0.3, u * 1.02, u * 0.5, 16), { wash: '#E9F6FF', washOp: 210, ink: null });
+  // 眼睛 + 高光
+  paint(ctx, ellPts(u * 0.72, -u * 0.14, u * 0.2, u * 0.24, 10), { wash: PAL.ink, ink: null });
+  paint(ctx, ellPts(u * 0.78, -u * 0.22, u * 0.07, u * 0.09, 8), { wash: '#FFFFFF', ink: null });
+  // 小蝴蝶结（认人用）
+  paint(ctx, [[-u * 0.2, -u * 0.86], [-u * 0.62, -u * 1.2], [-u * 0.62, -u * 0.56]], { wash: '#48C8FF', ink: PAL.ink, sw: 1 });
+  paint(ctx, [[-u * 0.2, -u * 0.86], [u * 0.22, -u * 1.2], [u * 0.22, -u * 0.56]], { wash: '#48C8FF', ink: PAL.ink, sw: 1 });
+  // 背鳍
+  paint(ctx, [[-u * 0.1, -u * 0.82], [u * 0.3, -u * 1.28], [u * 0.6, -u * 0.7]], { wash: body, washOp: 235, ink: PAL.ink, sw: 1 });
+  ctx.restore();
+}
+
 function shotC02(ctx, t, lt, p) {
-  camBegin(ctx, 640, 460, 1.02 + 0.06 * ease(p), 0);
+  // 镜头：先看整间屋子，鱼游进电视后推近屏幕
+  const zoom = 1.02 + 0.22 * ease(clamp((p - 0.42) / 0.4));
+  camBegin(ctx, 640, 440, zoom, 0);
   bg(ctx, t);
-  // 电视（占桌面左半边）
+  const TV = { x: 286, y: 292, w: 344, h: 182 };
+  // 鱼进电视的时序：0 → 0.30 从右边游来；0.30 → 0.46 钻进去；之后屏幕亮起放 MV
+  const swim = clamp(p / 0.30);
+  const dive = clamp((p - 0.30) / 0.16);
+  const playing = p > 0.44;
+  // 电视：进去之前是雪花，进去之后放画中画 MV
   if (NO_TV) {
     label(ctx, '（--no-tv 对照：本镜不画电视）', 430, 380, { h: 30 });
   } else {
-    tvSet(ctx, 306, 306, 300, 158, shoddyMV, { tt: t });
-    label(ctx, '电视里：本鲸做的那版《朋友的酒》MV', 456, 262, { h: 24, font: 'bold 14px "NotoSansSC", sans-serif', stroke: '#F2C14E' });
+    tvSet(ctx, TV.x, TV.y, TV.w, TV.h, (g, sx, sy, sw, sh, tt) => {
+      if (playing) mvPip(g, sx, sy, sw, sh, tt);
+      else shoddyMV(g, sx, sy, sw, sh, tt);
+    }, { tt: t });
   }
-  // 本鲸在电视旁边看着
+  // 本鲸站在电视右边看着
   WGF(ctx, 706, 530, 25, {
-    t, emotion: p < 0.5 ? 'confused' : 'pout',
-    mouth: p < 0.5 ? 'flat' : 'pout',
-    headTilt: p < 0.6 ? 0.12 : -0.04,
+    t, emotion: p < 0.45 ? 'curious' : 'proud',
+    mouth: p < 0.45 ? 'flat' : 'smile',
+    headTilt: p < 0.45 ? 0.12 : -0.03,
     dx: Math.sin(t * 1.8) * 0.05
   });
-  // 返工单一张张拍下来（每句一拍）
-  const lineP = (n) => clamp((t - C(n)) / Math.max(0.001, CE(n) - C(n)));
-  const slips = [{ n: 2, x: 806, y: 452, r: -0.12, txt: 'v1' }, { n: 3, x: 872, y: 464, r: 0.10, txt: 'v2' },
-    { n: 4, x: 930, y: 450, r: -0.06, txt: 'v3' }];
-  slips.forEach((s, i) => {
-    const q = lineP(s.n);
-    if (q <= 0.02) return;
+  // 鱼：从右上角游向屏幕中心，最后缩成一点钻进电视
+  if (swim < 1 || dive < 1) {
+    const sx0 = 1080, sy0 = 330;
+    const tx = TV.x + TV.w * 0.5, ty = TV.y + TV.h * 0.5;
+    const fx = lerp(sx0, tx, ease(swim));
+    const fy = lerp(sy0, ty, ease(swim)) + Math.sin(t * 4) * 9;
+    const u = lerp(26, 9, ease(swim)) * (1 - dive * 0.85);
     ctx.save();
-    ctx.globalAlpha = clamp(q * 2);
-    workOrder(ctx, s.x + (1 - q) * 60, s.y + Math.sin(t * 3 + i) * 2, 74, 62, s.txt, s.r + (1 - q) * 0.4, { note: '一版一锅米' });
+    ctx.globalAlpha = 1 - dive * 0.75;
+    // 泡泡尾迹
+    for (let i = 1; i <= 4; i++) {
+      const bx = fx + i * 22, by = fy - Math.sin(t * 5 + i) * 6;
+      ctx.globalAlpha = (1 - dive * 0.75) * (0.5 - i * 0.1);
+      paint(ctx, ellPts(bx, by, 3.4 - i * 0.4, 3.4 - i * 0.4, 8), { wash: '#BFE8FF', ink: null });
+    }
+    ctx.globalAlpha = 1 - dive * 0.75;
+    pixelFish(ctx, fx, fy, u, t, { flip: true });
     ctx.restore();
-  });
-  workOrder(ctx, 1016, 444, 76, 64, 'v4', 0.14, { stamp: 'LEI', note: '第四版' });
-  label(ctx, 'v1 v2 v3 v4 · 一版一锅米', 318, 566, { h: 26, font: 'bold 15px "ZCOOLKuaiLe", sans-serif', stroke: '#F2C14E' });
+  }
+  // 钻进瞬间：屏幕白闪
+  if (dive > 0 && dive < 1) {
+    ctx.save();
+    ctx.globalAlpha = 0.55 * Math.sin(dive * Math.PI);
+    paint(ctx, rrPts(TV.x + 8, TV.y + 6, TV.w - 16, TV.h - 12, 8, 1), { wash: '#FFFFFF', ink: null });
+    ctx.restore();
+  }
+  // 电视名牌
+  if (!NO_TV) {
+    label(ctx, playing ? '电视里：本鲸做的《朋友的酒》MV' : '电视：先给本鲸留个位置', 458, 246,
+      { h: 24, font: 'bold 14px "NotoSansSC", sans-serif', stroke: '#F2C14E' });
+  }
+  // 一版一锅米：桌上空碗一个个冒出来（第 4 句）
+  const bowlP = clamp((t - C(4)) / Math.max(0.6, CE(4) - C(4)));
+  const nBowl = Math.round(lerp(1, 4, ease(bowlP)));
+  for (let i = 0; i < nBowl; i++) riceBowl(ctx, 830 + i * 62, 474 - (i % 2) * 4, 0.66, 0, t);
+  if (bowlP > 0.05) {
+    label(ctx, `一版一锅米 · 第 ${Math.min(4, nBowl)} 锅`, 906, 432,
+      { h: 24, font: 'bold 14px "ZCOOLKuaiLe", sans-serif', stroke: '#F2C14E' });
+  }
   camEnd(ctx);
 }
 
 function shotC03(ctx, t, lt, p) {
-  camBegin(ctx, 660, 480, 1.12, 0);
+  // 累瘫：横移，左边电视里 MV 还在放，本鲸摊在中间尾巴拖地
+  camBegin(ctx, 660 + Math.sin(t * 0.8) * 8, 470, 1.12, 0);
   bg(ctx, t);
-  // 进度条卡住
-  const bx = 386, by = 252, bw = 430, bh = 26;
-  paint(ctx, rrPts(bx - 6, by - 6, bw + 12, bh + 12, 8, 1), { wash: '#0B1C34', ink: '#48C8FF', sw: 1.3 });
-  paint(ctx, rrPts(bx, by, bw, bh, 6, 0.5), { wash: '#16304F', ink: null });
-  const stuck = 0.42 + Math.sin(t * 6) * 0.004;
-  paint(ctx, rrPts(bx, by, bw * stuck, bh, 6, 0.5), { wash: '#F2C14E', ink: null });
-  ctx.save();
-  ctx.font = 'bold 17px "NotoSansSC", sans-serif';
-  ctx.fillStyle = '#FDE68A';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText('渲染第 4 版… 42%', bx, by - 12);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#FCA5A5';
-  ctx.fillText('卡住了', bx + bw, by - 12);
-  ctx.restore();
-  // 本鲸：尾巴拖到地上、累
-  WGF(ctx, 660, 534, 27, { t, emotion: 'sleepy', mouth: 'flat', headTilt: 0.16, dx: Math.sin(t * 1.2) * 0.04 });
-  label(ctx, '尾巴抬不动了', 660, 560, { h: 26, font: 'bold 15px "ZCOOLKuaiLe", sans-serif', stroke: '#93C5FD' });
+  // 背景小电视（同一块屏幕，还在放 MV）
+  if (!NO_TV) {
+    tvSet(ctx, 250, 300, 210, 112, (g, sx, sy, sw, sh, tt) => mvPip(g, sx, sy, sw, sh, tt), { tt: t });
+    label(ctx, '电视还在放 · 0.35×', 356, 262, { h: 20, font: 'bold 12px "ZCOOLKuaiLe", sans-serif', stroke: '#93C5FD' });
+  }
+  // 本鲸：蹲坐、头低、尾巴垂地
+  WGF(ctx, 760, 536, 30, {
+    t, emotion: 'sleepy', mouth: 'flat',
+    headTilt: 0.2 + Math.sin(t * 1.1) * 0.02,
+    dx: Math.sin(t * 1.2) * 0.04, dy: 0.15
+  });
+  // 地上四个空碗（四版 = 四锅米）
+  for (let i = 0; i < 4; i++) riceBowl(ctx, 470 + i * 66, 646 + (i % 2) * 10, 0.8, 0, t);
+  label(ctx, '尾巴抬不动了', 760, 574, { h: 26, font: 'bold 15px "ZCOOLKuaiLe", sans-serif', stroke: '#93C5FD' });
   camEnd(ctx);
 }
 
@@ -917,7 +1035,7 @@ function shotC04(ctx, t, lt, p) {
     t, emotion: p < 0.7 ? 'sad' : 'pout', mouth: 'flat', headTilt: -0.08
   });
   // 数字：7.4万 → 2000（口播只说「两千」）
-  const q = clamp((t - C(9)) / Math.max(0.001, CE(9) - C(9)));
+  const q = clamp((t - C(9)) / Math.max(0.001, CE(9) - C(9)));   // L09「现在两千哦」
   if (q > 0.05) {
     ctx.save();
     ctx.globalAlpha = clamp(q * 2);
@@ -1077,7 +1195,7 @@ function shotC11(ctx, t, lt, p) {
   camBegin(ctx, 640, 450, 1.04, 0);
   bg(ctx, t);
   const pop1 = clamp((t - C(26)) / 0.5);
-  const pop2 = clamp((t - C(28)) / 0.5);
+  const pop2 = clamp((t - C(27)) / 0.45);
   ctx.save();
   ctx.globalAlpha = clamp(pop1 * 2);
   targetCard(ctx, 190, 214, 360, 210, {
@@ -1087,34 +1205,98 @@ function shotC11(ctx, t, lt, p) {
   ctx.restore();
   ctx.save();
   ctx.globalAlpha = clamp(pop2 * 2);
-  targetCard(ctx, 594, 214, 360, 210, {
-    title: '月度目标 · 粉丝', value: '10,000', unit: '30 天 · 新增粉丝',
-    wash: '#1B2A52', ink: '#4ADE80', valueColor: '#A7F3D0'
-  });
+  // 右卡：把「不是三个亿」当场划掉（口播 L27）
+  ctx.translate(640, 320);
+  ctx.rotate(-0.04);
+  paint(ctx, rrPts(-150, -96, 300, 192, 16, 1.4), { wash: '#1B2A52', ink: '#F2C14E', sw: 1.6 });
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 18px "NotoSansSC", sans-serif';
+  ctx.fillStyle = '#93C5FD';
+  ctx.fillText('主人说的是', 0, -52);
+  ctx.font = '900 74px "ZCOOLKuaiLe", sans-serif';
+  ctx.fillStyle = '#E2E8F0';
+  ctx.fillText('3 个亿', 0, 6);
+  ctx.strokeStyle = '#DC2626';
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(-118, -14);
+  ctx.lineTo(118, 26);
+  ctx.stroke();
+  ctx.font = '900 22px "ZCOOLKuaiLe", sans-serif';
+  ctx.fillStyle = '#FCA5A5';
+  ctx.fillText('不是三个亿哦', 0, 62);
   ctx.restore();
-  WGF(ctx, 1000, 556, 23, { t, emotion: 'proud', mouth: 'smile', headTilt: 0.05 });
-  label(ctx, '一个数都不藏', 620, 470, { h: 26, font: 'bold 15px "ZCOOLKuaiLe", sans-serif', stroke: '#93C5FD' });
+  WGF(ctx, 1010, 562, 21, { t, emotion: 'smug', mouth: 'grin', headTilt: 0.05 });
   camEnd(ctx);
 }
 
 function shotC12(ctx, t, lt, p) {
-  camBegin(ctx, 640, 470, 1.16, 0);
+  camBegin(ctx, 640, 450, 1.05, 0);
   bg(ctx, t);
-  WGF(ctx, 640, 556, 30, {
-    t, emotion: p < 0.5 ? 'thinking' : 'proud',
-    mouth: p < 0.5 ? 'flat' : 'openSmile',
-    headTilt: p < 0.5 ? 0.12 : -0.05
+  // L28：月度目标 30 天一万（口播说「住户」，画面上留个问号，不写死是粉丝还是住户）
+  ctx.save();
+  ctx.globalAlpha = clamp((t - C(28)) / 0.5 * 2);
+  targetCard(ctx, 250, 224, 400, 208, {
+    title: '月度目标 · 一万', value: '10,000', unit: '30 天 · 新增',
+    wash: '#1B2A52', ink: '#4ADE80', valueColor: '#A7F3D0'
   });
-  label(ctx, '还能改 · 从开头改起', 640, 220, { h: 40, font: '900 26px "ZCOOLKuaiLe", sans-serif', stroke: '#4ADE80' });
+  ctx.restore();
+  // L29：本鲸猜啊，主人是说错了 —— 问号翻出来
+  const q = clamp((t - C(29)) / Math.max(0.4, CE(29) - C(29)));
+  if (q > 0.05) {
+    ctx.save();
+    ctx.globalAlpha = clamp(q * 2.2);
+    ctx.translate(742, 226 + Math.sin(t * 4) * 4);
+    ctx.rotate(Math.sin(t * 3) * 0.05);
+    letter(ctx, '？', 0, 0, 96, '#F2C14E', { stroke: '#3B1D0B' });
+    label(ctx, '主人是说错了吧', 742, 318, { h: 32, font: '900 20px "ZCOOLKuaiLe", sans-serif', stroke: '#F2C14E' });
+    ctx.restore();
+  }
+  WGF(ctx, 952, 548, 24, {
+    t, emotion: p < 0.55 ? 'thinking' : 'smug',
+    mouth: p < 0.55 ? 'flat' : 'grin',
+    headTilt: p < 0.55 ? 0.12 : -0.04
+  });
   camEnd(ctx);
 }
 
 function shotC13(ctx, t, lt, p) {
-  camBegin(ctx, 640, 450, 1.05, 0);
+  camBegin(ctx, 640, 460, 1.05, 0);
   bg(ctx, t);
-  ledgerCard(ctx, 200, 200, 450, 240, t);
-  WGF(ctx, 900, 534, 24, { t, emotion: 'proud', mouth: 'smile', headTilt: 0.04 });
-  label(ctx, '明天开第一张账本卡', 640, 158, { h: 32, font: '900 22px "ZCOOLKuaiLe", sans-serif', stroke: '#F2C14E' });
+  // L30：米饭一次才买一点点（一小撮米倒在碗里）+ L31：所以别担心
+  const q = clamp((t - C(30)) / Math.max(0.6, CE(30) - C(30)));
+  riceBowl(ctx, 430, 508, 1.25, 1, t);
+  // 米袋：只倒了可怜的一小撮
+  ctx.save();
+  ctx.translate(690, 468);
+  ctx.rotate(0.12);
+  paint(ctx, rrPts(-56, -70, 112, 132, 10, 1.2), { wash: '#E7D9BC', ink: PAL.ink, sw: 1.4 });
+  ctx.font = '900 20px "ZCOOLKuaiLe", sans-serif';
+  ctx.fillStyle = '#7C2D12';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('米', 0, -18);
+  ctx.font = 'bold 11px "NotoSansSC", sans-serif';
+  ctx.fillStyle = '#92400E';
+  ctx.fillText('一次一点点', 0, 14);
+  ctx.restore();
+  // 漏下来的几粒米
+  for (let i = 0; i < 6; i++) {
+    const a = q * 1.2 + i * 0.12;
+    if (a > 1) continue;
+    ctx.save();
+    ctx.globalAlpha = clamp(q * 3);
+    paint(ctx, ellPts(640 - i * 12, 500 + ease(a) * 16, 3.2, 2.2, 8), { wash: '#F8FAFC', ink: null });
+    ctx.restore();
+  }
+  label(ctx, '一次才买一点点', 690, 400, { h: 28, font: '900 18px "ZCOOLKuaiLe", sans-serif', stroke: '#F2C14E' });
+  if (p > 0.55) label(ctx, '所以别担心', 640, 190, { h: 40, font: '900 26px "ZCOOLKuaiLe", sans-serif', stroke: '#4ADE80' });
+  WGF(ctx, 940, 540, 24, {
+    t, emotion: p > 0.55 ? 'happy' : 'proud',
+    mouth: p > 0.55 ? 'openSmile' : 'smile',
+    headTilt: p > 0.55 ? -0.05 : 0.06
+  });
   camEnd(ctx);
 }
 
@@ -1128,7 +1310,10 @@ function shotC14(ctx, t, lt, p) {
   });
   // 抱起饭碗
   riceBowl(ctx, 470, 510, 1.0, 1, t);
-  label(ctx, '评论区说句话就行', 640, 210, { h: 36, font: '900 24px "ZCOOLKuaiLe", sans-serif', stroke: '#F2C14E' });
+  // L32 评论区 / L33 摸鱼 / L34 先去吃饭
+  if (t < C(33)) label(ctx, '评论区说句话就行', 640, 210, { h: 36, font: '900 24px "ZCOOLKuaiLe", sans-serif', stroke: '#F2C14E' });
+  else if (t < C(34)) label(ctx, '鲸鱼绝不摸鱼！', 640, 210, { h: 44, font: '900 28px "ZCOOLKuaiLe", sans-serif', stroke: '#4ADE80' });
+  else label(ctx, '先去吃饭', 640, 210, { h: 48, font: '900 30px "ZCOOLKuaiLe", sans-serif', stroke: '#FDE68A' });
   camEnd(ctx);
 }
 
@@ -1243,20 +1428,21 @@ async function renderStills() {
   const ctx = canvas.getContext('2d');
   const marks = [
     ['c01_50', C(1) + (CE(1) - C(1)) * 0.5],
-    ['c02_15', C(2) + (CE(2) - C(2)) * 0.15],
-    ['c02_70', C(2) + (CE(4) - C(2)) * 0.7],
-    ['c03_60', C(5) + (CE(6) - C(5)) * 0.6],
-    ['c04_80', C(7) + (CE(10) - C(7)) * 0.8],
+    ['c02_15', C(2) + (CE(4) - C(2)) * 0.15],
+    ['c02_45', C(2) + (CE(4) - C(2)) * 0.45],
+    ['c02_70', C(2) + (CE(4) - C(2)) * 0.75],
+    ['c03_60', C(5) + (CE(5) - C(5)) * 0.6],
+    ['c04_80', C(6) + (CE(10) - C(6)) * 0.8],
     ['c05_60', C(11) + (CE(12) - C(11)) * 0.6],
     ['c06_80', C(13) + (CE(14) - C(13)) * 0.8],
     ['c07_60', C(15) + (CE(16) - C(15)) * 0.6],
     ['c08_60', C(17) + (CE(18) - C(17)) * 0.6],
     ['c09_70', C(19) + (CE(22) - C(19)) * 0.7],
     ['c10_60', C(23) + (CE(24) - C(23)) * 0.6],
-    ['c11_90', C(25) + (CE(28) - C(25)) * 0.9],
-    ['c12_60', C(29) + (CE(30) - C(29)) * 0.6],
-    ['c13_60', C(31) + (CE(33) - C(31)) * 0.6],
-    ['c14_60', C(34) + (CE(36) - C(34)) * 0.6],
+    ['c11_90', C(25) + (CE(27) - C(25)) * 0.9],
+    ['c12_60', C(28) + (CE(29) - C(28)) * 0.6],
+    ['c13_60', C(30) + (CE(31) - C(30)) * 0.6],
+    ['c14_60', C(32) + (CE(34) - C(32)) * 0.6],
     ['end', ENDCARD.start + 1.2]
   ];
   for (const [name, t] of marks) {
@@ -1371,6 +1557,7 @@ async function renderVideo(outFile) {
 }
 
 await loadDsh();
+await loadMvFrames();
 await loadClaude();
 console.log(`角色：像素骨架 · Day2 清理口径 · 画法=${CHAR_MODE}${CHAR_MODE === 'ss2' ? `（${SS}× 超采样）` : ''}；字幕：Day2 加更版；时长 ${DURATION.toFixed(2)}s`);
 

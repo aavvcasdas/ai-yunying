@@ -41,3 +41,6 @@ Day3/成片/MV/hook_ab/*.mp4
 # Day4：旧的骨架口径样片（v1/v2）已被 DSH 贴纸版 v4 取代，留工作区不入库
 Day4/成片/无配音样片/day4_无配音样片_v1.mp4
 Day4/成片/无配音样片/day4_无配音样片_v2_像素Day2版.mp4
+
+# Day4：MV 抽帧进电视用（可重跑，别入库）
+tools/day4制作/assets/mv_pip/
