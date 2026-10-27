@@ -88,6 +88,10 @@
   Claude 大小姐 `tools/day3制作/claude_src/chibi/`（Q 版贴纸，CC BY-NC-SA 4.0）。
   正比例 `full/` 与几何像素立绘不再作为默认，也**不再作为静默回退**（Day3 两次画风事故都源于这个回退）。
 - 覆盖方式只有环境变量：`DAY3_SUB_STYLE`、`DAY3_WHALE_DIR`、`DAY3_CLAUDE_DIR`。
+- **开场门禁**（2026-10-27 加，针对 2 秒跳出率 40%+）：新片录完对齐后先跑
+  `python3 tools/剧本/开场体检.py --json <本集 alignment.json>`——事件落地 ≤5s、前两句不许招呼/前情、
+  结尾必须有下一个承诺，退出码 1 就回去改稿。复盘与口径见 `00_运营总览/诊断核对_入口与剧本.md`
+  与 `00_运营总览/开头3秒优化.md`。
 
 - Day3 文案（待确认）：`Day3/Day3文案.md`
 - Day3 配音台词（待确认）：`Day3/Day3配音台词.txt`
