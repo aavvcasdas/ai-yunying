@@ -315,7 +315,11 @@ const WHALE_POSES = {
   tail_wag_dance:     { file: 'whale_tail_wag_dance.png',     foot: 0.991 },
   jump_joy:           { file: 'whale_jump_joy.png',           foot: 0.979 },
   toast_cheers:       { file: 'whale_toast_cheers.png',       foot: 0.989 },
-  umbrella_stroll:    { file: 'whale_umbrella_stroll.png',    foot: 0.987 }
+  umbrella_stroll:    { file: 'whale_umbrella_stroll.png',    foot: 0.987 },
+  // 走/跑用「站立底图 + 纯腿骨迈步」（和旧版 #27/#28 一个做法）：
+  // 原来的 whale_run.png 是腾空跨步的姿势，跟位移方向对不上，腿也被裙摆吃掉一半。
+  walk_stand:         { file: 'whale_walk_stand.png',         foot: 0.990 },
+  run_stand:          { file: 'whale_run_stand.png',          foot: 0.989 }
 };
 
 // 动作 → 骨骼运动（whale_rig 的 10 骨）。没列到的动作仍走「整块 transform」，
@@ -327,7 +331,7 @@ const RIG_MOTION = {
   shock_petrify: 'petrify_shake',
   cry_fountain: 'cry_sob',
   sob_shiver: 'cry_sob',
-  run_sprint: 'run_fast',
+  run_sprint: 'run_cycle_day3',
   eat_onigiri: 'eat_chew',
   heart: 'hug_sway',
   wave_hand: 'toast_up',
@@ -341,10 +345,56 @@ const RIG_MOTION = {
   think_reading: 'type_keys',
   hand_wave_no: 'fists_shake',
   guard_bowl: 'eat_chew',
-  walk_steps: 'walk_step',
+  walk_steps: 'walk_step_day3',
   ciallo_wink: 'wink_pop',
   playful_fists: 'fists_shake'
 };
+
+// Day3 专用走/跑循环（覆盖旧版的 run_cycle / walk_step）：
+// 旧版腿骨摆幅 0.64 rad，在「站立底图 + 及膝长裙」上会把裙摆拧成一条斜线、
+// 鞋子还会跟袜子脱开；这里降到 0.42 rad，改成「小幅摆腿 + 抬脚 + 躯干起伏」，
+// 腿还是骨骼在动，但不会再出现断腿/翻裙。
+Object.assign(LEGACY_MOTIONS, {
+  run_cycle_day3: (t) => {
+    const ph = (t * 9.6) % (Math.PI * 2);
+    const s = Math.sign(Math.sin(ph)) * Math.pow(Math.abs(Math.sin(ph)), 0.72);
+    const ROT = 0.50, H = 1024;
+    const gfix = 0.24 * H * (1 - Math.cos(ROT));
+    const liftL = 0.062 * H * Math.max(0, s);
+    const liftR = 0.062 * H * Math.max(0, -s);
+    return {
+      root: { dy: -6 - 12 * Math.abs(Math.cos(ph)), rot: 0.07 },
+      bones: {
+        legL: { rot: ROT * s, dy: gfix - liftL },
+        legR: { rot: -ROT * s, dy: gfix - liftR },
+        armL: { rot: -0.34 * s }, armR: { rot: 0.34 * s },
+        spine: { rot: 0.05 + 0.02 * s },
+        head: { rot: -0.05 },
+        hairL: { rot: 0.22 + 0.08 * Math.sin(ph - 0.9) },
+        hairR: { rot: 0.22 - 0.08 * Math.sin(ph - 0.9) },
+        tail: { rot: 0.22 * Math.sin(ph - 1.1) }
+      },
+      lift: 0.26 * Math.abs(s)
+    };
+  },
+  walk_step_day3: (t) => {
+    const ph = (t * 4.6) % (Math.PI * 2);
+    const s = Math.sin(ph);
+    const ROT = 0.26, H = 1024;
+    const gfix = 0.24 * H * (1 - Math.cos(ROT));
+    return {
+      root: { dy: -3 - 6 * Math.abs(Math.cos(ph)), rot: 0.03 },
+      bones: {
+        legL: { rot: ROT * s, dy: gfix - 0.03 * H * Math.max(0, s) },
+        legR: { rot: -ROT * s, dy: gfix - 0.03 * H * Math.max(0, -s) },
+        armL: { rot: 0.16 * s }, armR: { rot: -0.16 * s },
+        spine: { rot: -0.01 * s }, head: { rot: 0.01 * s },
+        tail: { rot: 0.12 * Math.sin(ph - 0.6) }
+      },
+      lift: 0.12 * Math.abs(s)
+    };
+  }
+});
 
 const sin = Math.sin, cos = Math.cos, abs = Math.abs;
 // 每个动作返回 { pose, dx, dy, rot, sx, sy, jump, flip }
@@ -397,11 +447,12 @@ const WHALE_ACT = {
   }),
 
   // 冲刺（run_sprint）：颠簸 + 前倾
+  // 冲刺：站立底图 + run_cycle 双腿交替（不再用腾空跨步图，腿也不会被裙摆吞掉）
   run_sprint: (t) => ({
-    pose: 'run',
-    dy: -0.06 + abs(sin(t * 9.0)) * 0.13,
-    rot: 0.10 + sin(t * 9.0) * 0.03,
-    sx: 1.02, sy: 0.99
+    pose: 'run_stand',
+    dy: -0.02,
+    rot: 0.06,
+    sx: 1.0, sy: 1.0
   }),
 
   // 捧碗吃饭（eat_onigiri）：小口小口
@@ -544,11 +595,11 @@ const WHALE_ACT = {
     sx: 1.01, sy: 0.99
   }),
 
-  // 慢慢走（walk_steps）：脚步起伏 + 左右晃
+  // 慢慢走（walk_steps）：同样站立底图 + walk_step 双腿交替
   walk_steps: (t) => ({
-    pose: 'run',
-    dy: -0.03 + abs(sin(t * 4.2)) * 0.06,
-    rot: sin(t * 4.2) * 0.03,
+    pose: 'walk_stand',
+    dy: -0.01,
+    rot: 0.02,
     sx: 1, sy: 1
   })
 };
@@ -1222,17 +1273,71 @@ function hud(ctx, t, form) {
 const SUB_CHUNK = 11;
 function buildSubChunks(chars, maxLen = SUB_CHUNK) {
   if (!chars || !chars.length) return null;
-  const chunks = [];
-  let cur = [];
-  for (const c of chars) {
-    cur.push(c);
-    const endsClause = /[，。！？…—；：、]/.test(c.suffix || '');
-    if (cur.length >= maxLen || (endsClause && cur.length >= 4)) {
-      chunks.push(cur); cur = [];
+  const MIN_CHUNK = 4;          // 一屏至少 4 个字（杜绝单个字蹦出来）
+  const SLACK = 4;              // 一个子句只超出一点点就让它在同一屏里（12 字也不用劈开）
+  const PUNCT = /[，。！？…—；：、]/;
+  const isLatin = (ch) => /[A-Za-z0-9]/.test(ch);
+
+  // 1. 「音节单元」：连续拉丁字母/数字不能被切开（Claude / MV 是一个整体）
+  const units = [];
+  for (let i = 0; i < chars.length;) {
+    const st = i;
+    if (isLatin(chars[i].ch)) {
+      let j = i;
+      while (j + 1 < chars.length && isLatin(chars[j + 1].ch)) j++;
+      units.push([st, j]);
+      i = j + 1;
+    } else {
+      units.push([st, st]);
+      i += 1;
     }
   }
-  if (cur.length) chunks.push(cur);
-  return chunks.map((cs) => ({
+  const unitLen = (u) => units[u][1] - units[u][0] + 1;
+  const spanLen = (a, b) => units[b][1] - units[a][0] + 1;
+  const sliceUnits = (a, b) => chars.slice(units[a][0], units[b][1] + 1);
+
+  // 2. 子句 = 到标点为止的若干单元
+  const clauses = [];
+  let st = 0;
+  for (let u = 0; u < units.length; u++) {
+    if (PUNCT.test(chars[units[u][1]].suffix || '')) { clauses.push([st, u]); st = u + 1; }
+  }
+  if (st < units.length) clauses.push([st, units.length - 1]);
+
+  // 3. 装箱
+  const screens = [];
+  let cur = [];                                  // 当前屏（字符数组）
+  const flush = () => { if (cur.length) { screens.push(cur); cur = []; } };
+  for (const [a, b] of clauses) {
+    const len = spanLen(a, b);
+    if (len > maxLen + SLACK) {                  // 子句真的太长：按单元均分
+      flush();
+      let i = a;
+      while (i <= b) {
+        let j = i, acc = 0;
+        while (j <= b && acc + unitLen(j) <= maxLen) { acc += unitLen(j); j++; }
+        if (j === i) j = i + 1;                  // 单个单元就超长（几乎不会）
+        const rest = spanLen(j, b);
+        if (rest > 0 && rest < MIN_CHUNK) j = b + 1;   // 尾巴太短，一起放进来
+        screens.push(sliceUnits(i, j - 1));
+        i = j;
+      }
+      continue;
+    }
+    if (cur.length + len > maxLen) flush();
+    cur = cur.concat(sliceUnits(a, b));
+    if (cur.length >= Math.ceil(maxLen * 0.55)) flush();
+  }
+  flush();
+
+  // 4. 太短的屏并进邻居（优先前一屏）
+  for (let i = screens.length - 1; i >= 0 && screens.length > 1; i--) {
+    if (screens[i].length >= MIN_CHUNK) continue;
+    if (i > 0) { screens[i - 1] = screens[i - 1].concat(screens[i]); screens.splice(i, 1); }
+    else { screens[1] = screens[0].concat(screens[1]); screens.splice(0, 1); }
+  }
+
+  return screens.map((cs) => ({
     chars: cs,
     start: cs[0].start,
     end: cs[cs.length - 1].end,
@@ -1932,7 +2037,8 @@ function shotL16(ctx, t, lt, p) {
   // 上半：还是大小姐，逐渐淡出
   ctx.save();
   ctx.beginPath(); ctx.rect(-200, -200, W + 400, frontY + 200); ctx.clip();
-  LCG(ctx, charX, charY, uC, { t, alpha: 1 - 0.55 * reveal, emote: 'sweat', rot: -0.05 * reveal });
+  // 别淡太多：两半各给 50% 透明度会看到「两个人叠在一起」，只留一点点减淡
+  LCG(ctx, charX, charY, uC, { t, alpha: 1 - 0.22 * reveal, emote: 'sweat', rot: -0.05 * reveal });
   ctx.restore();
   // 下半：已经变回鲸鱼娘
   ctx.save();
@@ -2087,9 +2193,24 @@ function shotL19(ctx, t, lt, p) {
   // 护着碗 → 抱碗吃 → 抬头喊口号 → 小步走向电视 → 冲刺跑掉
   const g0 = actBlend(p, 0.12, 0.07), e1 = actBlend(p, 0.30, 0.09);
   const w1 = actBlend(p, 0.46, 0.08), r1 = actBlend(p, 0.66, 0.08);
-  const moveX = lerp(520, 762, ease((p - 0.46) / 0.5));
+  const moveX = lerp(520, 650, ease((p - 0.46) / 0.5));
   const eatX = 560;
-  WGF(ctx, run ? moveX : w1 > 0 ? moveX : eatX, 628, 31, {
+  if (run) {
+    // 速度线：三道短横线拖在身后（配合「冲去改 MV」）
+    const k = clamp((p - 0.66) / 0.16);
+    ctx.save();
+    ctx.globalAlpha = 0.5 * k;
+    ctx.strokeStyle = 'rgba(226,240,255,0.85)';
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      const yy = 470 + i * 46 + Math.sin(t * 8 + i) * 4;
+      const x0 = moveX - 96 - i * 16 - ((t * 420 + i * 37) % 40);
+      ctx.beginPath(); ctx.moveTo(x0, yy); ctx.lineTo(x0 - 62 - i * 10, yy); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  WGF(ctx, run ? moveX : w1 > 0 ? moveX : eatX, 600, 30, {
     t,
     action: r1 > 0 ? 'run_sprint' : w1 > 0 ? 'walk_steps' : e1 > 0 ? 'point_proud' : g0 > 0 ? 'eat_onigiri' : 'guard_bowl',
     prevAction: r1 > 0 ? 'walk_steps' : w1 > 0 ? 'point_proud' : e1 > 0 ? 'eat_onigiri' : g0 > 0 ? 'guard_bowl' : null,
@@ -2118,15 +2239,18 @@ function shotEndCard(ctx, t, lt, p) {
     const x = 60 + hash(i) * (W - 120), y = 70 + hash(i + 40) * (H - 140);
     glow(ctx, x, y, 12, i % 2 ? PAL.whaleCyan : PAL.gold, 0.25 + 0.2 * Math.sin(t * 2 + i));
   }
-  WGF(ctx, 470, 560, 30, { t, action: 'heart', emote: 'heart' });
-  LCG(ctx, 800, 560, 27, { t, emote: 'heart' });
-  letter(ctx, 'Day 3 完', 640, 236, 54, PAL.gold, { pop: ease(clamp(p / 0.22)) });
-  letter(ctx, 'MV 返工中', 640, 306, 30, PAL.cream, { pop: ease(clamp((p - 0.12) / 0.22)) });
+  // 片尾：两张都用 Q 版贴纸（LCG 一定要显式给 pose ——
+  // 不给 pose 时它会取 CURRENT_CUE=19 去查姿势表，查不到就退回几何像素立绘，
+  // 用户看到的「最后一个分镜的 Claude 还是不对」就是这个回退）。
+  WGF(ctx, 470, 566, 30, { t, action: 'wave_hand', emote: 'sparkle' });
+  LCG(ctx, 800, 566, 27, { t, pose: 'wave_hi', emote: 'sparkle' });
+  letter(ctx, 'Day 3 完', 640, 222, 54, PAL.gold, { pop: ease(clamp(p / 0.22)) });
+  letter(ctx, 'MV 返工中', 640, 272, 30, PAL.cream, { pop: ease(clamp((p - 0.12) / 0.22)) });
   ctx.save();
   ctx.font = 'bold 16px "NotoSansSC", sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(226,232,240,0.75)';
-  ctx.fillText('非官方同人角色 / AI 生成内容 · 无配音样片（占位节奏）', 640, 636);
+  ctx.fillStyle = 'rgba(226,232,240,0.72)';
+  ctx.fillText('非官方同人角色 / AI 生成内容 · 大小姐素材 CC BY-NC-SA 4.0', 640, 688);
   ctx.restore();
 }
 
@@ -2326,7 +2450,20 @@ async function renderVideo(outFile) {
 
 const args = process.argv.slice(2);
 await loadPose();
-if (args.includes('--stills')) await renderStills();
+const timesArg = argOf('--times');
+if (timesArg) {
+  const dir = path.resolve(__dirname, 'day3_stills');
+  fs.mkdirSync(dir, { recursive: true });
+  const canvas = createCanvas(OUT_W, OUT_H);
+  const ctx = canvas.getContext('2d');
+  for (const t of timesArg.split(',').map(Number)) {
+    prepareFrame(ctx);
+    renderFrame(ctx, t);
+    const f = path.join(dir, `chk_t${t.toFixed(2)}.png`);
+    fs.writeFileSync(f, canvas.toBuffer('image/png'));
+    console.log('check', f);
+  }
+} else if (args.includes('--stills')) await renderStills();
 else {
   const i = args.indexOf('--out');
   await renderVideo(i >= 0 ? args[i + 1] : 'day3_sample.mp4');

@@ -203,6 +203,138 @@ def syllable_bounds(env: np.ndarray, n_syl: int):
     return [0] + snapped + [F]
 
 
+
+# ---------------------------------------------------------------------------
+# 句内「发声段」+ 字级时间
+#
+# 为什么不能直接等分：用户第 1 轮反馈「前面 25 秒字幕没对齐」。实测第 1 句里有
+# 三段 0.3–0.4s 的停顿（0.95–1.25s 等），等时先验会把两个字点亮在静音里，
+# 后面的字整体往前挤。所以先在句内切出「发声段」，停顿不分配字；
+# 另外 "Claude" 这种拉丁词是**一个音节**，不能按 6 个字切（否则字母一个一个点亮 1.7s）。
+# ---------------------------------------------------------------------------
+def _runs(mask: np.ndarray):
+    """把 bool 数组切成 [(start, end, value), ...]（左闭右开）。"""
+    out, i, n = [], 0, len(mask)
+    while i < n:
+        j = i
+        while j < n and mask[j] == mask[i]:
+            j += 1
+        out.append((i, j, bool(mask[i])))
+        i = j
+    return out
+
+
+def speech_segments(env: np.ndarray, rel_db: float = -45.0, abs_db: float = -50.0,
+                    min_sil: float = 0.16, min_speech: float = 0.06, hop: float = HOP):
+    """句内的「发声段」：能量远低于峰值、且持续 >= min_sil 的地方才算停顿。"""
+    n = len(env)
+    if n < 4:
+        return [(0, n)]
+    db = 20 * np.log10(env + 1e-9)
+    thr = max(abs_db, float(db.max()) + rel_db)
+    voiced = db > thr
+    for a, b, v in _runs(voiced):
+        if v and (b - a) * hop < min_speech:
+            voiced[a:b] = False
+        elif (not v) and (b - a) * hop < min_sil:
+            voiced[a:b] = True
+    idx = np.where(voiced)[0]
+    if len(idx) == 0:
+        return [(0, n)]
+    voiced[: idx[0]] = False
+    voiced[idx[-1] + 1:] = False
+    return [(a, b) for a, b, v in _runs(voiced) if v]
+
+
+def build_units(tokens):
+    """把字序列合并成「音节单元」：连续拉丁字母/数字算一个单元（一个音节）。"""
+    units, i = [], 0
+    while i < len(tokens):
+        ch = tokens[i]["ch"]
+        if re.fullmatch(r"[A-Za-z0-9]", ch):
+            j = i
+            while j + 1 < len(tokens) and re.fullmatch(r"[A-Za-z0-9'\u2019]", tokens[j + 1]["ch"]):
+                j += 1
+            units.append(list(range(i, j + 1)))
+            i = j + 1
+        else:
+            units.append([i])
+            i += 1
+    return units
+
+
+def _split_count(lengths, n_units: int):
+    """按段长比例分配 n_units 个单元（每段至少 1 个；不够分就合并最短的相邻段）。"""
+    segs = [[a, b] for a, b in lengths]
+    if n_units <= 0:
+        return [], []
+    while len(segs) > n_units:
+        best, bj = None, -1
+        for i in range(len(segs) - 1):
+            span = segs[i][1] - segs[i][0]
+            if best is None or span < best:
+                best, bj = span, i
+        segs[bj] = [segs[bj][0], segs[bj + 1][1]]
+        del segs[bj + 1]
+    k = len(segs)
+    L = np.array([b - a for a, b in segs], dtype=float)
+    counts = np.ones(k, dtype=int)
+    rest = n_units - k
+    if rest > 0:
+        share = L / max(1e-9, L.sum()) * rest
+        add = np.floor(share).astype(int)
+        counts += add
+        left = rest - int(add.sum())
+        order = np.argsort(-(share - add))
+        for i in range(left):
+            counts[order[i % k]] += 1
+    return segs, counts.tolist()
+
+
+def unit_spans(env: np.ndarray, n_units: int, clause_pos=None):
+    """返回 n_units 个 (起帧, 止帧)；停顿那一段不落在任何字上。"""
+    F = len(env)
+    if n_units <= 0:
+        return []
+    segs, counts = _split_count(speech_segments(env), n_units)
+    if not segs:
+        segs, counts = [[0, F]], [n_units]
+    # 停顿多半落在标点上：把「每个发声段累计字数」往最近的子句边界上吸（±2 字内）
+    if clause_pos and len(segs) > 1:
+        acc, best = 0, []
+        for c in counts[:-1]:
+            acc += c
+            best.append(acc)
+        fixed = []
+        prev = 0
+        for i, a in enumerate(best):
+            cand = min(clause_pos, key=lambda q: abs(q - a))
+            if abs(cand - a) <= 2 and cand - prev >= 1 and (n_units - cand) >= (len(counts) - i - 1):
+                a = cand
+            fixed.append(a)
+            prev = a
+        counts = []
+        prev = 0
+        for a in fixed + [n_units]:
+            counts.append(a - prev)
+            prev = a
+    spans = []
+    for (a, b), k in zip(segs, counts):
+        sub = env[a:b] if b - a >= k + 2 else np.ones(max(2, k + 2))
+        loc = syllable_bounds(sub, k)
+        scale = (b - a) / max(1e-9, float(len(sub)))
+        gl = [int(round(a + v * scale)) for v in loc]
+        for i in range(k):
+            s0, s1 = gl[i], gl[i + 1]
+            if s1 <= s0:
+                s1 = s0 + 1
+            spans.append((max(0, min(s0, F - 1)), max(1, min(s1, F))))
+    if len(spans) != n_units:
+        step = F / max(1, n_units)
+        spans = [(int(round(i * step)), int(round((i + 1) * step))) for i in range(n_units)]
+    return spans
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--voice", type=Path, default=REPO_ROOT / "鲸鱼Day3_分段拼接.wav")
@@ -269,28 +401,49 @@ def main(argv=None) -> None:
         })
         prev_end = gap[1] if gap else duration
 
-    # ---- 字级时间（音节级）：句内按能量谷切，字数作为等时先验 ----
+    # ---- 字级时间：先切发声段（停顿不分配字），再在段内按音节先验切 ----
     for c in cues:
         toks = split_tokens(c["text"])
         a0, a1 = int(round(c["start"] * sr)), int(round(c["end"] * sr))
         env = envelope(mono[max(0, a0):max(1, a1)], sr)
-        if len(env) < len(toks) * 2:
-            env = np.ones(max(2, len(toks) * 2))
-        bounds = syllable_bounds(env, len(toks))
-        # 句首/句尾各收 1 帧，避免把前后静音算进第一/最后一个字
+        if len(env) < 4:
+            env = np.ones(4)
+        units = build_units(toks)
+        # 子句边界（以「单元」为单位的下标）：标点挂在前一个字上，所以取到该字为止的单元数
+        clause_pos, acc_u, ti = [], 0, 0
+        unit_of_tok = {}
+        for ui, u in enumerate(units):
+            for t_i in u:
+                unit_of_tok[t_i] = ui
         for t_i, tok in enumerate(toks):
-            s0 = c["start"] + bounds[t_i] * HOP
-            s1 = c["start"] + bounds[t_i + 1] * HOP
-            tok["start"] = round(min(s0, c["end"] - 0.03), 3)
-            tok["end"] = round(min(max(s1, tok["start"] + 0.06), c["end"]), 3)
+            if tok["suffix"] and re.search(PUNCT, tok["suffix"]):
+                clause_pos.append(unit_of_tok[t_i] + 1)
+        clause_pos = sorted(set(q for q in clause_pos if 0 < q < len(units)))
+        spans = unit_spans(env, len(units), clause_pos)
+        for u, (s0f, s1f) in zip(units, spans):
+            m = len(u)
+            for k, ti in enumerate(u):
+                s0 = c["start"] + (s0f + (s1f - s0f) * k / m) * HOP
+                s1 = c["start"] + (s0f + (s1f - s0f) * (k + 1) / m) * HOP
+                toks[ti]["start"] = round(min(s0, c["end"] - 0.04), 3)
+                toks[ti]["end"] = round(min(max(s1, toks[ti]["start"] + 0.05), c["end"]), 3)
         c["chars_timed"] = toks
         syl = [t["end"] - t["start"] for t in toks]
         c["syllable_seconds_mean"] = round(float(np.mean(syl)), 3)
         c["syllable_seconds_std"] = round(float(np.std(syl)), 3)
-        # 自检：边界应落在能量谷 —— 边界处的包络均值 vs 整句均值
+        # 自检 1：每个字的中点应落在发声段里（不在停顿上）
+        segs = speech_segments(env)
+        c["chars_in_silence"] = 0
+        for t in toks:
+            midf = int(round((((t["start"] + t["end"]) / 2) - c["start"]) / HOP))
+            if not any(a <= midf < b for a, b in segs):
+                c["chars_in_silence"] += 1
+        # 自检 2：边界处的能量应低于句内平均（边界落在能量谷）
         nn = env / (env.max() or 1.0)
-        bi = [b for b in bounds[1:-1] if 0 <= b < len(nn)]
+        bi = [int(round((b["start"] - c["start"]) / HOP)) for b in toks[:-1]]
+        bi = [b for b in bi if 0 <= b < len(nn)]
         c["boundary_energy_ratio"] = round(float(nn[bi].mean() / max(1e-6, nn.mean())), 3) if bi else None
+        c["speech_segment_count"] = len(segs)
 
     rates = [c["chars_per_second"] for c in cues]
     payload = {
@@ -314,7 +467,8 @@ def main(argv=None) -> None:
         "word_level": False,
         "char_level": True,
         "char_level_method": (
-            "句内字级：10ms RMS 包络 + 「等时音节」先验做 DP 切分，边界吸附到能量谷。"
+            "句内字级：先按 10ms RMS 包络切出发声段（句内停顿不分配字），"
+            "字数按各段时长比例分配，段内再用「等时音节」先验做带状 DP 切分，边界吸附到能量谷。"
             "不是声学识别结果，字↔音节的对应由台词顺序唯一确定。"
         ),
         "char_level_note": (
