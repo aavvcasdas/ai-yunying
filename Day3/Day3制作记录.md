@@ -94,6 +94,79 @@ node render_day3_sample.mjs --out ../../../Day3/成片/无配音样片/day3_无�
 
 ---
 
+---
+
+## 〇之三、v6：按旧版动作清单复刻高清姿势 → 骨架驱动 → 出样片
+
+> 顺序按用户要求：**先把旧动作的图片用提示词复刻出来，再用骨架驱动，最后出样片。**
+> 成片：`Day3/成片/旧动作复刻样片/whale旧动作复刻_骨架版v1.mp4`（78.8s / 1080p / 30fps / 无音轨）。
+
+### 1. 旧版动作清单（复刻的基准）
+
+基准是导入回来的 video-fx：`video-fx/src/whale_girl_actions.js` 的 `ACTION_LIST`，**28 个动作**：
+
+`eat_white_rice`、`eat_onigiri`、`coin_hug`、`hum_working_song`、`token_wordle_sneak`、`drag_ahoge`、`sleep_curl`、
+`wake_stretch`、`ciallo_wink`、`playful_fists`、`confident_hips`、`idol_mic_sing`、`fatfish_working`、`fatfish_transform`、
+`tail_wag_dance`、`jump_joy`、`peek_curious`、`shy_fidget`、`shock_petrify`、`cry_fountain`、`toast_cheers`、
+`umbrella_stroll`、`camera_shutter`、`guitar_strum`、`rose_bouquet`、`sparkler_firework`、`walk_brisk`、`run_sprint`
+
+### 2. 复刻成高清差分姿势（本轮新生成 9 张）
+
+做法：以 `dafeiyu.webp` 作 image reference、按旧动作的**画面描述**写提示词逐张生成，
+再用同一套 `make_sprite.mjs` 抠底（阈值与 v4 完全一致，所以配色、描边、光晕跟已有 9 张是同一套）。
+
+| 旧动作 | 新姿势 key | 提示词要点 | 抠图实测 |
+|---|---|---|---|
+| `peek_curious` | `peek_curious` | 前倾探头 + 黄铜边放大镜举在脸侧（第一版压住了眼睛，重出时明确要求放大镜离开脸） | 926×1024 / 45.5% / 0.988 |
+| `shy_fidget` | `shy_fidget` | 内八字、两食指对戳、脸红 | 926×1024 / 46.2% / 0.988 |
+| `ciallo_wink` | `ciallo_wink` | 单眼眨眼 + 脸侧比 V | 926×1024 / 46.2% / 0.988 |
+| `wake_stretch` | `wake_stretch` | 双手高举伸懒腰、闭眼打哈欠 | 903×1024 / 46.3% / 0.988 |
+| `confident_hips` | `confident_hips` | 双手叉腰、下巴微抬 | 983×1024 / 41.5% / 0.989 |
+| `camera_shutter` | `camera_shutter` | 双手举复古拍立得、单眼闭着瞄取景器 | 926×1024 / 46.2% / 0.988 |
+| `eat_onigiri` | `eat_onigiri` | 双手捧海苔饭团在啃、脸颊鼓 | 926×1024 / 46.2% / 0.988 |
+| `coin_hug` | `coin_hug` | 抱大金币、星星眼 | 926×1024 / 46.0% / 0.988 |
+| `playful_fists` | `playful_fists` | 双拳举在胸前、气鼓鼓 | 926×1024 / 47.9% / 0.987 |
+
+> ⚠️ 本轮生图上限 10 张已用满（含了一张重出），所以旧清单里还有 **19 个动作暂时复用已有的 9 张姿势**
+> （`eat/sleep/toast/umbrella/rose/sing` 等），靠骨架运动 + 表情符号区分。补齐方式：下一轮上限重置后先跑同一套提示词补图，
+> 表里列了每个动作要什么画面，照抄即可。
+
+### 3. 骨架驱动（`legacy_actions.mjs`）
+
+28 个动作在 `tools/day3制作/whale_girl_src/legacy_actions.mjs` 里逐条重写成：
+
+```js
+{ id: 'ciallo_wink', zh: 'Ciallo～比耶眨眼', dur: 2.4,
+  poses: [{ at: 0, pose: 'ciallo_wink' }],      // 姿势（复刻出来的高清图）
+  motion: 'wink_pop', emote: 'sparkle' }        // 骨骼运动（whale_rig 的 10 骨）+ 情绪符号
+```
+
+- 26 个骨骼运动：呼吸/咀嚼/抱摇/哼唱摇摆/偷瞄/拎呆毛悬空/蜷睡/伸懒腰/眨眼弹跳/握拳抖/叉腰扭/握麦开臂/敲键盘/变身穿插/甩尾舞/跳跃抛物线/探头歪头/扭捏/石化抖/抽泣/举杯/撑伞走/按快门/扫弦/捧花/挥仙女棒/迈步/冲刺。
+- 多拍动作（如 `jump_joy`：站 → 跳；`fatfish_transform`：站 → 欢呼）用 `poses[{at,pose}]` 切姿势，切换处交叉淡化。
+- 姿态复用：同一副骨架套不同姿势即可，所以旧动作里多数动作能直接调到新复刻的图上。
+
+### 4. Day3 渲染器也换成骨架版（v6）
+
+`render_day3_sample.mjs` 现在：
+- `WHALE_POSES` 从 9 张扩到 **15 张**（新增 `peek_curious/shy_fidget/ciallo_wink/camera_shutter/eat_onigiri/confident_hips`）；
+- 载入时为每张现量骨架（实测 **15 副全部量成功**）；
+- `WGF()` 新增 `drawRiggedSprite()`：外层 transform（位移/旋转/挤压/镜像）+ 骨骼运动叠加，动作不再是"整块平移"；
+- 修了两个抽帧抓到的问题：①骨架版比整图版高半个脚（脚底线口径对齐 `drawPoseSprite`）；②交叉淡化亮到 45% 时看起来像"两个人并排"（改成 0.30 进度内淡到 25% 的运动残影，且 `dance_spin` 全程只用一张姿势）。
+
+### 交付与校验
+
+| 文件 | 说明 |
+|---|---|
+| `Day3/成片/旧动作复刻样片/whale旧动作复刻_骨架版v1.mp4` | 28 个旧动作逐个表演，78.8s，1920×1080 / 30fps / **无音轨** |
+| `Day3/成片/旧动作复刻样片/still_*.png` | 6 张复核静帧（放大镜/比耶/相机/金币/握拳） |
+| `tools/day3制作/whale_girl_src/whale_poses.mjs` | 18 张姿势注册表（9 旧 + 9 新） |
+| `tools/day3制作/whale_girl_src/legacy_actions.mjs` | 28 个旧动作 + 26 个骨骼运动 |
+| `tools/day3制作/whale_girl_src/render_legacy_sample.mjs` | 旧动作复刻样片渲染器（`--stills` 出静帧） |
+
+实测：`-f null -` 解码 OK；`ffprobe` 1920×1080 / 30fps / 78.80s / 只有一条视频流；`blackdetect` 0 命中；25.31MB；2364 帧渲染约 3.2 分钟。
+
+---
+
 ## 〇之二、v5：把 9 张立绘拆成「10 骨骨架」，多出 15 个骨骼动作
 
 > 本轮不动 v4 的成片：`day3_无配音样片_v4.mp4` 保持原样。这一节做的是**可复用的动作系统**，

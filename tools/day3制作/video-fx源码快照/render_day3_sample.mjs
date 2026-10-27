@@ -24,6 +24,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
+// v6：鲸鱼娘改用「高清立绘 + 10 骨骨架」绘制（骨架从立绘的 alpha 自动量出来）
+import { buildRig, drawRigged } from '../whale_girl_src/whale_rig.mjs';
+import { LEGACY_MOTIONS } from '../whale_girl_src/legacy_actions.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -241,6 +244,8 @@ function blitChar(ctx, x, y, u, draw, o = {}) {
 // v1/v2 被退回"还是模糊"：骨架的脸只有 20 来个格子，任何 1080p 特写都撑不住。
 // v3 起改用高清立绘（`dafeiyu.webp` → `whale_girl_src/whale_idle.png`，先做四边泛洪去背），
 // 只做整体呼吸 / 摆动 / 倾斜 / 翻转的程序化微动，**不做**骨块变形，所以永远是清晰的原画线条。
+let WHALE_RIGS = {};        // 姿势名 → 骨架（loadWhaleSprite 里现量）
+let WHALE_RIGS_READY = false;
 const SPRITE_H_U = 9.4;      // 立绘高度（单位 u，与旧骨架的 9.5u 对齐）
 const SPRITE_FOOT_U = 0.30;  // 脚底相对 y 的偏移
 
@@ -261,7 +266,42 @@ const WHALE_POSES = {
   eat:   { file: 'whale_eat.png',   foot: 0.989 },
   point: { file: 'whale_point.png', foot: 0.988 },
   think: { file: 'whale_think.png', foot: 0.989 },
-  cheer: { file: 'whale_cheer.png', foot: 0.980 }
+  cheer: { file: 'whale_cheer.png', foot: 0.980 },
+  // v6：按旧版 ACTION_LIST 复刻的高清差分姿势
+  peek_curious:   { file: 'whale_peek_curious.png',   foot: 0.988 },
+  shy_fidget:     { file: 'whale_shy_fidget.png',     foot: 0.988 },
+  ciallo_wink:    { file: 'whale_ciallo_wink.png',    foot: 0.988 },
+  camera_shutter: { file: 'whale_camera_shutter.png', foot: 0.988 },
+  eat_onigiri:    { file: 'whale_eat_onigiri.png',    foot: 0.988 },
+  confident_hips: { file: 'whale_confident_hips.png', foot: 0.989 }
+};
+
+// 动作 → 骨骼运动（whale_rig 的 10 骨）。没列到的动作仍走「整块 transform」，
+// 所以每个动作都能拿到肢体弯曲，而不是只有整体位移。
+const RIG_MOTION = {
+  idle: 'idle_breathe',
+  peek_curious: 'peek_tilt',
+  shy_fidget: 'shy_wiggle',
+  shock_petrify: 'petrify_shake',
+  cry_fountain: 'cry_sob',
+  sob_shiver: 'cry_sob',
+  run_sprint: 'run_fast',
+  eat_onigiri: 'eat_chew',
+  heart: 'hug_sway',
+  wave_hand: 'toast_up',
+  point_proud: 'toast_up',
+  cheer_jump: 'jump_arc',
+  dance_spin: 'tail_dance',
+  confident_hips: 'hips_cocky',
+  camera_shutter: 'shutter_lean',
+  stretch: 'stretch_up',
+  surprise_hop: 'wink_pop',
+  think_reading: 'type_keys',
+  hand_wave_no: 'fists_shake',
+  guard_bowl: 'eat_chew',
+  walk_steps: 'walk_step',
+  ciallo_wink: 'wink_pop',
+  playful_fists: 'fists_shake'
 };
 
 const sin = Math.sin, cos = Math.cos, abs = Math.abs;
@@ -272,7 +312,7 @@ const WHALE_ACT = {
 
   // 歪头张望（原来骨架的 peek_curious）
   peek_curious: (t) => ({
-    pose: 'think',
+    pose: 'peek_curious',
     dx: sin(t * 1.25) * 0.10,
     dy: -0.04 + sin(t * 2.0) * 0.02,
     rot: sin(t * 1.25) * 0.055 + 0.02
@@ -280,7 +320,7 @@ const WHALE_ACT = {
 
   // 扭捏害羞（shy_fidget）
   shy_fidget: (t) => ({
-    pose: 'think',
+    pose: 'shy_fidget',
     dx: sin(t * 3.1) * 0.07,
     dy: -0.03 + abs(sin(t * 3.1)) * 0.045,
     rot: sin(t * 3.1 + 0.6) * 0.05,
@@ -324,7 +364,7 @@ const WHALE_ACT = {
 
   // 捧碗吃饭（eat_onigiri）：小口小口
   eat_onigiri: (t) => ({
-    pose: 'eat',
+    pose: 'eat_onigiri',
     dy: -0.03 + sin(t * 3.4) * 0.03,
     rot: sin(t * 1.7) * 0.02,
     sy: 1 - abs(sin(t * 3.4)) * 0.018
@@ -368,14 +408,15 @@ const WHALE_ACT = {
     };
   },
 
-  // 原地转半圈（dance_spin）：靠水平压缩模拟转身。
-  // 压缩下限放在 0.62 —— 再窄就成一条竖线，观众会以为素材坏了。
+  // 原地转一整圈（dance_spin）：靠水平压缩模拟转身。
+  // 压缩下限 0.62；**关键是从头到尾用同一张姿势**（原来是正/反两张图交替），
+  // 否则转到侧面时两张不同姿势会叠成"两个人"。
   dance_spin: (t) => {
     const a = t * 2.0;
     const c = cos(a);
     const k = 0.62 + 0.38 * abs(c);
     return {
-      pose: c >= 0 ? 'cheer' : 'idle',
+      pose: 'cheer',
       sx: c < 0 ? -k : k,
       dy: -0.04 + abs(sin(t * 4.0)) * 0.07,
       rot: sin(a) * 0.045,
@@ -385,7 +426,7 @@ const WHALE_ACT = {
 
   // 叉腰站定（confident_hips）
   confident_hips: (t) => ({
-    pose: 'point',
+    pose: 'confident_hips',
     dy: -0.02 + sin(t * 2.0) * 0.02,
     rot: 0.03 + sin(t * 1.1) * 0.015
   }),
@@ -394,7 +435,7 @@ const WHALE_ACT = {
   camera_shutter: (t) => {
     const k = abs(sin(t * 6.5));
     return {
-      pose: 'think',
+      pose: 'camera_shutter',
       dy: 0.02 + k * 0.05,
       rot: -0.05 - k * 0.05,
       sy: 1 - k * 0.03
@@ -443,6 +484,22 @@ const WHALE_ACT = {
     dx: sin(t * 1.6) * 0.05,
     dy: -0.02 + sin(t * 1.6) * 0.03,
     rot: -0.04 + sin(t * 1.6) * 0.04
+  }),
+
+  // Ciallo～比耶眨眼（ciallo_wink，旧版招牌动作）
+  ciallo_wink: (t) => {
+    const ph = (t * 0.9) % 1;
+    const k = Math.sin(ph * Math.PI);
+    return { pose: 'ciallo_wink', dy: -0.03 - k * 0.16, rot: sin(t * 2.4) * 0.04, jump: k, emote: 'sparkle' };
+  },
+
+  // 双拳傲娇抗议（playful_fists）
+  playful_fists: (t) => ({
+    pose: 'playful_fists',
+    dx: sin(t * 9.5) * 0.03,
+    dy: -0.02,
+    rot: sin(t * 9.5) * 0.03,
+    sx: 1.01, sy: 0.99
   }),
 
   // 慢慢走（walk_steps）：脚步起伏 + 左右晃
@@ -515,6 +572,31 @@ function drawPoseSprite(ctx, name, x, y, u, o = {}) {
   return true;
 }
 
+// 用骨架画同一张立绘：外层 transform 由 WHALE_ACT 给（位移/旋转/挤压/镜像），
+// 肢体弯曲由 RIG_MOTION 对应的骨骼运动给 —— 两者叠加，动作才有"身体在动"的感觉。
+function drawRiggedSprite(ctx, name, x, y, u, o = {}) {
+  const rig = WHALE_RIGS[name];
+  if (!rig) return drawPoseSprite(ctx, name, x, y, u, o);
+  const H = (o.heightU || SPRITE_H_U) * u;
+  const k = H / rig.h;                       // 立绘像素 → 屏幕像素
+  const footPx = rig.bbox.y + rig.bbox.h;
+  const motionFn = LEGACY_MOTIONS[o.motion] || LEGACY_MOTIONS.idle_breathe;
+  const anim = motionFn(o.t || 0);
+  ctx.save();
+  ctx.globalAlpha *= (o.alpha ?? 1);
+  // 落点与 drawPoseSprite 完全一致：脚底在 y + SPRITE_FOOT_U*u + dy
+  ctx.translate(x + (o.dx || 0) * u, y + SPRITE_FOOT_U * u + (o.dy || 0) * u);
+  if (o.rot) ctx.rotate(o.rot);
+  ctx.scale((o.flip ? -1 : 1) * (o.sx ?? 1), o.sy ?? 1);
+  // 脚底线对齐：v4 的 drawPoseSprite 把「贴图底边」放在 footY-(1-foot)H，
+  // 也就是 alpha 底边在 footY-2(1-foot)H。这里照同样口径，免得骨架版比整图版高半个脚。
+  const meta = WHALE_POSES[name] || { foot: 0.988 };
+  const yOff = -2 * (1 - meta.foot) * H;
+  drawRigged(ctx, rig, 0, yOff, u, { anim, shadow: false, spriteH: SPRITE_H_U });
+  ctx.restore();
+  return true;
+}
+
 function WGF(ctx, x, y, u, o = {}) {
   const { t = 0 } = o;
   if (globalThis.WHALE_POSES && globalThis.WHALE_POSES.idle) {
@@ -532,23 +614,25 @@ function WGF(ctx, x, y, u, o = {}) {
     // 看起来像"人变半透明了"（第 2.3 秒被抓到过）。这里老姿势垫在最下面淡出，
     // 新姿势满不透明压上去，只在轮廓差的地方留一点"运动残影"，像拖影而不像鬼。
     const blend = o.blend ?? 0;
-    if (o.prevAction && blend > 0 && blend < 1) {
+    const drawAct = (st2, actionName, alpha) => {
+      const drawPose = WHALE_RIGS && WHALE_RIGS[st2.pose] ? drawRiggedSprite : drawPoseSprite;
+      return drawPose(ctx, st2.pose, x, y, u, {
+        dx: st2.dx, dy: st2.dy + (o.dy || 0), rot: st2.rot + (o.rot || 0),
+        sx: st2.sx, sy: st2.sy, flip: o.flip, alpha,
+        motion: RIG_MOTION[actionName] || 'idle_breathe', t
+      });
+    };
+    // 老姿势只在换姿势的前 55% 里露一小截（最高 45% 不透明）——
+    // 给足量会让观众看到"两个人并肩站着"（v4 抽帧时踩过），这里当运动残影用。
+    const prevA = blend < 0.30 ? (1 - blend / 0.30) * 0.25 : 0;
+    if (o.prevAction && prevA > 0.01) {
       const prev = (WHALE_ACT[o.prevAction] || WHALE_ACT.idle)(t, o);
-      drawPoseSprite(ctx, prev.pose, x, y, u, {
-        dx: prev.dx, dy: prev.dy + (o.dy || 0), rot: prev.rot + (o.rot || 0),
-        sx: prev.sx, sy: prev.sy, flip: o.flip, alpha: (o.alpha ?? 1) * (1 - blend) * 0.85
-      });
-      drawPoseSprite(ctx, st.pose, x, y, u, {
-        dx: st.dx, dy: st.dy + (o.dy || 0), rot: st.rot + (o.rot || 0),
-        sx: st.sx, sy: st.sy, flip: o.flip, alpha: o.alpha ?? 1
-      });
+      drawAct(prev, o.prevAction, (o.alpha ?? 1) * prevA);
+      drawAct(st, o.action, o.alpha ?? 1);
     } else {
-      drawPoseSprite(ctx, st.pose, x, y, u, {
-        dx: st.dx, dy: st.dy + (o.dy || 0), rot: st.rot + (o.rot || 0),
-        sx: st.sx, sy: st.sy, flip: o.flip, alpha: o.alpha ?? 1
-      });
+      drawAct(st, o.action, o.alpha ?? 1);
     }
-    hdEmote(ctx, x, y, u, o.emote, t);
+    hdEmote(ctx, x, y, u, o.emote ?? st.emote, t);
     return;
   }
   // —— 兜底：立绘没加载时退回补丁版像素骨架 ——
@@ -977,8 +1061,8 @@ function shotL01(ctx, t, lt, p) {
   // 表演五拍：张望 → 被弹幕吓一跳 → 原地转半圈 → 挥手 → 得意小跳（都是立绘姿势，不是换装）
   const a1 = actBlend(p, 0.20, 0.09), a2 = actBlend(p, 0.38, 0.07);
   const a3 = actBlend(p, 0.56, 0.08), a4 = actBlend(p, 0.84, 0.08);
-  const act = a4 > 0 ? 'cheer_jump' : a3 > 0 ? 'wave_hand' : a2 > 0 ? 'dance_spin' : a1 > 0 ? 'surprise_hop' : 'peek_curious';
-  const prevAct = a4 > 0 ? 'wave_hand' : a3 > 0 ? 'dance_spin' : a2 > 0 ? 'surprise_hop' : a1 > 0 ? 'peek_curious' : null;
+  const act = a4 > 0 ? 'cheer_jump' : a3 > 0 ? 'wave_hand' : a2 > 0 ? 'dance_spin' : a1 > 0 ? 'playful_fists' : 'peek_curious';
+  const prevAct = a4 > 0 ? 'wave_hand' : a3 > 0 ? 'dance_spin' : a2 > 0 ? 'playful_fists' : a1 > 0 ? 'peek_curious' : null;
   const blend = a4 > 0 ? a4 : a3 > 0 ? a3 : a2 > 0 ? a2 : a1 > 0 ? a1 : 0;
   WGF(ctx, 588, 636, 40, {
     t, action: act, prevAction: prevAct, blend,
@@ -1773,6 +1857,7 @@ const POSE_KEYS = {
 const SPRITE_DIR = path.resolve(__dirname, '../whale_girl_src');
 async function loadWhaleSprite() {
   globalThis.WHALE_POSES = {};
+  WHALE_RIGS = {};
   const missing = [];
   for (const [key, meta] of Object.entries(WHALE_POSES)) {
     const f = path.join(SPRITE_DIR, meta.file);
@@ -1785,7 +1870,14 @@ async function loadWhaleSprite() {
     console.warn('   先跑：node ../whale_girl_src/make_sprite.mjs <源图> ../whale_girl_src/whale_<姿势>.png');
     return;
   }
-  console.log(`鲸鱼娘姿势：${n} 张（${Object.keys(globalThis.WHALE_POSES).join('/')}）`);
+  // 给每张立绘现量一副骨架（18×26 网格 / 10 骨），量不出来就退回整张图绘制
+  const ctxFactory = (w, h) => createCanvas(w, h);
+  for (const [key, img] of Object.entries(globalThis.WHALE_POSES)) {
+    try { WHALE_RIGS[key] = buildRig(img, { ctxFactory }); }
+    catch (e) { console.warn(`  骨架量失败（${key}），该姿势退回整张图：`, e.message); }
+  }
+  const nr = Object.keys(WHALE_RIGS).length;
+  console.log(`鲸鱼娘姿势：${n} 张（${Object.keys(globalThis.WHALE_POSES).join('/')}）；骨架 ${nr} 副`);
   if (missing.length) console.warn('  缺图（该动作会退回 idle）：', missing.join(', '));
 }
 
