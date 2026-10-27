@@ -27,6 +27,7 @@ export const CLAUDE_POSES = {
 
 // 每个镜头默认用哪张（键是 cue 序号 4..16）
 export const CLAUDE_SHOT_POSE = {
+  3: 'curtsy',          // L03 染色变身完成后的亮相（刷到底才整张换成这张）
   4: 'question',        // L04 共创嘉宾怎么变成自己了
   5: 'curtsy',          // L05 请叫本小姐
   6: 'reading_book',    // L06 复盘昨天
