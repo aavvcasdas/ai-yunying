@@ -27,6 +27,8 @@ import { createRequire } from 'node:module';
 // v6：鲸鱼娘改用「高清立绘 + 10 骨骨架」绘制（骨架从立绘的 alpha 自动量出来）
 import { buildRig, drawRigged } from '../whale_girl_src/whale_rig.mjs';
 import { LEGACY_MOTIONS } from '../whale_girl_src/legacy_actions.mjs';
+// Claude 大小姐改用素材库立绘（CC BY-NC-SA 4.0，见 tools/day3制作/claude_src/ATTRIBUTION.md）
+import { CLAUDE_POSES, CLAUDE_SHOT_POSE, CLAUDE_ACTION_POSE } from '../claude_src/claude_poses.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -245,6 +247,9 @@ function blitChar(ctx, x, y, u, draw, o = {}) {
 // v3 起改用高清立绘（`dafeiyu.webp` → `whale_girl_src/whale_idle.png`，先做四边泛洪去背），
 // 只做整体呼吸 / 摆动 / 倾斜 / 翻转的程序化微动，**不做**骨块变形，所以永远是清晰的原画线条。
 let WHALE_RIGS = {};        // 姿势名 → 骨架（loadWhaleSprite 里现量）
+let CLAUDE_IMGS = {};       // 大小姐姿势名 → 图像
+let CURRENT_CUE = 0;        // 当前渲染的 cue 序号（LCG 用它挑大小姐姿势）
+let CLAUDE_RIGS = {};       // 大小姐姿势名 → 骨架（同一套量法，只是换图）
 let WHALE_RIGS_READY = false;
 const SPRITE_H_U = 9.4;      // 立绘高度（单位 u，与旧骨架的 9.5u 对齐）
 const SPRITE_FOOT_U = 0.30;  // 脚底相对 y 的偏移
@@ -273,7 +278,18 @@ const WHALE_POSES = {
   ciallo_wink:    { file: 'whale_ciallo_wink.png',    foot: 0.988 },
   camera_shutter: { file: 'whale_camera_shutter.png', foot: 0.988 },
   eat_onigiri:    { file: 'whale_eat_onigiri.png',    foot: 0.988 },
-  confident_hips: { file: 'whale_confident_hips.png', foot: 0.989 }
+  confident_hips: { file: 'whale_confident_hips.png', foot: 0.989 },
+  // v7：旧清单剩下 10 个动作也补上了专属姿势（28 个旧动作全部有图）
+  hum_working_song:   { file: 'whale_hum_working_song.png',   foot: 0.988 },
+  token_wordle_sneak: { file: 'whale_token_wordle_sneak.png', foot: 0.991 },
+  drag_ahoge:         { file: 'whale_drag_ahoge.png',         foot: 0.993 },
+  sleep_curl:         { file: 'whale_sleep_curl.png',         foot: 0.968 },
+  idol_mic_sing:      { file: 'whale_idol_mic_sing.png',      foot: 0.995 },
+  fatfish_working:    { file: 'whale_fatfish_working.png',    foot: 0.990 },
+  tail_wag_dance:     { file: 'whale_tail_wag_dance.png',     foot: 0.991 },
+  jump_joy:           { file: 'whale_jump_joy.png',           foot: 0.979 },
+  toast_cheers:       { file: 'whale_toast_cheers.png',       foot: 0.989 },
+  umbrella_stroll:    { file: 'whale_umbrella_stroll.png',    foot: 0.987 }
 };
 
 // 动作 → 骨骼运动（whale_rig 的 10 骨）。没列到的动作仍走「整块 transform」，
@@ -653,23 +669,60 @@ function actBlend(p, at, span = 0.10) {
 // Claude 大小姐：cast 里的 16-bit 立绘（金色螺旋卷、黑丝绒蝴蝶结、绛红长裙、折扇），
 // 本体只有一套骨架，所以用外层 transform 做呼吸 / 倾斜 / squash，绝不换脸。
 // 同样走设备像素层，保证大小姐也是硬的像素质感。
+// Claude 大小姐：v6 起改用素材库的像素立绘（1024×1536 透明 PNG），
+// 并沿用鲸鱼娘那套「从 alpha 量骨架」的装置，所以她也能点头/鞠躬/后仰，不再是整块图。
+// pose 不传时按当前镜头（CLAUDE_SHOT_POSE）挑姿势；找不到图才退回原来的几何立绘。
+const CLAUDE_MOTION = {
+  idle: 'idle_breathe', explain: 'type_keys', wave_hand: 'toast_up', refuse: 'fists_shake',
+  present: 'bouquet_present', mic: 'mic_open', shocked: 'ahoge_pull', flustered: 'petrify_shake', signoff: 'hips_cocky'
+};
 function LCG(ctx, x, y, u, o = {}) {
   const { t = 0, sq = 0, rot = 0, alpha = 1 } = o;
+  // 姿势优先级：显式 pose > 动作语义 > 当前镜头默认图 > greet
+  let pose = o.pose;
+  if (!pose && o.action && CLAUDE_ACTION_POSE[o.action]) pose = CLAUDE_ACTION_POSE[o.action];
+  if (!pose) pose = CLAUDE_SHOT_POSE[o.cue ?? CURRENT_CUE] || 'greet';
+  if (!CLAUDE_IMGS[pose]) pose = 'greet';
+  const img = CLAUDE_IMGS[pose];
+  if (!img) {
+    // —— 兜底：素材没加载时仍用原来的几何立绘 ——
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    ctx.translate(x, y);
+    if (rot) ctx.rotate(rot);
+    if (sq) ctx.scale(1 + sq * 0.45, 1 - sq * 0.55);
+    ctx.translate(-x, -y);
+    blitChar(ctx, x, y, u, (g, bx, by, uDev) => ladyClaude(g, bx, by, uDev, {
+      t, dy: o.dy ?? (-0.06 - Math.abs(Math.sin(t * 2.2)) * 0.03),
+      emote: o.emote, emoteK: o.emoteK, flip: o.flip, noShadow: true
+    }), { shadow: o.noShadow ? false : true });
+    ctx.restore();
+    return;
+  }
+  const meta = CLAUDE_POSES[pose] || { foot: 0.99, heightU: 10.6 };
+  const rig = CLAUDE_RIGS[pose];
+  const H = meta.heightU * u;
+  const bottomEdge = y + SPRITE_FOOT_U * u + (o.dy ?? 0) * u - (1 - meta.foot) * H;
   ctx.save();
   ctx.globalAlpha *= alpha;
-  ctx.translate(x, y);
+  ctx.translate(x, bottomEdge);
   if (rot) ctx.rotate(rot);
   if (sq) ctx.scale(1 + sq * 0.45, 1 - sq * 0.55);
-  ctx.translate(-x, -y);
-  blitChar(ctx, x, y, u, (g, bx, by, uDev) => ladyClaude(g, bx, by, uDev, {
-    t,
-    dy: o.dy ?? (-0.06 - Math.abs(Math.sin(t * 2.2)) * 0.03),
-    emote: o.emote,
-    emoteK: o.emoteK,
-    flip: o.flip,
-    noShadow: true
-  }), { shadow: o.noShadow ? false : true });
+  ctx.scale(o.flip ? -1 : 1, 1);
+  if (rig) {
+    const motion = LEGACY_MOTIONS[CLAUDE_MOTION[o.action] || 'idle_breathe'];
+    const anim = motion(t);
+    // 与鲸鱼娘同样口径：骨架版的脚底要补 (1-foot) 的留白差
+    const yOff = -(1 - meta.foot) * H;
+    drawRigged(ctx, rig, 0, yOff, u, { anim, shadow: false, spriteH: meta.heightU });
+  } else {
+    const w = H * img.width / img.height;
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, -w / 2, -H, w, H);
+  }
   ctx.restore();
+  hdEmote(ctx, x, y, u, o.emote, t);
 }
 
 const FORM = { WHALE: 'whale', CLAUDE: 'claude' };
@@ -1816,6 +1869,7 @@ function renderFrame(ctx, t) {
   let form;
   const idx = CUES.findIndex(c => t >= c.start && t < c.end);
   if (idx >= 0) {
+    CURRENT_CUE = idx + 1;
     form = charFormAt(idx + 1);
     SHOTS[idx](ctx, t, t - CUES[idx].start, cueP(t, idx + 1));
     // L03：染色刷扫完（p≈0.66）才算变身完成，之前在角标上仍标鲸鱼娘
@@ -1855,6 +1909,25 @@ const POSE_KEYS = {
   idle: 'dsh-whale-state-idle-cute.webp'
 };
 const SPRITE_DIR = path.resolve(__dirname, '../whale_girl_src');
+// 大小姐立绘：素材库 1024×1536 透明 PNG，直接用；骨架同一套量法
+async function loadClaudeSprite() {
+  const DIR = path.join(__dirname, '../claude_src/full');
+  CLAUDE_IMGS = {}; CLAUDE_RIGS = {};
+  const ctxFactory = (w, h) => createCanvas(w, h);
+  let n = 0;
+  for (const [key, meta] of Object.entries(CLAUDE_POSES)) {
+    const f = path.join(DIR, meta.file);
+    if (!fs.existsSync(f)) { console.warn('  缺大小姐立绘:', meta.file); continue; }
+    const img = await loadImage(f);
+    CLAUDE_IMGS[key] = img;
+    n++;
+    try { CLAUDE_RIGS[key] = buildRig(img, { ctxFactory }); }
+    catch (e) { console.warn(`  大小姐骨架量失败（${key}），该姿势退回整图：`, e.message); }
+  }
+  console.log(`Claude 大小姐立绘：${n} 张（${Object.keys(CLAUDE_IMGS).join('/')}）；骨架 ${Object.keys(CLAUDE_RIGS).length} 副`);
+  console.log('  素材：Claude大小姐的日记本 (github.com/opsCar/claude-daxiaojie-assets) · 设定 ZipZipPipe · CC BY-NC-SA 4.0');
+}
+
 async function loadWhaleSprite() {
   globalThis.WHALE_POSES = {};
   WHALE_RIGS = {};
@@ -1883,6 +1956,7 @@ async function loadWhaleSprite() {
 
 async function loadPose() {
   await loadWhaleSprite();
+  await loadClaudeSprite();
   globalThis.DAY3_POSES = {};
   for (const [key, file] of Object.entries(POSE_KEYS)) {
     const f = path.join(POSE_DIR, file);

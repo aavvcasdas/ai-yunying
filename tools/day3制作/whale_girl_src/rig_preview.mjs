@@ -17,10 +17,13 @@ const OUT = process.argv[2] || path.join(HERE, 'rig_preview');
 fs.mkdirSync(OUT, { recursive: true });
 try { GlobalFonts.registerFromPath('/home/user/ai-yunying/video-fx/assets/fonts/NotoSansSC-Bold.ttf', 'NotoSansSC'); } catch {}
 
-const POSES = ['idle', 'wave', 'run', 'cry', 'shock', 'eat', 'point', 'think', 'cheer'];
+import { POSE_NAMES } from './whale_poses.mjs';
+const POSES = POSE_NAMES;   // 28 张姿势全部过一遍骨架自检
 
 const cell = { w: 300, h: 420 };
-const cv = createCanvas(cell.w * 9, cell.h + 26);
+const cols = Math.min(POSES.length, 7);
+const rows = Math.ceil(POSES.length / cols);
+const cv = createCanvas(cell.w * cols, cell.h * rows + 26);
 const ctx = cv.getContext('2d');
 ctx.fillStyle = '#101A33';
 ctx.fillRect(0, 0, cv.width, cv.height);
@@ -29,8 +32,9 @@ const ctxFactory = (w, h) => createCanvas(w, h);
 for (let i = 0; i < POSES.length; i++) {
   const img = await loadImage(path.join(HERE, `whale_${POSES[i]}.png`));
   const rig = buildRig(img, { ctxFactory });
-  const bx = i * cell.w + cell.w / 2;
-  const by = cell.h - 40;
+  const col = i % cols, row = Math.floor(i / cols);
+  const bx = col * cell.w + cell.w / 2;
+  const by = row * cell.h + cell.h - 40;
   const u = 26;                     // 12u ≈ 312px 高
   // 左半格画原图（对照），右半格骨架 + 蒙皮静止姿势
   drawRigged(ctx, rig, bx, by, u, { anim: {} });
@@ -38,13 +42,13 @@ for (let i = 0; i < POSES.length; i++) {
   ctx.font = 'bold 18px "NotoSansSC", sans-serif';
   ctx.fillStyle = '#E2E8F0';
   ctx.textAlign = 'center';
-  ctx.fillText(`${POSES[i]}`, bx, 22);
+  ctx.fillText(`${POSES[i]}`, bx, row * cell.h + 22);
   const b = rig.bbox;
   ctx.font = '12px "NotoSansSC", sans-serif';
   ctx.fillStyle = 'rgba(148,163,184,0.9)';
-  ctx.fillText(`bbox ${Math.round(b.w)}×${Math.round(b.h)}`, bx, 40);
+  ctx.fillText(`bbox ${Math.round(b.w)}×${Math.round(b.h)}`, bx, row * cell.h + 40);
 }
-const outFile = path.join(OUT, 'skeleton_9poses.png');
+const outFile = path.join(OUT, 'skeleton_all_poses.png');
 fs.writeFileSync(outFile, cv.toBuffer('image/png'));
 console.log('wrote', outFile);
 

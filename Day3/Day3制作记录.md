@@ -96,6 +96,81 @@ node render_day3_sample.mjs --out ../../../Day3/成片/无配音样片/day3_无�
 
 ---
 
+---
+
+## 〇之四、v7：旧版 28 个动作全部配上专属姿势 + Claude 大小姐换成素材库立绘
+
+### 1. 补完剩下 10 张旧动作姿势（至此 28/28 都有专属图）
+
+上一轮生图额度用满，只复刻了 9 个；本轮再补 10 张（同样以 `dafeiyu.webp` 作 reference，同一套抠图阈值）：
+
+| 旧动作 | 新姿势 key | 提示词要点 | 抠图实测 |
+|---|---|---|---|
+| `hum_working_song` | `hum_working_song` | 抱文件打拍子哼歌 + 小音符 | 926×1024 / 46.2% / 0.988 |
+| `token_wordle_sneak` | `token_wordle_sneak` | 侧身抱笔电、捂嘴偷笑、斜眼 | 926×1024 / 47.7% / 0.991 |
+| `drag_ahoge` | `drag_ahoge` | 被拎呆毛悬空、四肢乱挥 | 926×1024 / 46.9% / 0.993 |
+| `sleep_curl` | `sleep_curl` | 抱鲸尾蜷睡、飘 z | 981×1023 / 44.0% / 0.968 |
+| `idol_mic_sing` | `idol_mic_sing` | 握麦高歌、一手张开 | 992×1024 / 45.9% / 0.995 |
+| `fatfish_working` | `fatfish_working` | 坐小凳敲键盘、旁边文件与水杯 | 926×1024 / 46.6% / 0.990 |
+| `tail_wag_dance` | `tail_wag_dance` | 拍手抬腿、鲸尾翘起摇摆 | 931×1024 / 48.1% / 0.991 |
+| `jump_joy` | `jump_joy` | 跳到半空、裙摆上扬 | 961×1024 / 50.4% / 0.979 |
+| `toast_cheers` | `toast_cheers` | 双手举杯碰杯、泡沫飞溅 | 926×1024 / 46.3% / 0.989 |
+| `umbrella_stroll` | `umbrella_stroll` | 撑透明蓝伞、伸手接雨 | 926×1024 / 40.5% / 0.987 |
+
+**结果**：姿势总数 9 → **19 → 25**（另有 3 张基础图 `idle/wave/run` 等被复用），
+`video-fx ACTION_LIST` 的 **28 个动作现在全部有专属姿势**，`legacy_actions.mjs` 里的 `poses` 全部指向专属图，
+`render_legacy_sample.mjs` 也不再出现"两个动作共用一张脸"的情况。
+
+骨架自检（`node rig_preview.mjs`）：25 张姿势逐张量骨架，**25/25 成功**；
+静止姿势还原误差仍是 **10.23/1020**（≈1%），说明新图与旧图贴合度一致。
+
+### 2. Claude 大小姐：换成素材库的像素立绘（10 张，按镜头切换）
+
+原来 L03–L16 的大小姐是渲染器用几何图元现画的（`CAST.ladyClaude`），只有一个姿态、动作全靠外层 transform。
+现在改用 **opsCar/claude-daxiaojie-assets** 的 `full-body/` 立绘：
+
+| 项目 | 内容 |
+|---|---|
+| 素材库 | <https://github.com/opsCar/claude-daxiaojie-assets>（`full-body/`，1024×1536 透明 PNG） |
+| 角色设定 | ZipZipPipe（胖次狐）；设定图 lmy414/ai-chan-sheets |
+| 协议 | **CC BY-NC-SA 4.0** —— 署名 + 非商业 + 相同方式共享 |
+| 入库 | `tools/day3制作/claude_src/full/`（10 张，23MB）；署名与逐镜用途见同目录 `ATTRIBUTION.md` |
+| 注册表 | `tools/day3制作/claude_src/claude_poses.mjs`（`heightU 10.6`、每张的 foot） |
+
+逐镜姿势（`CLAUDE_SHOT_POSE`）：
+
+| 镜 | 姿势 | 镜 | 姿势 |
+|---|---|---|---|
+| L04 | greet 打招呼 | L11 | greet |
+| L05 | refuse 抱臂拒绝 | L12 | signoff 收尾 |
+| L06 | explain 讲解 | L13 | wave 挥手 |
+| L07 | present 展示 | L14 | mic 握麦 |
+| L08 | explain | L15 | shocked 后仰 |
+| L09 | present | L16 | flustered 慌 |
+| L10 | wave | — | — |
+
+实现要点：
+- **不重画、不调色、不改设计**，只做缩放 + 骨架绑定；透明底直接可用，抠图脚本不用跑。
+- 大小姐也走同一套 `whale_rig.mjs`（从 alpha 量 10 骨），所以能点头/鞠躬/后仰/呼吸，
+  动作语义表 `CLAUDE_MOTION`：`idle→呼吸`、`explain→敲键盘`、`wave_hand→举杯`、`refuse→握拳抖`、`present→捧花`、`mic→握麦`、`shocked→悬空`、`flustered→石化抖`、`signoff→叉腰`。
+- 姿势优先级：显式 `pose` > 动作语义 > 当前镜头默认图 > `greet`；找不到图自动退回原来的几何立绘，不会留空。
+- 载入日志会打印：`Claude 大小姐立绘：10 张（…）；骨架 10 副` + 素材署名。
+
+### 3. 交付与校验
+
+| 文件 | 说明 |
+|---|---|
+| `Day3/成片/旧动作复刻样片/whale旧动作复刻_骨架版v1.mp4` | 重新渲染，28 个旧动作**各自专属姿势**，78.8s / 1080p / 30fps / 无音轨 / 25.71MB |
+| `tools/day3制作/claude_src/full/*.png` | 大小姐 10 张立绘 |
+| `tools/day3制作/claude_src/ATTRIBUTION.md` | 署名、协议、逐镜用途（发布必须带上） |
+| `tools/day3制作/whale_girl_src/whale_poses.mjs` | 姿势注册表扩到 25 张 |
+| `tools/day3制作/whale_girl_src/rig_preview.mjs` | 改成遍历全部姿势，出 `skeleton_all_poses.png` |
+
+实测：`-f null -` 解码 OK；`ffprobe` 1920×1080 / 30fps / 78.80s / 单视频流；`blackdetect` 0 命中；
+Day3 主样片渲染器载入日志：`鲸鱼娘姿势 25 张 / 骨架 25 副`、`Claude 大小姐立绘 10 张 / 骨架 10 副`。
+
+---
+
 ## 〇之三、v6：按旧版动作清单复刻高清姿势 → 骨架驱动 → 出样片
 
 > 顺序按用户要求：**先把旧动作的图片用提示词复刻出来，再用骨架驱动，最后出样片。**

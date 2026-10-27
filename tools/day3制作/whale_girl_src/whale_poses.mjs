@@ -26,7 +26,19 @@ export const POSES = {
   camera_shutter:  { file: 'whale_camera_shutter.png',  foot: 0.988, tag: '举相机' },
   eat_onigiri:     { file: 'whale_eat_onigiri.png',     foot: 0.988, tag: '啃饭团' },
   coin_hug:        { file: 'whale_coin_hug.png',        foot: 0.988, tag: '抱金币' },
-  playful_fists:   { file: 'whale_playful_fists.png',   foot: 0.987, tag: '握拳抗议' }
+  playful_fists:   { file: 'whale_playful_fists.png',   foot: 0.987, tag: '握拳抗议' },
+
+  // ---- v7：继续按旧版 ACTION_LIST 补齐的 10 张（28 个旧动作至此都有专属姿势）----
+  hum_working_song:  { file: 'whale_hum_working_song.png',  foot: 0.988, tag: '哼歌干活' },
+  token_wordle_sneak:{ file: 'whale_token_wordle_sneak.png', foot: 0.991, tag: '偷摸玩电脑' },
+  drag_ahoge:        { file: 'whale_drag_ahoge.png',        foot: 0.993, tag: '被拎呆毛' },
+  sleep_curl:        { file: 'whale_sleep_curl.png',        foot: 0.968, tag: '蜷尾侧睡' },
+  idol_mic_sing:     { file: 'whale_idol_mic_sing.png',     foot: 0.995, tag: '握麦高歌' },
+  fatfish_working:   { file: 'whale_fatfish_working.png',   foot: 0.990, tag: '敲键盘打工' },
+  tail_wag_dance:    { file: 'whale_tail_wag_dance.png',    foot: 0.991, tag: '摇尾跳舞' },
+  jump_joy:          { file: 'whale_jump_joy.png',          foot: 0.979, tag: '跳跃' },
+  toast_cheers:      { file: 'whale_toast_cheers.png',      foot: 0.989, tag: '举杯' },
+  umbrella_stroll:   { file: 'whale_umbrella_stroll.png',   foot: 0.987, tag: '撑伞' }
 };
 
 export const POSE_NAMES = Object.keys(POSES);
