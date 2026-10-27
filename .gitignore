@@ -34,6 +34,6 @@ video-fx/stills/
 Day3/成片/旧动作复刻样片/still_*.png
 Day3/成片/旧动作复刻样片/strip_*.png
 
-# 《朋友的酒》Q 弹 MV：成片与 A/B 样片体积大，留在工作区不入库（说明文档照常入库）
-Day3/成片/MV/*.mp4
+# 《朋友的酒》Q 弹 MV：4s 钩子测试片默认不入库；正片与说明文档按需入库（源 mp3 不入库）
+*.mp3
 Day3/成片/MV/hook_ab/*.mp4
