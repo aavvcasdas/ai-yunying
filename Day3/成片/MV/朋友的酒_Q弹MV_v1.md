@@ -144,3 +144,38 @@ VIDEO_FX_DIR=$PWD/video-fx node tools/day3制作/render_mv_qtan.mjs --cameo \
 
 参数同 v1，只多一个 `--cameo` 开关；`--hook` / `--from` / `--dur` / `--bpm` / `--size` / `--crf` 全部照常生效。
 成片实测：1080×1920 / 42.00s / 30fps / H.264+AAC，全片解码 0 错。
+
+## 九、字幕修正 + 多版本（不同样子的 Q 弹）
+
+参照用户贴的抖音参考片《邦友的酒 / 朋友的酒 通透小曲》（分支 `arena/817a18ec-ai-yunying` 里的 `…抖音_2.mp4`），
+把字幕从原版「哦也」改成**「哦耶耶」通透小曲版**（二创统一把「哦也」唱成「哦耶耶」，
+B 站多个二创描述一致，`yueting.net` 有完整 LRC 可佐证）。时间轴对齐公开 LRC（kugeci.com，
+原唱李晓杰《朋友的酒》，与本片音轨同曲），取 18s 起副歌段。**注意：本沙箱无 ASR，
+未做逐字声学复核**，正式发布前建议再对音轨校一遍（改渲染器 `LYRICS` 一处即可）。
+
+为出「多个不同的样子」，渲染器新增两个参数（见 `render_mv_qtan.mjs`）：
+
+- `--theme <classic|neon|cyber|sunset>`：换整套舞台/光束/描边配色；
+- `--squash <0~1>`：Q 弹强度（默认 0.33 → 高 67% / 宽 150%；调大更夸张）。
+
+### 本轮产出（均在 `Day3/成片/MV/`，1080×1920 / 42.00s / 30fps / H.264+AAC，全片解码 0 错）
+
+| 文件 | 样子 | 说明 |
+|---|---|---|
+| `朋友的酒_Q弹MV_v1.mp4` | 经典蓝（已重渲） | 默认配色 + 修正后「哦耶耶」字幕 |
+| `朋友的酒_Q弹MV_霓虹粉.mp4` | 霓虹粉 | `--theme neon` |
+| `朋友的酒_Q弹MV_赛博青.mp4` | 赛博青 | `--theme cyber` |
+| `朋友的酒_Q弹MV_落日橙.mp4` | 落日橙 | `--theme sunset` |
+| `朋友的酒_Q弹MV_超Q弹.mp4` | 超 Q 弹 | `--squash 0.46`（同经典蓝配色、压得更狠） |
+| `朋友的酒_Q弹MV_大小姐客串版.mp4` | 嘉宾画中画（已重渲） | `--cameo` + 修正后字幕 |
+
+### 重跑示例
+
+```bash
+# 换配色
+node tools/day3制作/render_mv_qtan.mjs --audio /tmp/vfx/朋友的酒.mp3 --from 18 --dur 42 \
+  --theme neon --out Day3/成片/MV/朋友的酒_Q弹MV_霓虹粉.mp4
+# 调 Q 弹强度
+node tools/day3制作/render_mv_qtan.mjs --audio /tmp/vfx/朋友的酒.mp3 --from 18 --dur 42 \
+  --squash 0.46 --out Day3/成片/MV/朋友的酒_Q弹MV_超Q弹.mp4
+```

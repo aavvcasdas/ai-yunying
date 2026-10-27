@@ -78,6 +78,8 @@ const FROM = Number(argOf('--from', '18'));
 const DUR = Number(argOf('--dur', '42'));
 const BPM = Number(argOf('--bpm', '130.4'));
 const BEAT = 60 / BPM;
+const THEME = argOf('--theme', 'classic');
+const SQUASH = Number(argOf('--squash', '0.33'));
 const HOOK_TEXT = argOf('--hook', '所有人！\n保持Q弹！');
 const HOOK_DUR = Number(argOf('--hook-dur', '4'));
 const CAMEO = ARGV.includes('--cameo');
@@ -92,20 +94,30 @@ const C = {
   pink: '#FF8FB1'
 };
 
+// 多套配色预设（"多个不同的样子"用）：覆盖 C 的舞台/光束/描边色
+const THEMES = {
+  classic: null,
+  neon:   { bg0: '#1A0033', bg1: '#3D0066', bg2: '#7A1FA2', cyan: '#FF5FD2', blue: '#5FE0FF', gold: '#FFD24A', cream: '#FFE9FB', ink: '#1A0033', pink: '#FF7FD0' },
+  cyber:  { bg0: '#021A1A', bg1: '#043B3B', bg2: '#0A6E5E', cyan: '#39FFD0', blue: '#5FE0FF', gold: '#FFC94A', cream: '#E6FFF8', ink: '#021A1A', pink: '#FF8FB1' },
+  sunset: { bg0: '#2B0A00', bg1: '#5A1E00', bg2: '#A8431A', cyan: '#FFC04A', blue: '#FF8A3D', gold: '#FFE08A', cream: '#FFF1E0', ink: '#2B0A00', pink: '#FF6F61' }
+};
+if (THEMES[THEME]) Object.assign(C, THEMES[THEME]);
+
 // 客串版：Claude 大小姐 Q 版立绘（opsCar/claude-daxiaojie-assets，CC BY-NC-SA 4.0，署名见 claude_src/ATTRIBUTION.md）
 // 只作「嘉宾画中画」出现，不替代主角、不暗示她参与制作。
 const CAMEO_LIST = ['wave_hi', 'cheer', 'dance', 'sing', 'megaphone', 'ok_hand', 'curtsy', 'pointing_viewer'];
 
-// 歌词时间轴：沿用 video-fx 里已有的《朋友的酒》LRC/Vosk 时间轴
-// （`video-fx/src/mv_pengyou_de_jiu.js` 的 SUBTITLES），这里只取用到的那几句、并减去 --from。
+// 歌词时间轴：参照「邦友の酒 / 朋友的酒 通透小曲」二创版（原版「哦也」→「哦耶耶」），
+// 时间轴对齐公开 LRC（kugeci.com，原唱李晓杰《朋友的酒》，与本片音轨同曲），
+// 取 18s 起的副歌段。注意：本沙箱无 ASR，未做逐字声学复核，正式发布前建议再对音轨校一遍。
 const LYRICS = [
-  { t0: 18.31, t1: 25.95, text: '昨日一去不复回 哦也' },
-  { t0: 26.00, t1: 34.05, text: '开心比什么都贵' },
-  { t0: 34.10, t1: 41.95, text: '覆水不能再收回 哦也' },
-  { t0: 41.99, t1: 50.05, text: '桃花谢了有玫瑰' },
-  { t0: 50.10, t1: 53.90, text: '人生几十年总会有风雨来陪' },
-  { t0: 53.95, t1: 57.95, text: '潇潇洒洒赴会今不醉不归' },
-  { t0: 58.00, t1: 61.45, text: '往事后不后悔慢慢去体会' }
+  { t0: 17.95, t1: 25.90, text: '昨日一去不复回 哦耶耶' },
+  { t0: 25.90, t1: 33.95, text: '开心比什么都贵' },
+  { t0: 33.95, t1: 41.95, text: '覆水不能再收回 哦耶耶' },
+  { t0: 41.95, t1: 49.95, text: '桃花谢了有玫瑰' },
+  { t0: 49.95, t1: 53.96, text: '人生几十年总会有风雨来陪' },
+  { t0: 53.96, t1: 57.91, text: '潇潇洒洒赴会今不醉不归' },
+  { t0: 57.91, t1: 60.00, text: '往事后不后悔慢慢去体会' }
 ];
 
 // ---------------------------------------------------------------- 字幕（项目默认）
@@ -220,8 +232,8 @@ function qtan(t, phase = 0) {
   let amt;
   if (k < 0.22) amt = ease(k / 0.22);
   else amt = 1 - ease((k - 0.22) / 0.78);
-  const sq = 0.33 * amt;                 // 0.67 高
-  return { sy: 1 - sq, sx: 1 + sq * 1.5, amt };  // 宽最多 1.5
+  const sq = SQUASH * amt;               // 高 1-SQUASH、宽 1+SQUASH*1.5（默认 0.33 → 0.67 高 / 1.5 宽）
+  return { sy: 1 - sq, sx: 1 + sq * 1.5, amt };
 }
 
 function drawWhale(ctx, pose, t, baseY) {
