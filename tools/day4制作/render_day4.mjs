@@ -1,9 +1,19 @@
 // render_day4.mjs — 【Day4】呜……本鲸的米饭，被 MV 吃光了 · 样片渲染器
 //
 // 与 Day3 渲染器的三个差别（用户 2026-10-27 点名要的）：
-//   1. **角色回到老版像素骨架**（video-fx `src/whale_girl.js` 的原版鲸鱼娘），
-//      但用「整数格离屏层 + alpha 二值化 + 最近邻贴回」画，解决 Day3 v2 被判"糊"的问题
-//      ——`blitChar()`，可用 --soft 关掉对比（同一帧出两张，肉眼就能看出差别）。
+//   1. **像素版 = Day2 加更里电视中的那一版**（用户 2026-10-27：
+//      「像素版是让你用 day2 的加更的像素版，那个电视里的那种」）：
+//      · 主角 = DSH 39 张完整姿势贴纸（`tools/day2制作/video-fx源码快照/day2_poses/`，512×512 WebP），
+//        按 alpha bbox 脚底锚定 + 等高缩放 + 呼吸/挤压，用高质量降采样画（`--char dsh`，默认）；
+//      · `--char day2|ss2|crisp` 仍保留：那是老像素骨架的三种画法，用来做对照，不再是主路径。
+//   1b. （历史）老像素骨架路径：
+//      · 形象清理沿用 Day2 的 `safePixelOptions`（eyes=open / squint=0.01 / 过渡眨眼肤色块关闭 /
+//        transitionBlend=1 / deadpan·sleepy·smug 的平眉 + 视线下移 / sleep 用闭眼弧线）；
+//      · wink 换 wave 头、wink 后发换 heart 后发（与 Day2 render_day2.mjs 同一套装配）；
+//      · 画法三种可切（默认 ss2）：
+//          --char day2  完全照 Day2 的做法：直接在 1.5× 画布上画，开抗锯齿
+//          --char ss2   同一套画法但先按 2× 超采样再降回（更干净的边缘，默认）
+//          --char crisp 整数格 + alpha 二值化 + 最近邻（方块硬边，Day4 v1 用过）
 //   2. **C02 加电视机**：老 CR T 电视里放本鲸做的那版《朋友的酒》MV，
 //      故意做成"很劣质"——低分辨率内部画布（240×150）最近邻放大、扫描线、雪花、
 //      色差、歌词追不上（字幕延迟 2.4s 且被裁半截）、角标 `MV v4 · 未调`。
@@ -72,6 +82,48 @@ PROPS: {
 }
 const PROPS = require(path.join(VFX, 'src/props.js'));
 import { createDay2Subtitle, speakerFor } from '../字幕/day2_style_sub.mjs';
+
+// ---------------------------------------------------------------------------
+// Day2 加更里电视用的那套 DSH 贴纸（39 张 512×512 WebP，MIT，来源见同目录 ATTRIBUTION.md）
+// ---------------------------------------------------------------------------
+const DSH_DIR = path.resolve(__dirname, '../day2制作/video-fx源码快照/day2_poses');
+const DSH = {};            // name → { img, bbox }
+const DSH_NAMES = [
+  'idle-cute', 'curious', 'thinking', 'running', 'success', 'failure', 'blush', 'angry',
+  'eat', 'celebrate', 'sleep', 'greet', 'wink', 'bold', 'star', 'daily-gaming', 'daily-eat',
+  'daily-stretch', 'tail-swing', 'meme-cry', 'meme-smug', 'meme-doge', 'meme-heart',
+  'meme-no', 'meme-yes', 'meme-music', 'work-debug', 'work-idea', 'work-review',
+  'work-deadline', 'react-head', 'react-belly', 'react-tail', 'game-happy', 'game-win',
+  'teasing', 'daily-done', 'levelup', 'cool-shades'
+];
+function alphaBBox(img) {
+  const c = createCanvas(img.width, img.height);
+  const g = c.getContext('2d');
+  g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, img.width, img.height).data;
+  let x0 = img.width, y0 = img.height, x1 = -1, y1 = -1;
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      if (d[(y * img.width + x) * 4 + 3] > 8) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+    }
+  }
+  if (x1 < 0) return { x: 0, y: 0, w: img.width, h: img.height };
+  return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+}
+async function loadDsh() {
+  let n = 0;
+  for (const name of DSH_NAMES) {
+    const f = path.join(DSH_DIR, `dsh-whale-state-${name}.webp`);
+    if (!fs.existsSync(f)) { console.warn('  缺贴纸:', name); continue; }
+    const img = await loadImage(fs.readFileSync(f));
+    DSH[name] = { img, bbox: alphaBBox(img) };
+    n++;
+  }
+  console.log(`DSH 贴纸：${n}/${DSH_NAMES.length} 张（Day2 加更电视同款）`);
+}
 
 const {
   W, H, TAU, PAL, clamp, lerp, seg, ease, easeOut, pulse,
@@ -148,6 +200,9 @@ const argOf = (flag) => {
 const CUES_JSON = argOf('--cues');
 const AUDIO_WAV = argOf('--audio');
 const SOFT = ARGV.includes('--soft');            // 关掉清晰化（出对比帧用）
+// 电视里那条 MV 的声音：'auto' = 现场合成一条「很劣质、慢放、很小声」的伴奏占位；
+// 传路径 = 用你自己的音轨（如 朋友的酒.mp3）；不传 = 静音。
+const TV_AUDIO = argOf('--tv-audio');
 const NO_TV = ARGV.includes('--no-tv');          // 出 C02 无电视对照
 const VOICE_CUES = CUES_JSON ? JSON.parse(fs.readFileSync(CUES_JSON, 'utf8')) : null;
 
@@ -195,7 +250,14 @@ CORE.DURATION = DURATION;
 //   ② 把 alpha 二值化（≥110 → 255，其余 0），砍掉旋转/摆动留下的半透明边；
 //   ③ 用 imageSmoothingEnabled=false 整张贴回主画布，位置也取整。
 // 效果 = 老像素骨架的正方形硬边，不再有灰糊边。--soft 可关掉 ②③ 做对照。
-const ALPHA_SNAP = !SOFT;
+const CHAR_MODE = (argOf('--char') || (SOFT ? 'day2' : 'dsh')).toLowerCase();
+if (!['dsh', 'day2', 'ss2', 'crisp'].includes(CHAR_MODE)) {
+  throw new Error(`--char 只接受 dsh|day2|ss2|crisp，实得 ${CHAR_MODE}`);
+}
+const SS = Math.max(1, Number(argOf('--ss') || 2));   // ss2 的超采样倍数
+const ALPHA_SNAP = CHAR_MODE === 'crisp';
+const SUFFIX = CHAR_MODE === 'dsh' ? '_dsh'
+  : CHAR_MODE === 'day2' ? '_day2' : (CHAR_MODE === 'ss2' ? `_ss${SS}` : '_crisp');
 const CHAR_BOX = { halfW: 5.6, top: -10.6, bottom: 1.6 };
 const layerCache = new Map();
 function charLayer(w, h) {
@@ -212,16 +274,25 @@ function blitChar(ctx, x, y, u, draw, o = {}) {
   if (o.shadow !== false) {
     paint(ctx, ellPts(x, y + 0.1 * u, 2.5 * u, 0.46 * u, 16), { wash: PAL.ink, washOp: 58, ink: null });
   }
-  const m = ctx.getTransform();
-  const s = Math.hypot(m.a, m.b);
-  if (!ALPHA_SNAP) {            // 对照：直接在主画布上画（旧做法，会糊）
+  // ① day2：与 render_day2.mjs 完全一致——直接画在主画布（1.5×），开高质量抗锯齿
+  if (CHAR_MODE === 'day2') {
     ctx.save();
-    draw(ctx, x, y, u, s);
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+    draw(ctx, x, y, u);
     ctx.restore();
     return;
   }
-  const cellDev = Math.max(2, Math.round((u * s) / 10));
-  const uDev = cellDev * 10;
+
+  const m = ctx.getTransform();
+  const s = Math.hypot(m.a, m.b);
+  const rotated = Math.abs(m.b) > 1e-9 || Math.abs(m.c) > 1e-9 || Math.abs(m.a - m.d) > 1e-9;
+  // ② crisp：每格 = 整数设备像素，画完把 alpha 二值化，再最近邻贴回
+  // ③ ss2  ：按 SS× 设备分辨率画，再降采样贴回（抗锯齿但边缘干净）
+  const quality = CHAR_MODE === 'crisp'
+    ? Math.max(2, Math.round((u * s) / 10)) * 10
+    : u * s * SS;
+  const uDev = quality;
   const lw = Math.ceil(CHAR_BOX.halfW * 2 * uDev);
   const lh = Math.ceil((CHAR_BOX.bottom - CHAR_BOX.top) * uDev);
   const { canvas, ctx: g } = charLayer(lw, lh);
@@ -229,38 +300,120 @@ function blitChar(ctx, x, y, u, draw, o = {}) {
   g.clearRect(0, 0, lw, lh);
   const bx = Math.round(CHAR_BOX.halfW * uDev);
   const by = Math.round(-CHAR_BOX.top * uDev);
-  draw(g, bx, by, uDev, 1);
-  const img = g.getImageData(0, 0, lw, lh);
-  const d = img.data;
-  for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 110 ? 255 : 0;
-  g.putImageData(img, 0, 0);
+  draw(g, bx, by, uDev);
+  if (CHAR_MODE === 'crisp') {
+    const img = g.getImageData(0, 0, lw, lh);
+    const d = img.data;
+    for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 110 ? 255 : 0;
+    g.putImageData(img, 0, 0);
+  }
+  // 贴回：crisp 用最近邻 + 位置取整；ss2 用高质量降采样
   const fx = m.a * x + m.c * y + m.e;
   const fy = m.b * x + m.d * y + m.f;
-  const noRot = Math.abs(m.b) < 1e-9 && Math.abs(m.c) < 1e-9 && Math.abs(m.a - m.d) < 1e-9;
+  const k = CHAR_MODE === 'crisp' ? 1 : SS;      // 层像素 / 设备像素
   ctx.save();
-  ctx.imageSmoothingEnabled = false;
-  if (noRot) {
+  ctx.imageSmoothingEnabled = CHAR_MODE !== 'crisp';
+  if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+  if (!rotated) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(canvas, Math.round(fx - bx), Math.round(fy - by));
+    const dx = CHAR_MODE === 'crisp' ? Math.round(fx - bx / k) : fx - bx / k;
+    const dy = CHAR_MODE === 'crisp' ? Math.round(fy - by / k) : fy - by / k;
+    ctx.drawImage(canvas, dx, dy, lw / k, lh / k);
   } else {
-    ctx.drawImage(canvas, x - bx / s, y - by / s, lw / s, lh / s);
+    ctx.drawImage(canvas, x - (bx / k) / s, y - (by / k) / s, (lw / k) / s, (lh / k) / s);
   }
   ctx.restore();
 }
 
-// 主角色入口：老版像素骨架（style='pixel'）
+// ---------------------------------------------------------------------------
+// 2.1 形象清理：与 Day2 `src/ch/day2_all.js` 的 safePixelOptions 同一套口径
+// （用户 2026-10-27：「像素版用 day2 的，不是最原始那个没清干净的」）
+// ---------------------------------------------------------------------------
+function safePixelOptions(o = {}) {
+  const safe = { ...o };
+  const emo = safe.emotion || safe.emo;
+  if (emo === 'deadpan' || emo === 'sleepy' || emo === 'smug') {
+    safe.brows = 'flat';
+    safe.mouth = safe.mouth || 'flat';
+    safe.lookY = 0.55;
+  }
+  // eyes 固定 open：情绪预设会挑 lids / dead / wink，导致虹膜被肤色横带盖住；
+  // squint 用 0.01 而不是 0，是为了绕开 rig 里 `o.squint || autoBlink` 那条
+  // 「铺肤色矩形当眼皮」的分支（Day2 的白眼线就是这么修的）。
+  safe.eyes = safe.action === 'sleep_curl' ? 'happy' : 'open';
+  if (safe.action === 'sleep_curl') {
+    safe.poseMode = 'heart';
+    safe.poseFrom = 'heart';
+    safe.poseTo = 'heart';
+    safe.poseBlend = 1;
+    safe.tailSit = false;
+    safe.laptop = false;
+    if (safe.tailMode === 'cushion') safe.tailMode = undefined;
+  }
+  safe.squint = 0.01;
+  safe.transitionBlend = 1;
+  return safe;
+}
+
+// ---------------------------------------------------------------------------
+// 主角色：Day2 加更电视里的 DSH 贴纸
+//   · 按 alpha bbox 做脚底锚定 + 等高缩放（不同姿势各自贴地，不会一高一低）
+//   · 呼吸 2.4s（Day2 同口径）+ 轻微 squash + 头部摆动
+//   · imageSmoothingQuality='high'：512 源图降到 ~250px 是降采样，边缘反而更干净
+// ---------------------------------------------------------------------------
+const POSE_BY_EMOTION = {
+  happy: 'idle-cute', idle: 'idle-cute', proud: 'bold', smug: 'meme-smug',
+  sad: 'failure', cry: 'meme-cry', sob: 'meme-cry', pout: 'angry', angry: 'angry',
+  confused: 'curious', curious: 'curious', thinking: 'thinking', sleepy: 'sleep',
+  nervous: 'failure', shocked: 'meme-yes', surprised: 'meme-yes', blush: 'blush',
+  excited: 'star', celebrate: 'celebrate', love: 'meme-heart', hungry: 'daily-eat'
+};
+const POSE_CYCLE = ['idle-cute', 'curious', 'bold', 'daily-stretch', 'meme-heart', 'tail-swing'];
+
+function drawDsh(ctx, x, y, u, o = {}) {
+  const t = Number(o.t) || 0;
+  const name = o.pose || POSE_BY_EMOTION[o.emotion] || POSE_BY_EMOTION[o.emo] || 'idle-cute';
+  const pose = DSH[name] || DSH['idle-cute'];
+  if (!pose) return;
+  const H = (o.heightU || 9.65) * u;
+  const breath = 1 + Math.sin(t * (TAU / 2.4)) * 0.012;
+  const sq = o.sq || 0;
+  const scale = H / pose.bbox.h;
+  const w = pose.img.width * scale;
+  const h = pose.img.height * scale;
+  const cx = (pose.bbox.x + pose.bbox.w / 2) * scale;
+  const bottom = (pose.bbox.y + pose.bbox.h) * scale;
+  const dx = x + (o.dx || 0) * u + Math.sin(t * 1.7 + (o.seed || 0)) * u * 0.03;
+  const dy = y + (o.dy || 0) * u;
+  ctx.save();
+  if (o.shadow !== false) {
+    paint(ctx, ellPts(x, y + 0.1 * u, 2.5 * u, 0.44 * u, 16), { wash: PAL.ink, washOp: 55, ink: null });
+  }
+  ctx.translate(dx, dy);
+  ctx.rotate((o.rot || 0) + Math.sin(t * 2.1) * 0.012);
+  ctx.scale((o.flip ? -1 : 1) * (1 + sq * 0.5) * breath, (1 - sq * 0.5) * breath);
+  ctx.imageSmoothingEnabled = true;
+  if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(pose.img, -cx, -bottom, w, h);
+  ctx.restore();
+}
+
+// 主角色入口：Day2 口径的像素骨架（style='pixel'）
 function WGF(ctx, x, y, u, o = {}) {
-  const opts = {
+  if (CHAR_MODE === 'dsh') {
+    drawDsh(ctx, x, y, u, o);
+    return;
+  }
+  const opts = safePixelOptions({
     style: 'pixel',
     showActionBadge: false,
     tailScale: 1.0,
-    eyes: 'open',
-    squint: 0.01,
-    mouth: o.mouth || 'smile',
     noFinBows: true,
     eyePatch: false,
+    vectorMouth: true,      // Day4 起：嘴型走引擎矢量版，不铺肤色方块
+    mouth: 'smile',
     ...o
-  };
+  });
   if (!opts.emo && !opts.emotion) opts.emotion = 'happy';
   blitChar(ctx, x, y, u, (g, bx, by, uu) => whaleGirl(g, bx, by, uu, { ...opts, t: opts.t ?? 0 }), { shadow: opts.shadow });
 }
@@ -334,18 +487,24 @@ function workOrder(ctx, x, y, w, h, text, rot = 0, o = {}) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, 0, -h * 0.16);
-  ctx.font = 'bold 13px "NotoSansSC", sans-serif';
+  ctx.font = `bold ${o.stamp ? 11 : 13}px "NotoSansSC", sans-serif`;
   ctx.fillStyle = '#334155';
-  ctx.fillText(o.note || '主人：再改', 0, h * 0.24);
+  ctx.textAlign = o.stamp ? 'left' : 'center';
+  ctx.fillText(o.note || '主人：再改', o.stamp ? -w / 2 + 9 : 0, h * 0.28);
   if (o.stamp) {
+    // 印章：右下角斜盖，尺寸按单子走，绝不压 note 那行字
+    const sw = Math.min(w * 0.4, 44), shh = Math.min(h * 0.22, 19);
     ctx.save();
-    ctx.rotate(-0.2);
+    ctx.translate(w * 0.19, h * 0.28);
+    ctx.rotate(-0.16);
     ctx.strokeStyle = '#D8232A';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(-w * 0.3, -h * 0.06, w * 0.6, h * 0.34);
+    ctx.lineWidth = 2.2;
+    ctx.strokeRect(-sw / 2, -shh / 2, sw, shh);
     ctx.fillStyle = '#D8232A';
-    ctx.font = '900 16px "ZCOOLKuaiLe", sans-serif';
-    ctx.fillText(o.stamp, 0, h * 0.11);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `900 ${Math.max(9, Math.round(shh * 0.72))}px "ZCOOLKuaiLe", sans-serif`;
+    ctx.fillText(o.stamp, 0, 1);
     ctx.restore();
   }
   ctx.restore();
@@ -420,19 +579,31 @@ function tvSet(ctx, x, y, w, h, drawInner, o = {}) {
   }
   // 贴纸：MV v4 · 未调
   ctx.save();
-  ctx.translate(x + 30, y + h + 12);
+  ctx.translate(x + 52, y + h + 12);
   ctx.rotate(-0.06);
-  paint(ctx, rrPts(-42, -12, 84, 24, 5, 1), { wash: 'rgba(242,193,78,0.92)', ink: PAL.ink, sw: 1.1 });
+  ctx.font = '900 13px "ZCOOLKuaiLe", sans-serif';
+  const cap = 'MV v4 · 未调';
+  const cw = Math.ceil(ctx.measureText(cap).width) + 22;
+  paint(ctx, rrPts(-cw / 2, -11, cw, 22, 5, 1), { wash: 'rgba(242,193,78,0.92)', ink: PAL.ink, sw: 1.1 });
   ctx.fillStyle = '#3B2A0E';
-  ctx.font = '900 14px "ZCOOLKuaiLe", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('MV v4 · 未调', 0, 1);
+  ctx.fillText(cap, 0, 1);
   ctx.restore();
   return { sx, sy, sw, sh };
 }
 
-// 电视里放的那版劣质 MV：低分辨率内容 + 追不上的歌词 + 色差
+// 电视里放的那版劣质 MV：DSH 贴纸 + 明显卡不上点 + 慢放 + 音量很小 + 色差
+//   用户 2026-10-27：「将朋友的酒播放慢些声音小些，很奇怪的那种卡不上点的，
+//   或者表情包动的不对的（鲸鱼娘做的朋友的酒很劣质的那种）」
+//   做法：① 画面整体按 0.35× 慢放；② 贴纸每 1.9s 换一次（曲子是 130.4BPM=0.462s/拍，
+//   对不上就是故意的）；③ 换的动作故意和歌词相反（唱「举起杯」时在哭，唱「朋友」时在睡）；
+//   ④ 右下角音量条压到 12%，右上角写「慢放 0.35×」。
+const TV_BEAT = 0.462;          // 130.4 BPM，朋友的酒实测
+const TV_SLOW = 0.35;           // 慢放
+const TV_WRONG_POSES = ['meme-cry', 'sleep', 'angry', 'meme-doge', 'daily-gaming', 'failure'];
+const TV_LYRICS = ['朋友', '的酒', '一起', '举起', '杯'];
+
 function shoddyMV(ctx, sx, sy, sw, sh, tt) {
   const LW = 240, LH = 150;
   const key = `mv${LW}x${LH}`;
@@ -443,63 +614,62 @@ function shoddyMV(ctx, sx, sy, sw, sh, tt) {
     layerCache.set(key, layer);
   }
   const g = layer.ctx;
+  const st = tt * TV_SLOW;                       // 慢放时间
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.clearRect(0, 0, LW, LH);
-  // 背景（MV 版：蓝紫舞台 + 灯）
   g.fillStyle = '#141B3A';
   g.fillRect(0, 0, LW, LH);
   g.fillStyle = '#1E2A55';
   g.fillRect(0, LH * 0.62, LW, LH * 0.38);
-  const glowG = g.createRadialGradient(LW * 0.5, LH * 0.35, 4, LW * 0.5, LH * 0.35, LW * 0.55);
-  glowG.addColorStop(0, 'rgba(90,180,255,0.35)');
+  const glowG = g.createRadialGradient(LW * 0.5, LH * 0.35, 4, LW * 0.5, LH * 0.35, LW * 0.6);
+  glowG.addColorStop(0, 'rgba(90,180,255,0.32)');
   glowG.addColorStop(1, 'rgba(90,180,255,0)');
   g.fillStyle = glowG;
   g.fillRect(0, 0, LW, LH);
-  // Q 弹：每拍压扁（130 BPM ≈ 0.462s）
-  const beat = (tt / 0.462) % 1;
-  const squash = beat < 0.22 ? 1 - 0.32 * (beat / 0.22) : 0.68 + 0.32 * ease((beat - 0.22) / 0.78);
-  // 角色（像素骨架，故意小尺寸 + 无清晰化 = 颗粒感）
-  g.save();
-  g.translate(LW * 0.5, LH * 0.92);
-  g.scale(1.5 * (2 - squash), 1.5 * squash);
-  g.translate(-LW * 0.5, -LH * 0.92);
-  whaleGirl(g, LW * 0.5, LH * 0.92, 5.6, {
-    style: 'pixel', t: tt, emotion: 'happy', eyes: 'open', squint: 0.01,
-    mouth: 'openSmile', noFinBows: true, tailScale: 1.0, showActionBadge: false
-  });
-  g.restore();
-  // 追不上的歌词：底部字幕条，延迟 2.4s、且被裁掉半截
-  const lyric = ['朋友', '的酒', '一起', '举起', '杯'][Math.floor(tt / 0.9) % 5];
-  const lag = Math.floor(Math.max(0, tt - 2.4) / 0.9) % 5;
-  const lagText = ['朋友', '的酒', '一起', '举起', '杯'][lag];
+  // 贴纸：每 1.9s 换一张，跟拍子完全无关
+  const poseName = TV_WRONG_POSES[Math.floor(st / 1.9) % TV_WRONG_POSES.length];
+  const pose = DSH[poseName] || DSH['idle-cute'];
+  if (pose) {
+    const H = LH * 0.72;
+    const sc = H / pose.bbox.h;
+    const w = pose.img.width * sc, h = pose.img.height * sc;
+    const cx = (pose.bbox.x + pose.bbox.w / 2) * sc;
+    const bottom = (pose.bbox.y + pose.bbox.h) * sc;
+    const cxScreen = LW * 0.5;
+    g.save();
+    g.imageSmoothingEnabled = true;
+    g.drawImage(pose.img, cxScreen - cx, LH * 0.93 - bottom, w, h);
+    g.restore();
+  }
+  // 歌词：延迟 + 只露半截（左边被裁）
+  const lagText = TV_LYRICS[Math.floor(Math.max(0, st - 2.4) / 0.9) % TV_LYRICS.length];
   g.fillStyle = 'rgba(0,0,0,0.55)';
-  g.fillRect(0, LH - 30, LW, 22);
+  g.fillRect(0, LH - 28, LW, 20);
   g.fillStyle = '#FFE86B';
-  g.font = 'bold 13px "NotoSansSC", sans-serif';
+  g.font = 'bold 12px "NotoSansSC", sans-serif';
   g.textBaseline = 'middle';
-  g.fillText(lagText, 8, LH - 19);                 // 左对齐、贴着边缘、字还只出来一半
-  g.fillStyle = '#FFFFFF';
-  g.font = 'bold 9px "NotoSansSC", sans-serif';
-  g.fillText('歌词延迟 2.4s', 8, LH - 34);
-  g.fillStyle = '#F87171';
-  g.font = 'bold 9px "NotoSansSC", sans-serif';
-  g.fillText('LRC', LW - 30, LH - 34);
-  // 角标 + 进度条（卡住）
-  g.fillStyle = 'rgba(255,255,255,0.75)';
+  g.fillText(lagText, -3, LH - 18);              // 贴着左边缘，字被裁一半
+  // 角标：慢放 / 卡不上点 / 音量 12%
+  g.fillStyle = 'rgba(255,255,255,0.8)';
   g.font = 'bold 8px "NotoSansSC", sans-serif';
-  g.fillText('MV v4', 6, 10);
-  g.fillStyle = 'rgba(255,255,255,0.25)';
-  g.fillRect(6, LH - 6, LW - 12, 2);
-  g.fillStyle = '#F2C14E';
-  g.fillRect(6, LH - 6, (LW - 12) * 0.18, 2);
-  // 雪花噪点
+  g.fillText('MV v4', 5, 9);
+  g.fillStyle = '#F87171';
+  g.fillText('慢放 0.35×', LW - 52, 9);
+  g.fillStyle = 'rgba(255,255,255,0.35)';
+  g.fillRect(5, LH - 7, 62, 3);
+  g.fillStyle = '#4ADE80';
+  g.fillRect(5, LH - 7, 62 * 0.12, 3);
+  g.fillStyle = 'rgba(255,255,255,0.7)';
+  g.font = 'bold 7px "NotoSansSC", sans-serif';
+  g.fillText('♪ 12%', 72, LH - 5);
+  // 雪花
   for (let i = 0; i < 90; i++) {
     const x = Math.floor(hash(i * 3.7 + Math.floor(tt * 12)) * LW);
     const y = Math.floor(hash(i * 7.1 + Math.floor(tt * 12) * 1.7) * LH);
     g.fillStyle = `rgba(255,255,255,${0.06 + hash(i) * 0.14})`;
     g.fillRect(x, y, 1, 1);
   }
-  // 贴回电视：最近邻放大 + 红青色差
+  // 贴回电视：最近邻放大 + 红青色差（劣质感）
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   ctx.globalAlpha = 0.28;
@@ -509,6 +679,12 @@ function shoddyMV(ctx, sx, sy, sw, sh, tt) {
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(layer.canvas, sx, sy, sw, sh);
+  ctx.restore();
+  // 节拍线：曲子每 0.462s 一拍，画面每 1.9s 才动一次 → 直观的「卡不上点」
+  const beatPhase = (tt % TV_BEAT) / TV_BEAT;
+  ctx.save();
+  ctx.globalAlpha = 0.5 * (1 - beatPhase);
+  inkLine(ctx, [[sx + 6, sy + sh - 3], [sx + sw - 6, sy + sh - 3]], 2, '#F2C14E', 'inkfine', 0);
   ctx.restore();
 }
 
@@ -638,6 +814,10 @@ function drawClaude(ctx, x, y, hgt, t = 0, alpha = 1) {
   if (!CLAUDE_IMG) return;
   const w = CLAUDE_IMG.width * (hgt / CLAUDE_IMG.height);
   ctx.save();
+  ctx.globalAlpha = alpha * 0.5;
+  paint(ctx, ellPts(x, y + 4, w * 0.34, 9, 16), { wash: PAL.ink, washOp: 60, ink: null });
+  ctx.restore();
+  ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(x, y + Math.sin(t * 2.2) * 3);
   ctx.drawImage(CLAUDE_IMG, -w / 2, -hgt, w, hgt);
@@ -656,12 +836,12 @@ function shotC01(ctx, t, lt, p) {
   // 桌面：空碗 + 四张返工单
   riceBowl(ctx, 470, 500, 1.15, 0, t);
   const slips = [
-    { x: 820, y: 448, r: -0.14, txt: 'v1' },
-    { x: 878, y: 456, r: 0.08, txt: 'v2' },
-    { x: 934, y: 446, r: -0.05, txt: 'v3' },
-    { x: 992, y: 458, r: 0.16, txt: 'v4' }
+    { x: 812, y: 448, r: -0.14, txt: 'v1' },
+    { x: 878, y: 458, r: 0.08, txt: 'v2' },
+    { x: 944, y: 446, r: -0.05, txt: 'v3' },
+    { x: 1010, y: 458, r: 0.16, txt: 'v4' }
   ];
-  slips.forEach((s, i) => workOrder(ctx, s.x, s.y, 88, 70, s.txt, s.r, { stamp: i === 3 ? 'LEI' : null, note: i === 3 ? '第四版' : '主人：再改' }));
+  slips.forEach((s, i) => workOrder(ctx, s.x, s.y, 76, 64, s.txt, s.r, { stamp: i === 3 ? 'LEI' : null, note: i === 3 ? '第四版' : '主人：再改' }));
   WGF(ctx, 690, 528, 26, { t, emotion: p < 0.5 ? 'sad' : 'pout', mouth: p < 0.5 ? 'pout' : 'o', dy: -0.02, headTilt: -0.06 });
   // 大字（0 秒就在）
   const k = 1 + 0.06 * Math.sin(t * 8);
@@ -689,18 +869,18 @@ function shotC02(ctx, t, lt, p) {
   });
   // 返工单一张张拍下来（每句一拍）
   const lineP = (n) => clamp((t - C(n)) / Math.max(0.001, CE(n) - C(n)));
-  const slips = [{ n: 2, x: 812, y: 452, r: -0.12, txt: 'v1' }, { n: 3, x: 876, y: 462, r: 0.10, txt: 'v2' },
-    { n: 4, x: 940, y: 450, r: -0.06, txt: 'v3' }];
+  const slips = [{ n: 2, x: 806, y: 452, r: -0.12, txt: 'v1' }, { n: 3, x: 872, y: 464, r: 0.10, txt: 'v2' },
+    { n: 4, x: 930, y: 450, r: -0.06, txt: 'v3' }];
   slips.forEach((s, i) => {
     const q = lineP(s.n);
     if (q <= 0.02) return;
     ctx.save();
     ctx.globalAlpha = clamp(q * 2);
-    workOrder(ctx, s.x + (1 - q) * 60, s.y + Math.sin(t * 3 + i) * 2, 86, 70, s.txt, s.r + (1 - q) * 0.4, { note: '一版一锅米' });
+    workOrder(ctx, s.x + (1 - q) * 60, s.y + Math.sin(t * 3 + i) * 2, 74, 62, s.txt, s.r + (1 - q) * 0.4, { note: '一版一锅米' });
     ctx.restore();
   });
-  workOrder(ctx, 1004, 442, 88, 72, 'v4', 0.14, { stamp: 'LEI', note: '第四版' });
-  label(ctx, 'v1 v2 v3 v4 · 一版一锅米', 456, 500, { h: 26, font: 'bold 15px "ZCOOLKuaiLe", sans-serif', stroke: '#F2C14E' });
+  workOrder(ctx, 1016, 444, 76, 64, 'v4', 0.14, { stamp: 'LEI', note: '第四版' });
+  label(ctx, 'v1 v2 v3 v4 · 一版一锅米', 318, 566, { h: 26, font: 'bold 15px "ZCOOLKuaiLe", sans-serif', stroke: '#F2C14E' });
   camEnd(ctx);
 }
 
@@ -708,7 +888,7 @@ function shotC03(ctx, t, lt, p) {
   camBegin(ctx, 660, 480, 1.12, 0);
   bg(ctx, t);
   // 进度条卡住
-  const bx = 420, by = 300, bw = 420, bh = 26;
+  const bx = 386, by = 252, bw = 430, bh = 26;
   paint(ctx, rrPts(bx - 6, by - 6, bw + 12, bh + 12, 8, 1), { wash: '#0B1C34', ink: '#48C8FF', sw: 1.3 });
   paint(ctx, rrPts(bx, by, bw, bh, 6, 0.5), { wash: '#16304F', ink: null });
   const stuck = 0.42 + Math.sin(t * 6) * 0.004;
@@ -751,8 +931,8 @@ function shotC04(ctx, t, lt, p) {
 function shotC05(ctx, t, lt, p) {
   camBegin(ctx, 640, 460, 1.06, 0);
   bg(ctx, t);
-  commentBubble(ctx, 340, 236, '住户', 'MV 呢？', clamp(p * 3));
-  commentBubble(ctx, 320, 330, '住户', 'MV 呢？', clamp(p * 3 - 0.3));
+  commentBubble(ctx, 340, 236, '弹幕', 'MV 呢？', clamp(p * 3));
+  commentBubble(ctx, 320, 330, '弹幕', 'MV 呢？', clamp(p * 3 - 0.3));
   WGF(ctx, 830, 530, 26, { t, emotion: 'nervous', mouth: 'waveO', headTilt: 0.14, dx: Math.sin(t * 2.4) * 0.06 });
   label(ctx, '牵一牵，别急呀', 830, 566, { h: 26, font: 'bold 15px "ZCOOLKuaiLe", sans-serif', stroke: '#F2C14E' });
   camEnd(ctx);
@@ -766,6 +946,8 @@ function shotC06(ctx, t, lt, p) {
   const fx = lerp(300, 640, ease(q));
   // 剪影手（主人）：从左边伸进来拎着文件
   ctx.save();
+  ctx.translate(-30, -54);                  // 抬到主角头顶以上
+  ctx.globalAlpha = clamp(1 - q * 2.2);     // 手送进来就撤，别留黑块
   paint(ctx, [[fx - 210, 214], [fx - 96, 214], [fx - 88, 250], [fx - 120, 264], [fx - 158, 258], [fx - 206, 250]],
     { wash: '#0F172A', washOp: 235, ink: null });
   paint(ctx, [[fx - 96, 226], [fx - 62, 232], [fx - 58, 250], [fx - 92, 252]], { wash: '#0F172A', washOp: 235, ink: null });
@@ -784,6 +966,7 @@ function shotC06(ctx, t, lt, p) {
   ctx.font = 'bold 15px "NotoSansSC", sans-serif';
   ctx.fillText('已发送 →', fx - 84, 318);
   ctx.restore();
+  ctx.restore();
   // 本鲸站在原地
   WGF(ctx, 600, 532, 24, { t, emotion: 'confused', mouth: 'flat', headTilt: 0.1 });
   // 大小姐签收（客人只出现在这一镜）
@@ -791,31 +974,45 @@ function shotC06(ctx, t, lt, p) {
   if (arrive > 0.02) {
     ctx.save();
     ctx.globalAlpha = arrive;
-    glow(ctx, 950, 430, 150, '#F2C14E', 0.35);
-    drawClaude(ctx, 950, 534, 268, t, arrive);
-    label(ctx, 'Claude 大小姐（客串）· Q 版', 950, 232, { h: 26, font: 'bold 14px "NotoSansSC", sans-serif', stroke: '#F2C14E' });
+    glow(ctx, 1006, 448, 132, '#F2C14E', 0.32);
+    drawClaude(ctx, 1006, 536, 228, t, arrive);
+    label(ctx, 'Claude 大小姐（客串）· Q 版', 1006, 250, { h: 26, font: 'bold 14px "NotoSansSC", sans-serif', stroke: '#F2C14E' });
     ctx.restore();
   }
   camEnd(ctx);
 }
 
 function shotC07(ctx, t, lt, p) {
-  camBegin(ctx, 700, 470, 1.28, 0);
+  camBegin(ctx, 700, 470, 1.24, 0);
   bg(ctx, t);
-  WGF(ctx, 700, 560, 34, {
+  WGF(ctx, 700, 534, 32, {
     t, emotion: 'pout', mouth: p < 0.5 ? 'o' : 'smile',
     headTilt: Math.sin(t * 3) * 0.05
   });
-  // 一根鳍左右摆（否认）
+  // 「换本鲸？」小牌被当场划掉——不再画假的手臂
+  const q = clamp(p * 1.4);
   ctx.save();
-  const sway = Math.sin(t * 6) * 26;
-  inkLine(ctx, [[780, 430], [830 + sway, 388]], 9, '#FFEAE0', 'ink', 0.2);
-  inkLine(ctx, [[780, 430], [830 + sway, 388]], 2, PAL.ink, 'inkfine', 0.2);
+  ctx.globalAlpha = 0.35 + 0.65 * q;
+  ctx.translate(432, 452);
+  ctx.rotate(-0.07);
+  paint(ctx, rrPts(-86, -40, 172, 80, 8, 1), { wash: '#F8FAFC', fill: '#0B1526', fillOp: 40, ink: PAL.ink, sw: 1.5 });
+  ctx.font = '900 26px "ZCOOLKuaiLe", sans-serif';
+  ctx.fillStyle = '#0F172A';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('换本鲸？', 0, 0);
+  ctx.strokeStyle = '#DC2626';
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.moveTo(-58, -26);
+  ctx.lineTo(58, 26);
+  ctx.moveTo(58, -26);
+  ctx.lineTo(-58, 26);
+  ctx.stroke();
   ctx.restore();
-  if (p > 0.45) {
-    label(ctx, '换的是 MV · 不是本鲸', 700, 200, { h: 40, font: '900 26px "ZCOOLKuaiLe", sans-serif', stroke: '#F2C14E' });
-  }
   camEnd(ctx);
+  // 大字画在屏幕空间，避免被镜头推出去裁掉
+  if (p > 0.45) label(ctx, '换的是 MV · 不是本鲸', 640, 74, { h: 44, font: '900 28px "ZCOOLKuaiLe", sans-serif', stroke: '#F2C14E' });
 }
 
 function shotC08(ctx, t, lt, p) {
@@ -890,12 +1087,12 @@ function shotC11(ctx, t, lt, p) {
   ctx.restore();
   ctx.save();
   ctx.globalAlpha = clamp(pop2 * 2);
-  targetCard(ctx, 610, 214, 360, 210, {
+  targetCard(ctx, 594, 214, 360, 210, {
     title: '月度目标 · 粉丝', value: '10,000', unit: '30 天 · 新增粉丝',
     wash: '#1B2A52', ink: '#4ADE80', valueColor: '#A7F3D0'
   });
   ctx.restore();
-  WGF(ctx, 1020, 548, 18, { t, emotion: 'proud', mouth: 'smile', headTilt: 0.05 });
+  WGF(ctx, 1000, 556, 23, { t, emotion: 'proud', mouth: 'smile', headTilt: 0.05 });
   label(ctx, '一个数都不藏', 620, 470, { h: 26, font: 'bold 15px "ZCOOLKuaiLe", sans-serif', stroke: '#93C5FD' });
   camEnd(ctx);
 }
@@ -937,20 +1134,39 @@ function shotC14(ctx, t, lt, p) {
 
 function shotEndCard(ctx, t, lt, p) {
   bg(ctx, t);
+  const k = clamp(lt * 2);
   ctx.save();
-  ctx.globalAlpha = clamp(lt * 2);
-  paint(ctx, rrPts(330, 210, 620, 190, 16, 1.4), { wash: '#0B1C34', ink: '#F2C14E', sw: 1.8 });
+  ctx.globalAlpha = k;
+  // 30 天进度卡
+  paint(ctx, rrPts(300, 168, 680, 300, 18, 1.4), { wash: '#0B1C34', fill: '#07122A', fillOp: 190, ink: '#F2C14E', sw: 2 });
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = '900 40px "ZCOOLKuaiLe", sans-serif';
+  ctx.font = 'bold 22px "NotoSansSC", sans-serif';
+  ctx.fillStyle = '#93C5FD';
+  ctx.fillText('本鲸的 30 天', 640, 214);
+  ctx.font = '900 56px "ZCOOLKuaiLe", "NotoSansSC", sans-serif';
   ctx.fillStyle = '#FDE68A';
-  ctx.fillText('本鲸的账本 · 01', 640, 270);
-  ctx.font = 'bold 18px "NotoSansSC", sans-serif';
-  ctx.fillStyle = '#A5D8FF';
-  ctx.fillText('非官方同人 · 本视频含 AI 生成内容', 640, 320);
-  ctx.font = 'bold 15px "NotoSansSC", sans-serif';
+  ctx.fillText('第 4 天 / 30', 640, 274);
+  // 粉丝进度条 2180 / 10000
+  ctx.font = 'bold 22px "NotoSansSC", sans-serif';
+  ctx.fillStyle = '#A7F3D0';
+  ctx.textAlign = 'left';
+  ctx.fillText('粉丝', 356, 336);
+  ctx.textAlign = 'right';
+  ctx.font = '900 30px "NotoSansSC", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText('2,180 / 10,000', 924, 336);
+  const bx = 356, by = 362, bw = 568, bh = 16;
+  paint(ctx, rrPts(bx, by, bw, bh, 8, 0.5), { wash: '#16304F', ink: null });
+  const fill = clamp((2180 / 10000) * clamp(lt * 1.6));
+  paint(ctx, rrPts(bx, by, bw * fill, bh, 8, 0.5), { wash: '#4ADE80', ink: null });
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 16px "NotoSansSC", sans-serif';
   ctx.fillStyle = '#94A3B8';
-  ctx.fillText('鲸鱼绝不摸鱼 · 先去吃饭', 640, 356);
+  ctx.fillText('明天开第一张账本卡 · 一个数都不藏', 640, 410);
+  ctx.font = 'bold 15px "NotoSansSC", sans-serif';
+  ctx.fillStyle = '#64748B';
+  ctx.fillText('非官方同人 · 本视频含 AI 生成内容', 640, 444);
   ctx.restore();
 }
 
@@ -983,14 +1199,9 @@ function drawSubtitle(ctx, t) {
 }
 
 function hud(ctx, t) {
-  label(ctx, '鲸鱼娘 · 本鲸', W - 112, 36, { h: 24, font: 'bold 13px "NotoSansSC", sans-serif', stroke: '#48C8FF' });
-  label(ctx, 'AI 生成 · 非官方同人', 126, 36, { h: 22, font: 'bold 12px "NotoSansSC", sans-serif', stroke: '#94A3B8', w: 176 });
-  ctx.save();
-  ctx.globalAlpha = 0.62;
-  label(ctx, SOFT ? 'QA：关闭像素清晰化' : 'QA：老版像素骨架 + 整数格清晰化', W - 168, H - 26, {
-    h: 22, font: 'bold 12px "NotoSansSC", sans-serif', stroke: SOFT ? '#F87171' : '#4ADE80', w: 288, color: '#E2E8F0'
-  });
-  ctx.restore();
+  // 用户 2026-10-27：「图片中的东西去掉」——右上角「鲸鱼娘·本鲸」、
+  // 左上角「AI 生成·非官方同人」、右下角 QA 说明三个角标全部撤掉。
+  // 合规声明只保留在片尾卡（非官方同人 · 本视频含 AI 生成内容）。
 }
 
 // ---------------------------------------------------------------------------
@@ -1051,19 +1262,79 @@ async function renderStills() {
   for (const [name, t] of marks) {
     prepareFrame(ctx);
     renderFrame(ctx, t);
-    const f = path.join(dir, `${name}${SOFT ? '_soft' : ''}_t${t.toFixed(2)}.png`);
+    const f = path.join(dir, `${name}${SOFT ? '_soft' : ''}_t${t.toFixed(2)}${SUFFIX}.png`);
     fs.writeFileSync(f, canvas.toBuffer('image/png'));
     console.log('still', path.relative(process.cwd(), f));
   }
+}
+
+// 电视里的「劣质 MV」音轨：慢放 + 低通 + 走音 + 很小声，只在 C02 那几秒响
+async function buildTvBed(ffmpeg, outWav, durSec) {
+  const dur = Math.max(1.0, durSec).toFixed(2);
+  if (TV_AUDIO && TV_AUDIO !== 'auto') {
+    // 用用户给的音轨：慢放（atempo 0.85）+ 低通 + 抖动 + 音量压到 12%
+    await run(ffmpeg, ['-y', '-i', path.resolve(TV_AUDIO), '-t', dur,
+      '-af', 'atempo=0.85,lowpass=f=1100,vibrato=f=2.6:d=0.05,volume=0.12',
+      '-ar', '44100', '-ac', '1', outWav]);
+    console.log(`  电视音轨：${path.basename(TV_AUDIO)}（慢放 0.85× · 低通 · 音量 12%）`);
+    return outWav;
+  }
+  // 占位伴奏：三个正弦叠一个走音的和弦，故意「卡不上点」的抖动
+  const expr = '0.16*sin(2*PI*196*t)*(0.55+0.45*sin(2*PI*2.1*t))+0.10*sin(2*PI*247*t)+0.07*sin(2*PI*392*t)';
+  await run(ffmpeg, ['-y', '-f', 'lavfi', '-i', `aevalsrc=${expr}:s=44100:d=${dur}`,
+    '-af', 'lowpass=f=900,atempo=0.85,vibrato=f=2.2:d=0.06,volume=0.12',
+    '-ar', '44100', '-ac', '1', outWav]);
+  console.log('  电视音轨：占位合成（慢放 0.85× · 低通 900Hz · 音量 12%）——正式版请用 --tv-audio 朋友的酒.mp3');
+  return outWav;
+}
+
+function run(bin, args) {
+  return new Promise((resolve, reject) => {
+    const p = spawn(bin, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+    let err = '';
+    p.stderr.on('data', (d) => { err += d.toString(); });
+    p.on('close', (c) => (c === 0 ? resolve() : reject(new Error(`${bin} 退出码 ${c}\n${err.slice(-800)}`))));
+    p.on('error', reject);
+  });
 }
 
 async function renderVideo(outFile) {
   const ffmpeg = resolveFfmpeg();
   fs.mkdirSync(path.dirname(path.resolve(outFile)), { recursive: true });
   const total = Math.round(DURATION * FPS);
-  const audioArgs = AUDIO_WAV
-    ? ['-i', path.resolve(AUDIO_WAV), '-map', '0:v:0', '-map', '1:a:0', '-c:a', 'aac', '-b:a', '192k', '-af', 'apad', '-t', DURATION.toFixed(3)]
-    : ['-an'];
+  // 音轨：① 配音（可选）② 电视里那条 MV 的伴奏（可选，只覆盖 C02）
+  const inputs = [];
+  const chains = [];
+  let idx = 1;
+  if (AUDIO_WAV) {
+    inputs.push('-i', path.resolve(AUDIO_WAV));
+    chains.push(`[${idx}:a]apad,volume=1.0[aV]`);
+    idx++;
+  }
+  if (TV_AUDIO) {
+    const tvStart = C(SHOT_RANGES[1].from);
+    const tvEnd = CE(SHOT_RANGES[1].to);
+    const tvBed = path.join('/tmp', `day4_tv_bed_${Math.round(tvStart * 100)}.wav`);
+    await buildTvBed(resolveFfmpeg(), tvBed, tvEnd - tvStart + 0.4);
+    inputs.push('-i', tvBed);
+    const ms = Math.round(tvStart * 1000);
+    chains.push(`[${idx}:a]afade=t=in:st=0:d=0.4,afade=t=out:st=${(tvEnd - tvStart).toFixed(2)}:d=0.6,adelay=${ms}|${ms}[aT]`);
+    idx++;
+  }
+  let audioArgs;
+  if (AUDIO_WAV && TV_AUDIO) {
+    audioArgs = [...inputs, '-filter_complex',
+      `${chains.join(';')};[aV][aT]amix=inputs=2:duration=first:dropout_transition=0[mix]`,
+      '-map', '0:v:0', '-map', '[mix]', '-c:a', 'aac', '-b:a', '192k', '-t', DURATION.toFixed(3)];
+  } else if (AUDIO_WAV) {
+    audioArgs = [...inputs, '-map', '0:v:0', '-map', '1:a:0', '-c:a', 'aac', '-b:a', '192k',
+      '-af', 'apad', '-t', DURATION.toFixed(3)];
+  } else if (TV_AUDIO) {
+    audioArgs = [...inputs, '-filter_complex', chains.join(';'), '-map', '0:v:0', '-map', '[aT]',
+      '-c:a', 'aac', '-b:a', '160k', '-t', DURATION.toFixed(3)];
+  } else {
+    audioArgs = ['-an'];
+  }
   console.log(`Day4: ${total} 帧 / ${DURATION.toFixed(2)}s / ${OUT_W}×${OUT_H} / ${VOICE_CUES ? '实测 cue' : '4.3 字/秒估算'} / ${SOFT ? '关清晰化' : '像素清晰化'}`);
   const ff = spawn(ffmpeg, [
     '-y', '-f', 'rawvideo', '-vcodec', 'rawvideo', '-pix_fmt', 'rgba',
@@ -1099,8 +1370,9 @@ async function renderVideo(outFile) {
   console.log(`✓ ${outFile}（${(fs.statSync(outFile).size / 1e6).toFixed(2)} MB）`);
 }
 
+await loadDsh();
 await loadClaude();
-console.log(`角色：老版像素骨架（${SOFT ? '未清晰化' : '整数格 + alpha 二值化'}）；字幕：Day2 加更版；时长 ${DURATION.toFixed(2)}s`);
+console.log(`角色：像素骨架 · Day2 清理口径 · 画法=${CHAR_MODE}${CHAR_MODE === 'ss2' ? `（${SS}× 超采样）` : ''}；字幕：Day2 加更版；时长 ${DURATION.toFixed(2)}s`);
 
 const timesArg = argOf('--times');
 if (timesArg) {
@@ -1112,7 +1384,7 @@ if (timesArg) {
   for (const t of timesArg.split(',').map(Number)) {
     prepareFrame(ctx);
     renderFrame(ctx, t);
-    const f = path.join(dir, `${tag}_t${t.toFixed(2)}${SOFT ? '_soft' : ''}.png`);
+    const f = path.join(dir, `${tag}_t${t.toFixed(2)}${SUFFIX}.png`);
     fs.writeFileSync(f, canvas.toBuffer('image/png'));
     console.log('check', path.relative(process.cwd(), f));
   }
