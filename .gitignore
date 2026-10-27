@@ -7,6 +7,7 @@ __pycache__/
 .ruff_cache/
 node_modules/
 *_stills/
+mv_stills/
 *_preview_frames/
 *.log
 *.tmp
@@ -32,3 +33,7 @@ video-fx/stills/
 # 复刻样片的单帧复检图（成片才是交付物）
 Day3/成片/旧动作复刻样片/still_*.png
 Day3/成片/旧动作复刻样片/strip_*.png
+
+# 《朋友的酒》Q 弹 MV：成片与 A/B 样片体积大，留在工作区不入库（说明文档照常入库）
+Day3/成片/MV/*.mp4
+Day3/成片/MV/hook_ab/*.mp4
