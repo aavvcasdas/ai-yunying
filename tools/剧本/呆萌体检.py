@@ -38,7 +38,7 @@ import sys
 # 呆萌信号：语气词 + 口癖 + 反问/悬念 + 反差
 CUTE_WORDS = [
     '诶', '呜', '呀', '呢', '哦', '啦', '嘛', '嘿嘿', '哼', '咕噜',
-    '我了雷', '行吧', '才不是', '诶嘿', '哇', '啊', '嘛', '诶？',
+    '我了雷', '行吧', '才不是', '诶嘿', '哇', '啊', '诶？',
 ]
 CUTE_PATTERNS = [
     r'\?', r'？', r'……', r'就一秒', r'真的就', r'嘿嘿', r'哼',
@@ -53,6 +53,12 @@ FILLER_BLACKLIST = [
     '作为一个', '我无法', '根据您的', '希望这个', '大家一起',
     '差了八十多倍', '要一百多，差', '折合', '换算下来',
 ]
+# 占位符：文案里还留着「【待填】」「XXX」「___」＝这稿不能配音
+# 2026-10-27 修：v2 稿口播里带了两个「【待填】」，旧版照样判「通过」，门禁形同虚设。
+PLACEHOLDER_PATTERNS = [
+    r'【[^】]{0,12}】', r'\[待[^\]]{0,6}\]', r'待填', r'待定', r'TBD', r'TODO',
+    r'_{2,}', r'X{2,}', r'某某',
+]
 # 第一句禁止：招呼/前情/内部黑话（新观众 0 秒就走）
 FIRST_BAN = [
     '大家好', '哈喽', '本鱼回来了', '本鲸回来了', '先统计', '先复盘',
@@ -62,16 +68,29 @@ FIRST_BAN = [
 
 
 def load_text(md=None, txt=None):
+    """读口播稿。
+
+    2026-10-27 修：旧版只认「## 四、逐字口播稿」这个固定小节名，换个编号就掉到
+    「文件里第一个 ```text 块」的兜底分支，很容易抓到简介/命令块，把门禁变成假通过。
+    现在按顺序找：① 标题里含「口播 / 台词」的小节下的代码块；② 任意 ```text 块；
+    ③ 任意代码块。并在输出里说明取的是哪一块，避免再默默量错文件。
+    """
     if txt:
-        return open(txt, encoding='utf-8').read()
+        return open(txt, encoding='utf-8').read(), f'纯文本 {txt}'
     s = open(md, encoding='utf-8').read()
-    # 取「逐字口播稿」小节后的第一个 ```text 代码块
-    m = re.search(r'##\s*四、逐字口播稿.*?```(?:text)?\n(.*?)\n```', s, re.S)
-    if not m:
-        m = re.search(r'```(?:text)?\n(.*?)\n```', s, re.S)
-    if not m:
-        sys.exit(f'没在 {md} 里找到 ```text 口播稿代码块')
-    return m.group(1)
+    heads = list(re.finditer(r'^#{2,4}[^\n]*(?:口播|台词)[^\n]*$', s, re.M))
+    for h in heads:
+        tail = s[h.end():]
+        m = re.search(r'```(?:text|txt)?\n(.*?)\n```', tail, re.S)
+        if m:
+            return m.group(1), f'「{h.group(0).lstrip("# ").strip()}」小节'
+    m = re.search(r'```text\n(.*?)\n```', s, re.S)
+    if m:
+        return m.group(1), '第一个 ```text 块（没找到含「口播/台词」的小节，请人工确认）'
+    m = re.search(r'```\n(.*?)\n```', s, re.S)
+    if m:
+        return m.group(1), '第一个代码块（兜底，请人工确认不是简介）'
+    sys.exit(f'没在 {md} 里找到口播稿代码块（小节标题请含「口播」或「台词」）')
 
 
 def split_lines(raw):
@@ -109,7 +128,7 @@ def main():
     ap.add_argument('--rate', type=float, default=4.3, help='语速 字/秒（默认 4.3，呆萌快节奏）')
     a = ap.parse_args()
 
-    raw = load_text(a.md, a.txt)
+    raw, block_src = load_text(a.md, a.txt)
     lines = split_lines(raw)
     if not lines:
         sys.exit('没有读到台词')
@@ -131,11 +150,17 @@ def main():
                   or any(re.search(p, first) for p in CUTE_PATTERNS))
     first_ban = [w for w in FIRST_BAN if w in first]
     fillers = sorted({w for w in FILLER_BLACKLIST for x in lines if w in x})
+    placeholders = []
+    for i, x in enumerate(lines, 1):
+        hit = [x[m.start():m.end()] for p in PLACEHOLDER_PATTERNS for m in re.finditer(p, x)]
+        if hit:
+            placeholders.append((i, x, hit))
 
     est_sec = total / a.rate
     dev = abs(est_sec - a.seconds) / a.seconds
 
     print(f'呆萌体检 · {a.md or a.txt}')
+    print(f'  取词块：{block_src}')
     print(f'  共 {len(lines)} 句 / {total} 字；按 {a.rate:g} 字/秒 ≈ {est_sec:.1f}s（目标 {a.seconds:g}s）')
     print(f'  第一句（{first_len} 字）：{first}')
     print(f'  句长：最短 {min(lens)} / 最长 {max(lens)} / 均值 {sum(lens)/len(lines):.1f} 字')
@@ -143,9 +168,12 @@ def main():
     print(f'  呆萌覆盖率：{cute_ratio*100:.0f}% 的句子有语气词/口癖/反问')
     print(f'  第一句呆萌信号：{"有" if first_cute else "无"}；第一句黑话/招呼命中：{first_ban or "无"}')
     print(f'  解释腔黑名单命中：{fillers or "无"}')
+    print(f'  占位符（【待填】/XXX/__）：{len(placeholders)} 处')
     print()
     for i, l, x in long_lines[:6]:
         print(f'  ⚠ 长句 L{i}（{l} 字）：{x}')
+    for i, x, hit in placeholders[:6]:
+        print(f'  ⚠ 占位符 L{i}：{x}  ← {hit}')
     print()
 
     bad = []
@@ -159,6 +187,8 @@ def main():
         bad.append(f'>18 字长句占 {len(long_lines)/len(lines)*100:.0f}%（>12%），废话太多')
     if fillers:
         bad.append(f'命中解释腔黑名单：{fillers}')
+    if placeholders:
+        bad.append(f'口播里还有 {len(placeholders)} 处占位符（【待填】/XXX/__），这稿不能配音')
     if cute_ratio < 0.30:
         bad.append(f'呆萌覆盖率 {cute_ratio*100:.0f}% < 30%，台词太干')
     if dev > 0.25:
