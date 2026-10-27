@@ -151,8 +151,16 @@ const GAP = 0.18;
 const SAMPLE_CUE_LEN = LINES.map(l => Math.max(2.6, Math.round((l.replace(/[\s，。！？…—：；、]/g, '').length / RATE + 0.6) * 10) / 10));
 const CUES = [];
 if (VOICE_CUES) {
-  // cue 起止 = 实测静音缝的两端（见 tools/day3制作/align_day3_voice.py）
-  for (const c of VOICE_CUES.cues) CUES.push({ start: c.start, end: c.end });
+  // cue 起止 = 实测静音缝的两端；chars = 句内字级时间（见 tools/day3制作/align_day3_voice.py）
+  for (const c of VOICE_CUES.cues) {
+    CUES.push({
+      start: c.start,
+      end: c.end,
+      chars: Array.isArray(c.chars_timed) && c.chars_timed.length
+        ? c.chars_timed.map((k) => ({ ch: k.ch, suffix: k.suffix || '', start: k.start, end: k.end }))
+        : null
+    });
+  }
 } else {
   let _t = 0;
   for (const len of SAMPLE_CUE_LEN) {
@@ -906,6 +914,123 @@ function miniRoom(ctx, w, h, t, o = {}) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// 电视机里的「节目包装」：让屏幕有点 MV / 电视台的样子（不喧宾夺主）
+//   mode='mv'   ：电影黑边 + 随节拍扫动的光束 + 底部均衡器 + 逐字歌词 + MV 角标
+//   mode='live' ：台标 + 底部滚动字幕 + 均衡器（新闻/直播味，不做黑边）
+// 节拍用 120BPM，屏幕内部逻辑时间是 tt（秒）。
+// ---------------------------------------------------------------------------
+function tvShowOverlay(ctx, tt, mw, mh, o = {}) {
+  const bpm = o.bpm || 120;
+  const beat = (tt * bpm / 60) % 1;
+  const pulse = Math.exp(-beat * 5.5);           // 0..1，每拍衰减
+  const mode = o.mode || 'mv';
+  ctx.save();
+
+  if (mode === 'mv') {
+    // 电影黑边
+    ctx.fillStyle = 'rgba(0,0,0,0.82)';
+    ctx.fillRect(0, 0, mw, mh * 0.075);
+    ctx.fillRect(0, mh * 0.925, mw, mh * 0.075);
+    // 随节拍扫的光束（两束，方向相反）
+    for (let i = 0; i < 2; i++) {
+      const a = (i ? -1 : 1) * (0.42 + Math.sin(tt * 0.8 + i * 2.1) * 0.30);
+      ctx.save();
+      ctx.globalAlpha = 0.16 + 0.12 * pulse;
+      ctx.translate(mw * (i ? 0.82 : 0.18), 0);
+      ctx.rotate(a);
+      const g = ctx.createLinearGradient(0, 0, 0, mh * 1.25);
+      const col = i ? 'rgba(242,193,78,1)' : 'rgba(72,200,255,1)';
+      g.addColorStop(0, col.replace('1)', '0.55)'));
+      g.addColorStop(1, col.replace('1)', '0)'));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(-14, 0); ctx.lineTo(14, 0);
+      ctx.lineTo(64, mh * 1.3); ctx.lineTo(-58, mh * 1.3);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    // 节拍泛光（边缘）
+    ctx.globalAlpha = 0.20 * pulse;
+    const rg = ctx.createRadialGradient(mw / 2, mh / 2, mh * 0.30, mw / 2, mh / 2, mh * 0.95);
+    rg.addColorStop(0, 'rgba(0,0,0,0)');
+    rg.addColorStop(1, 'rgba(125,211,252,0.9)');
+    ctx.fillStyle = rg;
+    ctx.fillRect(0, 0, mw, mh);
+    ctx.globalAlpha = 1;
+    // MV 角标 + 录制点
+    ctx.font = 'bold 12px "Silkscreen","NotoSansSC",sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(253,230,138,0.95)';
+    ctx.fillText(o.badge || 'MV_v0.1', 14, mh * 0.128);
+    ctx.fillStyle = `rgba(248,113,113,${0.45 + 0.55 * pulse})`;
+    ctx.beginPath(); ctx.arc(mw - 30, mh * 0.128, 4.2, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(226,232,240,0.8)';
+    ctx.font = 'bold 10px "NotoSansSC",sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('REC', mw - 40, mh * 0.128);
+  } else {
+    // LIVE / 台标
+    ctx.font = 'bold 12px "Silkscreen","NotoSansSC",sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(10,20,38,0.82)';
+    ctx.fillRect(10, 10, 66, 20);
+    ctx.fillStyle = `rgba(248,113,113,${0.5 + 0.5 * pulse})`;
+    ctx.beginPath(); ctx.arc(20, 20, 4, 0, TAU); ctx.fill();
+    ctx.fillStyle = PAL.cream;
+    ctx.fillText('LIVE', 29, 21);
+    // 底部滚动字幕
+    const ticker = o.ticker || '新版鲸鱼娘 · 电视台 ｜ 28 个动作 · 39 张姿势 · 每晚八点';
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, mh - 30, mw, 20); ctx.clip();
+    ctx.fillStyle = 'rgba(10,20,38,0.78)';
+    ctx.fillRect(0, mh - 30, mw, 20);
+    ctx.font = 'bold 11px "NotoSansSC",sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(226,232,240,0.92)';
+    const tw = ctx.measureText(ticker).width;
+    // 余量：从右边缘外滚入，并保证最长一行不会越过右边界（以前会顶出屏幕）
+    const x = (mw - 6) - ((tt * 46) % (tw + mw + 12));
+    ctx.fillText(ticker, x, mh - 19);
+    ctx.restore();
+  }
+
+  // 底部均衡器（两种模式都有，节拍驱动）
+  const bars = 9, bw = 5, gap = 3, bx0 = 14, by0 = mh - (mode === 'mv' ? 34 : 52);
+  for (let i = 0; i < bars; i++) {
+    const h = 4 + 12 * Math.abs(Math.sin(tt * (4.5 + i * 0.6) + i * 0.7)) * (0.55 + 0.45 * pulse);
+    ctx.fillStyle = i % 2 ? 'rgba(242,193,78,0.85)' : 'rgba(125,211,252,0.85)';
+    ctx.fillRect(bx0 + i * (bw + gap), by0 - h, bw, h);
+  }
+
+  // 歌词（MV 里逐字点亮；live 模式不显示，避免和正文撞）
+  if (mode === 'mv' && o.lyric) {
+    const L = o.lyric;
+    const p = clamp((tt - (L.start ?? 0)) / Math.max(0.1, (L.end ?? tt + 1) - (L.start ?? 0)));
+    const shown = L.text.slice(0, Math.max(1, Math.round(L.text.length * p)));
+    ctx.font = 'bold 17px "ZCOOLKuaiLe","NotoSansSC",sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = 'rgba(10,20,38,0.72)';
+    const wdt = ctx.measureText(L.text).width + 26;
+    ctx.fillRect(mw / 2 - wdt / 2, mh * 0.705 - 13, wdt, 26);
+    ctx.fillStyle = 'rgba(203,213,225,0.45)';
+    ctx.fillText(L.text, mw / 2, mh * 0.705);
+    ctx.fillStyle = '#FDE68A';
+    if (shown.length) {
+      const full = ctx.measureText(L.text).width;
+      const part = ctx.measureText(shown).width;
+      ctx.textAlign = 'left';
+      ctx.fillText(shown, mw / 2 - full / 2, mh * 0.705);
+      ctx.fillStyle = 'rgba(242,193,78,0.9)';
+      ctx.fillRect(mw / 2 - full / 2, mh * 0.705 + 10, part, 2);
+    }
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
 // 新版鲸鱼娘立绘（day2 的 dsh-whale-state-*.webp）。
 // 规矩：**电视机里 = 新版形象**；电视外我们一直画的骨骼像素鲸 = 旧版（L01–L02 / L17–L19）。
 // feetY = 立绘脚底要落在的 y（立绘图片自带上下留白，这里按实测包围盒 0.967 对齐）
@@ -1092,6 +1217,100 @@ function hud(ctx, t, form) {
   });
 }
 
+// 逐字字幕：把一句台词按 10~11 字切成「一屏」，屏内逐字点亮（卡拉OK式）。
+// 字级时间是实测包络切出来的（见 align_day3_voice.py），不是按字数均分。
+const SUB_CHUNK = 11;
+function buildSubChunks(chars, maxLen = SUB_CHUNK) {
+  if (!chars || !chars.length) return null;
+  const chunks = [];
+  let cur = [];
+  for (const c of chars) {
+    cur.push(c);
+    const endsClause = /[，。！？…—；：、]/.test(c.suffix || '');
+    if (cur.length >= maxLen || (endsClause && cur.length >= 4)) {
+      chunks.push(cur); cur = [];
+    }
+  }
+  if (cur.length) chunks.push(cur);
+  return chunks.map((cs) => ({
+    chars: cs,
+    start: cs[0].start,
+    end: cs[cs.length - 1].end,
+    text: cs.map((c) => c.ch + (c.suffix || '')).join('')
+  }));
+}
+
+function drawKaraokeSub(ctx, t, cue, vis) {
+  const chunks = cue.chunks;
+  let ci = -1;
+  for (let i = 0; i < chunks.length; i++) if (t >= chunks[i].start) ci = i;
+  if (ci < 0) ci = 0;
+  const chunk = chunks[ci];
+  // 字幕用 NotoSansSC：ZCOOL 是海报体，『圈』这类封闭笔画在 26px 会糊成一个方块
+  const FONT = 'bold 26px "NotoSansSC", "ZCOOLKuaiLe", sans-serif';
+  ctx.save();
+  ctx.font = FONT;
+  const widths = chunk.chars.map((c) => ctx.measureText(c.ch + (c.suffix || '')).width);
+  const tw = widths.reduce((a, b) => a + b, 0);
+  const boxW = Math.min(W - 90, Math.max(300, tw + 76));
+  const boxH = 56;
+  const bx = (W - boxW) / 2;
+  const by = H - 70 + (1 - vis) * 16;
+  ctx.globalAlpha = vis;
+  paint(ctx, rrPts(bx, by, boxW, boxH, 12, 1.2), { wash: 'rgba(10,20,38,0.92)', fill: '#0B1D3A', fillOp: 190, ink: '#48C8FF', sw: 1.2 });
+
+  // 当前字的高亮：脚下一小段金色下划线 + 柔和光晕（不要整块方框，会盖住字）
+  let cx = W / 2 - tw / 2;
+  const midY = by + boxH / 2 + 2;
+  let hiX = null, hiW = 0, hiC = null;
+  for (let i = 0; i < chunk.chars.length; i++) {
+    const c = chunk.chars[i];
+    if (t >= c.start && t < c.end) { hiX = cx; hiW = widths[i]; hiC = c; }
+    cx += widths[i];
+  }
+  if (hiX !== null) {
+    const k = clamp((t - hiC.start) / Math.max(0.06, hiC.end - hiC.start));
+    ctx.save();
+    const gx = hiX + hiW / 2, gy = by + boxH - 22;
+    const rg = ctx.createRadialGradient(gx, gy, 2, gx, gy, Math.max(24, hiW * 1.5));
+    rg.addColorStop(0, `rgba(242,193,78,${0.30 * (1 - 0.4 * k)})`);
+    rg.addColorStop(1, 'rgba(242,193,78,0)');
+    ctx.fillStyle = rg;
+    ctx.fillRect(gx - 44, gy - 34, 88, 66);
+    ctx.fillStyle = 'rgba(242,193,78,0.92)';
+    ctx.fillRect(hiX - 1, by + boxH - 11, (hiW + 2) * clamp(0.15 + 0.85 * k), 3);
+    ctx.restore();
+  }
+
+  // 逐字上色：说过=奶白 / 正在说=金色 / 还没说=暗
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  cx = W / 2 - tw / 2;
+  for (let i = 0; i < chunk.chars.length; i++) {
+    const c = chunk.chars[i];
+    const said = t >= c.end;
+    const now = t >= c.start && t < c.end;
+    ctx.fillStyle = now ? '#FDE68A' : said ? PAL.cream : 'rgba(203,213,225,0.66)';
+    if (now) {
+      const k = Math.sin(clamp((t - c.start) / Math.max(0.06, c.end - c.start)) * Math.PI);
+      ctx.save();
+      ctx.translate(cx + widths[i] / 2, midY - 2 - 2 * k);
+      ctx.scale(1 + 0.10 * k, 1 + 0.10 * k);
+      ctx.fillText(c.ch + (c.suffix || ''), -widths[i] / 2, 2);
+      ctx.restore();
+    } else {
+      ctx.fillText(c.ch + (c.suffix || ''), cx, midY);
+    }
+    cx += widths[i];
+  }
+  // 屏内进度条
+  const pr = clamp((t - chunk.start) / Math.max(0.05, chunk.end - chunk.start));
+  ctx.fillStyle = 'rgba(255,255,255,0.14)';
+  ctx.fillRect(bx + 16, by + boxH - 7, boxW - 32, 3);
+  ctx.fillStyle = PAL.gold;
+  ctx.fillRect(bx + 16, by + boxH - 7, (boxW - 32) * pr, 3);
+  ctx.restore();
+}
+
 function drawSubtitle(ctx, t) {
   const idx = CUES.findIndex(c => t >= c.start && t < c.end);
   if (idx < 0) return;
@@ -1105,8 +1324,12 @@ function drawSubtitle(ctx, t) {
   const exit = 1 - ease(clamp((t - (cue.end - 0.14)) / 0.14));
   const vis = enter * exit;
   if (vis < 0.02) return;
+  if (cue.chars) {
+    if (!cue.chunks) cue.chunks = buildSubChunks(cue.chars);
+    if (cue.chunks) { drawKaraokeSub(ctx, t, cue, vis); return; }
+  }
   ctx.save();
-  ctx.font = 'bold 26px "ZCOOLKuaiLe", "NotoSansSC", sans-serif';
+  ctx.font = 'bold 26px "NotoSansSC", "ZCOOLKuaiLe", sans-serif';
   const tw = ctx.measureText(txt).width;
   const boxW = Math.min(W - 120, Math.max(320, tw + 84));
   const boxH = 54;
@@ -1487,11 +1710,16 @@ function shotL10(ctx, t, lt, p) {
   // 电视机里 = **新版鲸鱼娘**（day2 的新版立绘，大图、清晰）。
   // v1 这里是一格旧版像素小鲸、一格方图，用户反馈"电视里那只太小又糊"（退回项 #4）。
   tvPanel(ctx, tvRect.x, tvRect.y, tvRect.w, tvRect.h, t, (g, tt, mw, mh) => {
+    // 轻微推镜（电视里的节目也有运镜，不像一张静止贴图）
+    const zoom = 1.01 + 0.05 * ease(clamp(lt / Math.max(0.5, CUES[9].end - CUES[9].start)));
+    g.save();
+    g.translate(mw / 2, mh / 2); g.scale(zoom, zoom); g.translate(-mw / 2, -mh / 2);
     miniRoom(g, mw, mh, tt);
     // 台口灯
     glow(g, mw * 0.5, 54, 120, PAL.gold, 0.18);
     const hop = Math.abs(Math.sin(tt * 2.2)) * 7;
     drawPose(g, 'greet', mw * 0.5, 208 - hop, 210, 0);
+    g.restore();
     // 台标字幕条
     g.save();
     paint(g, rrPts(mw * 0.5 - 92, 16, 184, 30, 8, 1), { wash: 'rgba(10,20,38,0.9)', fill: '#0B1D3A', fillOp: 200, ink: '#48C8FF', sw: 1.2 });
@@ -1499,6 +1727,11 @@ function shotL10(ctx, t, lt, p) {
     g.fillStyle = PAL.cream; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillText('新版鲸鱼娘 · 电视台', mw * 0.5, 32);
     g.restore();
+    // 电视台包装：LIVE 角标 + 底部滚动字幕 + 节拍均衡器
+    tvShowOverlay(g, lt, mw, mh, {
+      mode: 'live',
+      ticker: '新版鲸鱼娘 · 电视台 ｜ 28 个动作 ｜ 39 张姿势 ｜ 今晚八点开播'
+    });
   }, { caption: '电视台 · 新设计的鲸上班了' });
   LCG(ctx, 430, 628, 30, { t, emote: 'exclaim', flip: true });
   if (p > 0.3) {
@@ -1572,13 +1805,28 @@ function shotL13(ctx, t, lt, p) {
     glow(g, mw * 0.5, 120, 130, PAL.whaleCyan, 0.2);
     const spinP = clamp((p - 0.05) / 0.4);
     const done = spinP >= 1;
-    const rot = done ? Math.sin(tt * 2) * 0.03 : spinP * 6.28;
-    const hop = done ? Math.abs(Math.sin(tt * 2.6)) * 5 : 0;
+    // 转圈用水平方向的绕身旋转（scaleX 过零再回来），不是把整张图在平面里转倒
+    const spinAng = spinP * Math.PI * 2;
+    const sx = done ? 1 : Math.max(0.12, Math.abs(Math.cos(spinAng)));
+    const rot = done ? Math.sin(tt * 2) * 0.03 : 0;
+    const hop = done ? Math.abs(Math.sin(tt * 2.6)) * 5 : Math.abs(Math.sin(spinAng)) * 6;
+    // MV 的"卡点切镜"：转过圈之后按拍子换姿势（两拍一切），幅度很小，只是让画面有节拍
+    const beatIdx = Math.floor(lt * 1.6);
+    const cutPose = done ? ['celebrate', 'music', 'celebrate', 'greet'][beatIdx % 4] : 'music';
+    const cutFlash = done ? Math.max(0, 1 - ((lt * 1.6) % 1) * 5) : 0;
     g.save();
     g.translate(mw * 0.5, 104 - hop);
     g.rotate(rot);
-    drawPose(g, done ? 'celebrate' : 'music', 0, 100, 200, 0);
+    g.scale(sx, 1);
+    drawPose(g, cutPose, 0, 100, 200, 0);
     g.restore();
+    if (cutFlash > 0.02) {
+      g.save();
+      g.globalAlpha = 0.10 * cutFlash;
+      g.fillStyle = '#FFFFFF';
+      g.fillRect(0, 0, mw, mh);
+      g.restore();
+    }
     // 迟到的歌词条
     const arrive = popAt(t, 13, 0.52, 0.72);
     if (arrive > 0) {
@@ -1594,6 +1842,13 @@ function shotL13(ctx, t, lt, p) {
         inkLine(g, [[mw * 0.5 - 96 - i * 10, mh * 0.62 + 24], [mw * 0.5 - 140 - i * 10, mh * 0.62 + 26]], 2, 'rgba(255,255,255,0.7)', 'inkfine', 0.4);
       }
     }
+    // MV 包装：黑边 + 节拍光束 + 均衡器 + 逐字歌词
+    const lyricStart = (CUES[12].end - CUES[12].start) * 0.52;
+    tvShowOverlay(g, lt, mw, mh, {
+      mode: 'mv',
+      badge: 'MV_v0.1',
+      lyric: { text: '转完圈了 歌词才追上来', start: lyricStart, end: lyricStart + 2.4 }
+    });
   }, { caption: 'MV_v0.1 · 新版形象 · 别发' });
   LCG(ctx, 400, 628, 29, { t, emote: 'sweat', flip: true });
   if (p > 0.6) letter(ctx, '做得不好？先看节拍', 300, 250, 22, PAL.cream, { pop: popAt(t, 13, 0.6, 0.74) });
@@ -1929,7 +2184,7 @@ const POSE_KEYS = {
 const SPRITE_DIR = path.resolve(__dirname, '../whale_girl_src');
 // 大小姐立绘：素材库 1024×1536 透明 PNG，直接用；骨架同一套量法
 async function loadClaudeSprite() {
-  const DIR = path.join(__dirname, '../claude_src/full');
+  const DIR = path.join(__dirname, process.env.DAY3_CLAUDE_DIR || '../claude_src/chibi');
   CLAUDE_IMGS = {}; CLAUDE_RIGS = {};
   const ctxFactory = (w, h) => createCanvas(w, h);
   let n = 0;

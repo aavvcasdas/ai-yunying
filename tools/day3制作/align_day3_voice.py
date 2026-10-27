@@ -89,6 +89,120 @@ def silence_gaps(mono: np.ndarray, sr: int, thr_db: float = -40.0, min_gap: floa
     return gaps
 
 
+# ---------------------------------------------------------------------------
+# 字级（音节级）时间：静音缝只给到句边界，句内再用「能量包络 + 音节等时先验」切
+# ---------------------------------------------------------------------------
+HOP = 0.01          # 10ms
+MIN_SYL = 0.45      # 一个音节最少占等时长度的 45%
+MAX_SYL = 1.90      # 最多 190%
+
+
+def envelope(mono: np.ndarray, sr: int, hop: float = HOP) -> np.ndarray:
+    win = int(sr * hop)
+    n = len(mono) // win
+    if n < 2:
+        return np.zeros(2)
+    frames = mono[: n * win].reshape(n, win)
+    rms = np.sqrt((frames ** 2).mean(axis=1))
+    # 平滑一下，避免把齿音当音节
+    k = np.ones(3) / 3
+    return np.convolve(rms, k, "same")
+
+
+def split_tokens(text: str):
+    """把台词拆成「可发声的字」；标点挂在前一个字后面，保证拼回去与原文逐字相同。"""
+    tokens = []
+    for ch in text:
+        if re.fullmatch(PUNCT, ch):
+            if tokens:
+                tokens[-1]["suffix"] += ch
+            continue
+        tokens.append({"ch": ch, "suffix": ""})
+    return tokens
+
+
+def syllable_bounds(env: np.ndarray, n_syl: int):
+    """在能量包络上放 n_syl-1 个内部边界（带状 DP）。
+
+    - 每个边界只允许落在「等时位置 ±BAND」的窗口里（BAND=35%），
+      这样中文 TTS 的等时音节先验直接变成搜索范围，不会因为某处停顿长就整体走偏；
+    - 代价 = 段长偏离等时的平方 + 边界处的能量（能量谷更可能是音节边界）。
+
+    返回长度 n_syl+1 的边界数组（首尾分别是 0 和 F）。
+    """
+    F = len(env)
+    if n_syl <= 1 or F < n_syl + 2:
+        return [int(round(i * F / max(1, n_syl))) for i in range(n_syl + 1)]
+    exp = F / n_syl
+    band = max(2, int(exp * 0.35))
+    e = env / (env.max() or 1.0)
+
+    # 候选位置：第 k 个内部边界（1..n-1）
+    cand = []
+    for k in range(1, n_syl):
+        c = int(round(k * exp))
+        lo, hi = max(k, c - band), min(F - (n_syl - k), c + band)
+        if hi <= lo:
+            lo = hi = min(max(k, c), F - (n_syl - k))
+        cand.append(np.arange(lo, hi + 1))
+
+    INF = float("inf")
+    cost = [np.full(len(c), INF) for c in cand]
+    pari = [np.full(len(c), -1, dtype=np.int32) for c in cand]
+
+    for i, c in enumerate(cand[0]):
+        d = c - 0
+        cost[0][i] = 0.9 * ((d - exp) / exp) ** 2 + 0.6 * e[c]
+
+    for k in range(1, n_syl - 1):
+        cp, cc = cand[k - 1], cand[k]
+        for i, p in enumerate(cc):
+            best, bj = INF, -1
+            for j, q in enumerate(cp):
+                if cost[k - 1][j] >= INF:
+                    continue
+                d = p - q
+                if d < exp * 0.5 or d > exp * 1.9:
+                    continue
+                v = cost[k - 1][j] + 0.9 * ((d - exp) / exp) ** 2 + 0.6 * e[p]
+                if v < best:
+                    best, bj = v, j
+            cost[k][i] = best
+            pari[k][i] = bj
+
+    # 收尾：最后一段
+    best, bj = INF, -1
+    for j, q in enumerate(cand[-1]):
+        if cost[-1][j] >= INF:
+            continue
+        d = F - q
+        if d < exp * 0.5 or d > exp * 1.9:
+            continue
+        v = cost[-1][j] + 0.9 * ((d - exp) / exp) ** 2
+        if v < best:
+            best, bj = v, j
+    if bj < 0:                                   # 退化：直接等分
+        return [int(round(i * F / n_syl)) for i in range(n_syl + 1)]
+    idx = int(bj)
+    internal = [int(cand[-1][idx])]
+    for k in range(len(cand) - 1, 0, -1):
+        idx = int(pari[k][idx])
+        if idx < 0:
+            break
+        internal.append(int(cand[k - 1][idx]))
+    internal.sort()
+    # 每个边界在 ±3 帧内吸附到能量谷（不越界、不打乱顺序）
+    snapped = []
+    for i, b in enumerate(internal):
+        lo = max(snapped[-1] + 2 if snapped else 1, b - 3)
+        hi = min((internal[i + 1] - 2) if i + 1 < len(internal) else F - 2, b + 4)
+        if hi <= lo:
+            snapped.append(b)
+            continue
+        snapped.append(int(lo + int(np.argmin(e[lo:hi]))))
+    return [0] + snapped + [F]
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--voice", type=Path, default=REPO_ROOT / "鲸鱼Day3_分段拼接.wav")
@@ -155,6 +269,29 @@ def main(argv=None) -> None:
         })
         prev_end = gap[1] if gap else duration
 
+    # ---- 字级时间（音节级）：句内按能量谷切，字数作为等时先验 ----
+    for c in cues:
+        toks = split_tokens(c["text"])
+        a0, a1 = int(round(c["start"] * sr)), int(round(c["end"] * sr))
+        env = envelope(mono[max(0, a0):max(1, a1)], sr)
+        if len(env) < len(toks) * 2:
+            env = np.ones(max(2, len(toks) * 2))
+        bounds = syllable_bounds(env, len(toks))
+        # 句首/句尾各收 1 帧，避免把前后静音算进第一/最后一个字
+        for t_i, tok in enumerate(toks):
+            s0 = c["start"] + bounds[t_i] * HOP
+            s1 = c["start"] + bounds[t_i + 1] * HOP
+            tok["start"] = round(min(s0, c["end"] - 0.03), 3)
+            tok["end"] = round(min(max(s1, tok["start"] + 0.06), c["end"]), 3)
+        c["chars_timed"] = toks
+        syl = [t["end"] - t["start"] for t in toks]
+        c["syllable_seconds_mean"] = round(float(np.mean(syl)), 3)
+        c["syllable_seconds_std"] = round(float(np.std(syl)), 3)
+        # 自检：边界应落在能量谷 —— 边界处的包络均值 vs 整句均值
+        nn = env / (env.max() or 1.0)
+        bi = [b for b in bounds[1:-1] if 0 <= b < len(nn)]
+        c["boundary_energy_ratio"] = round(float(nn[bi].mean() / max(1e-6, nn.mean())), 3) if bi else None
+
     rates = [c["chars_per_second"] for c in cues]
     payload = {
         "schema": 1,
@@ -175,6 +312,15 @@ def main(argv=None) -> None:
             "没有词级 ASR 模型可用，故不下沉到词级时间。"
         ),
         "word_level": False,
+        "char_level": True,
+        "char_level_method": (
+            "句内字级：10ms RMS 包络 + 「等时音节」先验做 DP 切分，边界吸附到能量谷。"
+            "不是声学识别结果，字↔音节的对应由台词顺序唯一确定。"
+        ),
+        "char_level_note": (
+            "中文 TTS 每个字≈一个音节，所以字级切分可以只看能量包络；"
+            "每句的字数、音节均时长与标准差都写在 cues 里，可复算。"
+        ),
         "speech_seconds": round(duration, 3),
         "silence_gap_count": len(gaps),
         "chars_total": total_chars,
@@ -192,6 +338,10 @@ def main(argv=None) -> None:
         print(f"  {c['id']} {c['start']:7.2f}-{c['end']:7.2f} {c['duration_seconds']:6.2f}s "
               f"{c['chars']:3d} 字 {c['chars_per_second']:4.2f} 字/秒  {c['text'][:16]}")
     print(f"rate {min(rates):.2f}–{max(rates):.2f} 字/秒（中位 {np.median(rates):.2f}）")
+    syl_all = [t["end"] - t["start"] for c in cues for t in c["chars_timed"]]
+    print(f"charlvl {len(syl_all)} 字，音节 {np.mean(syl_all):.3f}±{np.std(syl_all):.3f}s")
+    c6 = cues[5]
+    print("  示例 L06 前 12 字：", " ".join(f"{t['ch']}{t['suffix']}@{t['start']-c6['start']:.2f}" for t in c6["chars_timed"][:12]))
     print(f"OK: {args.out}")
 
 

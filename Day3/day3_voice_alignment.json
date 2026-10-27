@@ -13,6 +13,9 @@
   "source_duration_seconds": 127.78,
   "alignment_method": "句级：20ms RMS 静音缝（-40dBFS, >=0.24s）做实测定界；19 句与静音缝的对应用‘总时长 × 字数占比’作先验跑 DP。没有词级 ASR 模型可用，故不下沉到词级时间。",
   "word_level": false,
+  "char_level": true,
+  "char_level_method": "句内字级：10ms RMS 包络 + 「等时音节」先验做 DP 切分，边界吸附到能量谷。不是声学识别结果，字↔音节的对应由台词顺序唯一确定。",
+  "char_level_note": "中文 TTS 每个字≈一个音节，所以字级切分可以只看能量包络；每句的字数、音节均时长与标准差都写在 cues 里，可复算。",
   "speech_seconds": 127.78,
   "silence_gap_count": 63,
   "chars_total": 450,
@@ -34,7 +37,126 @@
         "start": 5.282,
         "end": 5.841,
         "seconds": 0.559
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "大",
+          "suffix": "",
+          "start": 0.0,
+          "end": 0.21
+        },
+        {
+          "ch": "家",
+          "suffix": "",
+          "start": 0.21,
+          "end": 0.55
+        },
+        {
+          "ch": "好",
+          "suffix": "",
+          "start": 0.55,
+          "end": 0.91
+        },
+        {
+          "ch": "呀",
+          "suffix": "，",
+          "start": 0.91,
+          "end": 1.17
+        },
+        {
+          "ch": "本",
+          "suffix": "",
+          "start": 1.17,
+          "end": 1.48
+        },
+        {
+          "ch": "鱼",
+          "suffix": "，",
+          "start": 1.48,
+          "end": 1.76
+        },
+        {
+          "ch": "不",
+          "suffix": "",
+          "start": 1.76,
+          "end": 2.0
+        },
+        {
+          "ch": "对",
+          "suffix": "，",
+          "start": 2.0,
+          "end": 2.22
+        },
+        {
+          "ch": "我",
+          "suffix": "",
+          "start": 2.22,
+          "end": 2.53
+        },
+        {
+          "ch": "了",
+          "suffix": "",
+          "start": 2.53,
+          "end": 2.75
+        },
+        {
+          "ch": "雷",
+          "suffix": "，",
+          "start": 2.75,
+          "end": 3.04
+        },
+        {
+          "ch": "鲸",
+          "suffix": "",
+          "start": 3.04,
+          "end": 3.26
+        },
+        {
+          "ch": "鱼",
+          "suffix": "",
+          "start": 3.26,
+          "end": 3.63
+        },
+        {
+          "ch": "不",
+          "suffix": "",
+          "start": 3.63,
+          "end": 3.9
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 3.9,
+          "end": 4.29
+        },
+        {
+          "ch": "鱼",
+          "suffix": "！",
+          "start": 4.29,
+          "end": 4.57
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 4.57,
+          "end": 4.8
+        },
+        {
+          "ch": "本",
+          "suffix": "",
+          "start": 4.8,
+          "end": 5.04
+        },
+        {
+          "ch": "鲸",
+          "suffix": "。",
+          "start": 5.04,
+          "end": 5.28
+        }
+      ],
+      "syllable_seconds_mean": 0.278,
+      "syllable_seconds_std": 0.054,
+      "boundary_energy_ratio": 0.457
     },
     {
       "id": "L02",
@@ -49,7 +171,240 @@
         "start": 14.827,
         "end": 15.34,
         "seconds": 0.514
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "都",
+          "suffix": "",
+          "start": 5.841,
+          "end": 6.011
+        },
+        {
+          "ch": "怪",
+          "suffix": "",
+          "start": 6.011,
+          "end": 6.301
+        },
+        {
+          "ch": "评",
+          "suffix": "",
+          "start": 6.301,
+          "end": 6.581
+        },
+        {
+          "ch": "论",
+          "suffix": "",
+          "start": 6.581,
+          "end": 6.901
+        },
+        {
+          "ch": "区",
+          "suffix": "",
+          "start": 6.901,
+          "end": 7.071
+        },
+        {
+          "ch": "天",
+          "suffix": "",
+          "start": 7.071,
+          "end": 7.301
+        },
+        {
+          "ch": "天",
+          "suffix": "",
+          "start": 7.301,
+          "end": 7.541
+        },
+        {
+          "ch": "喊",
+          "suffix": "",
+          "start": 7.541,
+          "end": 7.831
+        },
+        {
+          "ch": "大",
+          "suffix": "",
+          "start": 7.831,
+          "end": 8.041
+        },
+        {
+          "ch": "肥",
+          "suffix": "",
+          "start": 8.041,
+          "end": 8.151
+        },
+        {
+          "ch": "鱼",
+          "suffix": "，",
+          "start": 8.151,
+          "end": 8.431
+        },
+        {
+          "ch": "把",
+          "suffix": "",
+          "start": 8.431,
+          "end": 8.641
+        },
+        {
+          "ch": "本",
+          "suffix": "",
+          "start": 8.641,
+          "end": 8.871
+        },
+        {
+          "ch": "鲸",
+          "suffix": "",
+          "start": 8.871,
+          "end": 9.131
+        },
+        {
+          "ch": "喊",
+          "suffix": "",
+          "start": 9.131,
+          "end": 9.431
+        },
+        {
+          "ch": "得",
+          "suffix": "",
+          "start": 9.431,
+          "end": 9.621
+        },
+        {
+          "ch": "差",
+          "suffix": "",
+          "start": 9.621,
+          "end": 9.911
+        },
+        {
+          "ch": "点",
+          "suffix": "",
+          "start": 9.911,
+          "end": 10.171
+        },
+        {
+          "ch": "真",
+          "suffix": "",
+          "start": 10.171,
+          "end": 10.391
+        },
+        {
+          "ch": "当",
+          "suffix": "",
+          "start": 10.391,
+          "end": 10.611
+        },
+        {
+          "ch": "自",
+          "suffix": "",
+          "start": 10.611,
+          "end": 10.811
+        },
+        {
+          "ch": "己",
+          "suffix": "",
+          "start": 10.811,
+          "end": 11.021
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 11.021,
+          "end": 11.261
+        },
+        {
+          "ch": "一",
+          "suffix": "",
+          "start": 11.261,
+          "end": 11.421
+        },
+        {
+          "ch": "条",
+          "suffix": "",
+          "start": 11.421,
+          "end": 11.661
+        },
+        {
+          "ch": "鱼",
+          "suffix": "",
+          "start": 11.661,
+          "end": 11.971
+        },
+        {
+          "ch": "了",
+          "suffix": "。",
+          "start": 11.971,
+          "end": 12.151
+        },
+        {
+          "ch": "翻",
+          "suffix": "",
+          "start": 12.151,
+          "end": 12.441
+        },
+        {
+          "ch": "翻",
+          "suffix": "",
+          "start": 12.441,
+          "end": 12.651
+        },
+        {
+          "ch": "户",
+          "suffix": "",
+          "start": 12.651,
+          "end": 12.901
+        },
+        {
+          "ch": "口",
+          "suffix": "",
+          "start": 12.901,
+          "end": 13.261
+        },
+        {
+          "ch": "本",
+          "suffix": "：",
+          "start": 13.261,
+          "end": 13.431
+        },
+        {
+          "ch": "鲸",
+          "suffix": "",
+          "start": 13.431,
+          "end": 13.671
+        },
+        {
+          "ch": "鱼",
+          "suffix": "，",
+          "start": 13.671,
+          "end": 13.961
+        },
+        {
+          "ch": "哺",
+          "suffix": "",
+          "start": 13.961,
+          "end": 14.191
+        },
+        {
+          "ch": "乳",
+          "suffix": "",
+          "start": 14.191,
+          "end": 14.321
+        },
+        {
+          "ch": "动",
+          "suffix": "",
+          "start": 14.321,
+          "end": 14.561
+        },
+        {
+          "ch": "物",
+          "suffix": "。",
+          "start": 14.561,
+          "end": 14.821
+        }
+      ],
+      "syllable_seconds_mean": 0.236,
+      "syllable_seconds_std": 0.053,
+      "boundary_energy_ratio": 0.294
     },
     {
       "id": "L03",
@@ -64,7 +419,162 @@
         "start": 21.927,
         "end": 22.349,
         "seconds": 0.422
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "主",
+          "suffix": "",
+          "start": 15.34,
+          "end": 15.65
+        },
+        {
+          "ch": "人",
+          "suffix": "",
+          "start": 15.65,
+          "end": 15.93
+        },
+        {
+          "ch": "没",
+          "suffix": "",
+          "start": 15.93,
+          "end": 16.15
+        },
+        {
+          "ch": "请",
+          "suffix": "",
+          "start": 16.15,
+          "end": 16.38
+        },
+        {
+          "ch": "来",
+          "suffix": " ",
+          "start": 16.38,
+          "end": 16.56
+        },
+        {
+          "ch": "C",
+          "suffix": "",
+          "start": 16.56,
+          "end": 16.86
+        },
+        {
+          "ch": "l",
+          "suffix": "",
+          "start": 16.86,
+          "end": 17.14
+        },
+        {
+          "ch": "a",
+          "suffix": "",
+          "start": 17.14,
+          "end": 17.38
+        },
+        {
+          "ch": "u",
+          "suffix": "",
+          "start": 17.38,
+          "end": 17.66
+        },
+        {
+          "ch": "d",
+          "suffix": "",
+          "start": 17.66,
+          "end": 17.98
+        },
+        {
+          "ch": "e",
+          "suffix": " ",
+          "start": 17.98,
+          "end": 18.28
+        },
+        {
+          "ch": "大",
+          "suffix": "",
+          "start": 18.28,
+          "end": 18.54
+        },
+        {
+          "ch": "小",
+          "suffix": "",
+          "start": 18.54,
+          "end": 18.73
+        },
+        {
+          "ch": "姐",
+          "suffix": "，",
+          "start": 18.73,
+          "end": 19.04
+        },
+        {
+          "ch": "扭",
+          "suffix": "",
+          "start": 19.04,
+          "end": 19.24
+        },
+        {
+          "ch": "头",
+          "suffix": "",
+          "start": 19.24,
+          "end": 19.47
+        },
+        {
+          "ch": "把",
+          "suffix": "",
+          "start": 19.47,
+          "end": 19.85
+        },
+        {
+          "ch": "本",
+          "suffix": "",
+          "start": 19.85,
+          "end": 20.14
+        },
+        {
+          "ch": "鲸",
+          "suffix": "",
+          "start": 20.14,
+          "end": 20.34
+        },
+        {
+          "ch": "染",
+          "suffix": "",
+          "start": 20.34,
+          "end": 20.54
+        },
+        {
+          "ch": "成",
+          "suffix": "",
+          "start": 20.54,
+          "end": 20.76
+        },
+        {
+          "ch": "了",
+          "suffix": "",
+          "start": 20.76,
+          "end": 21.13
+        },
+        {
+          "ch": "大",
+          "suffix": "",
+          "start": 21.13,
+          "end": 21.38
+        },
+        {
+          "ch": "小",
+          "suffix": "",
+          "start": 21.38,
+          "end": 21.7
+        },
+        {
+          "ch": "姐",
+          "suffix": "！",
+          "start": 21.7,
+          "end": 21.92
+        }
+      ],
+      "syllable_seconds_mean": 0.263,
+      "syllable_seconds_std": 0.054,
+      "boundary_energy_ratio": 0.353
     },
     {
       "id": "L04",
@@ -79,7 +589,96 @@
         "start": 25.978,
         "end": 26.642,
         "seconds": 0.664
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "等",
+          "suffix": "",
+          "start": 22.349,
+          "end": 22.599
+        },
+        {
+          "ch": "一",
+          "suffix": "",
+          "start": 22.599,
+          "end": 22.859
+        },
+        {
+          "ch": "下",
+          "suffix": "……",
+          "start": 22.859,
+          "end": 23.139
+        },
+        {
+          "ch": "共",
+          "suffix": "",
+          "start": 23.139,
+          "end": 23.459
+        },
+        {
+          "ch": "创",
+          "suffix": "",
+          "start": 23.459,
+          "end": 23.749
+        },
+        {
+          "ch": "嘉",
+          "suffix": "",
+          "start": 23.749,
+          "end": 24.019
+        },
+        {
+          "ch": "宾",
+          "suffix": "，",
+          "start": 24.019,
+          "end": 24.269
+        },
+        {
+          "ch": "怎",
+          "suffix": "",
+          "start": 24.269,
+          "end": 24.509
+        },
+        {
+          "ch": "么",
+          "suffix": "",
+          "start": 24.509,
+          "end": 24.679
+        },
+        {
+          "ch": "变",
+          "suffix": "",
+          "start": 24.679,
+          "end": 24.969
+        },
+        {
+          "ch": "成",
+          "suffix": "",
+          "start": 24.969,
+          "end": 25.119
+        },
+        {
+          "ch": "自",
+          "suffix": "",
+          "start": 25.119,
+          "end": 25.339
+        },
+        {
+          "ch": "己",
+          "suffix": "",
+          "start": 25.339,
+          "end": 25.629
+        },
+        {
+          "ch": "了",
+          "suffix": "？",
+          "start": 25.629,
+          "end": 25.969
+        }
+      ],
+      "syllable_seconds_mean": 0.259,
+      "syllable_seconds_std": 0.05,
+      "boundary_energy_ratio": 0.26
     },
     {
       "id": "L05",
@@ -94,7 +693,72 @@
         "start": 29.485,
         "end": 30.107,
         "seconds": 0.622
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "请",
+          "suffix": "",
+          "start": 26.642,
+          "end": 26.982
+        },
+        {
+          "ch": "叫",
+          "suffix": "",
+          "start": 26.982,
+          "end": 27.272
+        },
+        {
+          "ch": "本",
+          "suffix": "",
+          "start": 27.272,
+          "end": 27.452
+        },
+        {
+          "ch": "小",
+          "suffix": "",
+          "start": 27.452,
+          "end": 27.692
+        },
+        {
+          "ch": "姐",
+          "suffix": "——",
+          "start": 27.692,
+          "end": 28.022
+        },
+        {
+          "ch": "诶",
+          "suffix": "，",
+          "start": 28.022,
+          "end": 28.272
+        },
+        {
+          "ch": "尾",
+          "suffix": "",
+          "start": 28.272,
+          "end": 28.642
+        },
+        {
+          "ch": "巴",
+          "suffix": "",
+          "start": 28.642,
+          "end": 28.942
+        },
+        {
+          "ch": "藏",
+          "suffix": "",
+          "start": 28.942,
+          "end": 29.212
+        },
+        {
+          "ch": "好",
+          "suffix": "！",
+          "start": 29.212,
+          "end": 29.482
+        }
+      ],
+      "syllable_seconds_mean": 0.284,
+      "syllable_seconds_std": 0.052,
+      "boundary_energy_ratio": 0.262
     },
     {
       "id": "L06",
@@ -109,7 +773,390 @@
         "start": 47.738,
         "end": 48.251,
         "seconds": 0.513
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "这",
+          "suffix": "",
+          "start": 30.107,
+          "end": 30.367
+        },
+        {
+          "ch": "身",
+          "suffix": "",
+          "start": 30.367,
+          "end": 30.597
+        },
+        {
+          "ch": "橙",
+          "suffix": "",
+          "start": 30.597,
+          "end": 30.897
+        },
+        {
+          "ch": "毛",
+          "suffix": "",
+          "start": 30.897,
+          "end": 31.147
+        },
+        {
+          "ch": "等",
+          "suffix": "",
+          "start": 31.147,
+          "end": 31.507
+        },
+        {
+          "ch": "会",
+          "suffix": "",
+          "start": 31.507,
+          "end": 31.747
+        },
+        {
+          "ch": "儿",
+          "suffix": "",
+          "start": 31.747,
+          "end": 32.077
+        },
+        {
+          "ch": "再",
+          "suffix": "",
+          "start": 32.077,
+          "end": 32.287
+        },
+        {
+          "ch": "说",
+          "suffix": "。",
+          "start": 32.287,
+          "end": 32.567
+        },
+        {
+          "ch": "先",
+          "suffix": "",
+          "start": 32.567,
+          "end": 32.847
+        },
+        {
+          "ch": "复",
+          "suffix": "",
+          "start": 32.847,
+          "end": 33.127
+        },
+        {
+          "ch": "盘",
+          "suffix": "",
+          "start": 33.127,
+          "end": 33.407
+        },
+        {
+          "ch": "昨",
+          "suffix": "",
+          "start": 33.407,
+          "end": 33.717
+        },
+        {
+          "ch": "天",
+          "suffix": "：",
+          "start": 33.717,
+          "end": 33.937
+        },
+        {
+          "ch": "昨",
+          "suffix": "",
+          "start": 33.937,
+          "end": 34.207
+        },
+        {
+          "ch": "天",
+          "suffix": "",
+          "start": 34.207,
+          "end": 34.527
+        },
+        {
+          "ch": "那",
+          "suffix": "",
+          "start": 34.527,
+          "end": 34.807
+        },
+        {
+          "ch": "集",
+          "suffix": "",
+          "start": 34.807,
+          "end": 35.027
+        },
+        {
+          "ch": "四",
+          "suffix": "",
+          "start": 35.027,
+          "end": 35.367
+        },
+        {
+          "ch": "千",
+          "suffix": "",
+          "start": 35.367,
+          "end": 35.757
+        },
+        {
+          "ch": "四",
+          "suffix": "",
+          "start": 35.757,
+          "end": 36.017
+        },
+        {
+          "ch": "百",
+          "suffix": "",
+          "start": 36.017,
+          "end": 36.237
+        },
+        {
+          "ch": "五",
+          "suffix": "",
+          "start": 36.237,
+          "end": 36.627
+        },
+        {
+          "ch": "十",
+          "suffix": "",
+          "start": 36.627,
+          "end": 36.817
+        },
+        {
+          "ch": "三",
+          "suffix": "，",
+          "start": 36.817,
+          "end": 37.097
+        },
+        {
+          "ch": "加",
+          "suffix": "",
+          "start": 37.097,
+          "end": 37.407
+        },
+        {
+          "ch": "更",
+          "suffix": "",
+          "start": 37.407,
+          "end": 37.737
+        },
+        {
+          "ch": "两",
+          "suffix": "",
+          "start": 37.737,
+          "end": 37.967
+        },
+        {
+          "ch": "千",
+          "suffix": "",
+          "start": 37.967,
+          "end": 38.267
+        },
+        {
+          "ch": "零",
+          "suffix": "",
+          "start": 38.267,
+          "end": 38.627
+        },
+        {
+          "ch": "八",
+          "suffix": "",
+          "start": 38.627,
+          "end": 38.857
+        },
+        {
+          "ch": "十",
+          "suffix": "",
+          "start": 38.857,
+          "end": 39.097
+        },
+        {
+          "ch": "六",
+          "suffix": "，",
+          "start": 39.097,
+          "end": 39.327
+        },
+        {
+          "ch": "两",
+          "suffix": "",
+          "start": 39.327,
+          "end": 39.517
+        },
+        {
+          "ch": "集",
+          "suffix": "",
+          "start": 39.517,
+          "end": 39.777
+        },
+        {
+          "ch": "加",
+          "suffix": "",
+          "start": 39.777,
+          "end": 40.137
+        },
+        {
+          "ch": "起",
+          "suffix": "",
+          "start": 40.137,
+          "end": 40.347
+        },
+        {
+          "ch": "来",
+          "suffix": "",
+          "start": 40.347,
+          "end": 40.617
+        },
+        {
+          "ch": "六",
+          "suffix": "",
+          "start": 40.617,
+          "end": 41.027
+        },
+        {
+          "ch": "千",
+          "suffix": "",
+          "start": 41.027,
+          "end": 41.327
+        },
+        {
+          "ch": "五",
+          "suffix": "",
+          "start": 41.327,
+          "end": 41.677
+        },
+        {
+          "ch": "百",
+          "suffix": "",
+          "start": 41.677,
+          "end": 41.957
+        },
+        {
+          "ch": "三",
+          "suffix": "",
+          "start": 41.957,
+          "end": 42.067
+        },
+        {
+          "ch": "十",
+          "suffix": "",
+          "start": 42.067,
+          "end": 42.387
+        },
+        {
+          "ch": "九",
+          "suffix": "，",
+          "start": 42.387,
+          "end": 42.587
+        },
+        {
+          "ch": "还",
+          "suffix": "",
+          "start": 42.587,
+          "end": 42.887
+        },
+        {
+          "ch": "没",
+          "suffix": "",
+          "start": 42.887,
+          "end": 43.207
+        },
+        {
+          "ch": "第",
+          "suffix": "",
+          "start": 43.207,
+          "end": 43.477
+        },
+        {
+          "ch": "一",
+          "suffix": "",
+          "start": 43.477,
+          "end": 43.907
+        },
+        {
+          "ch": "天",
+          "suffix": "",
+          "start": 43.907,
+          "end": 44.167
+        },
+        {
+          "ch": "一",
+          "suffix": "",
+          "start": 44.167,
+          "end": 44.407
+        },
+        {
+          "ch": "集",
+          "suffix": "",
+          "start": 44.407,
+          "end": 44.737
+        },
+        {
+          "ch": "多",
+          "suffix": "。",
+          "start": 44.737,
+          "end": 45.017
+        },
+        {
+          "ch": "我",
+          "suffix": "",
+          "start": 45.017,
+          "end": 45.257
+        },
+        {
+          "ch": "了",
+          "suffix": "",
+          "start": 45.257,
+          "end": 45.547
+        },
+        {
+          "ch": "雷",
+          "suffix": "，",
+          "start": 45.547,
+          "end": 45.867
+        },
+        {
+          "ch": "这",
+          "suffix": "",
+          "start": 45.867,
+          "end": 46.157
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 46.157,
+          "end": 46.437
+        },
+        {
+          "ch": "掉",
+          "suffix": "",
+          "start": 46.437,
+          "end": 46.647
+        },
+        {
+          "ch": "水",
+          "suffix": "",
+          "start": 46.647,
+          "end": 46.997
+        },
+        {
+          "ch": "里",
+          "suffix": "",
+          "start": 46.997,
+          "end": 47.227
+        },
+        {
+          "ch": "了",
+          "suffix": "",
+          "start": 47.227,
+          "end": 47.457
+        },
+        {
+          "ch": "吧",
+          "suffix": "。",
+          "start": 47.457,
+          "end": 47.737
+        }
+      ],
+      "syllable_seconds_mean": 0.28,
+      "syllable_seconds_std": 0.058,
+      "boundary_energy_ratio": 0.341
     },
     {
       "id": "L07",
@@ -124,7 +1171,180 @@
         "start": 55.122,
         "end": 55.547,
         "seconds": 0.425
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "完",
+          "suffix": "",
+          "start": 48.251,
+          "end": 48.491
+        },
+        {
+          "ch": "播",
+          "suffix": "",
+          "start": 48.491,
+          "end": 48.721
+        },
+        {
+          "ch": "率",
+          "suffix": "",
+          "start": 48.721,
+          "end": 48.931
+        },
+        {
+          "ch": "倒",
+          "suffix": "",
+          "start": 48.931,
+          "end": 49.221
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 49.221,
+          "end": 49.441
+        },
+        {
+          "ch": "涨",
+          "suffix": "",
+          "start": 49.441,
+          "end": 49.691
+        },
+        {
+          "ch": "到",
+          "suffix": "",
+          "start": 49.691,
+          "end": 50.031
+        },
+        {
+          "ch": "五",
+          "suffix": "",
+          "start": 50.031,
+          "end": 50.231
+        },
+        {
+          "ch": "点",
+          "suffix": "",
+          "start": 50.231,
+          "end": 50.511
+        },
+        {
+          "ch": "二",
+          "suffix": "",
+          "start": 50.511,
+          "end": 50.671
+        },
+        {
+          "ch": "二",
+          "suffix": "。",
+          "start": 50.671,
+          "end": 50.891
+        },
+        {
+          "ch": "看",
+          "suffix": "",
+          "start": 50.891,
+          "end": 51.181
+        },
+        {
+          "ch": "的",
+          "suffix": "",
+          "start": 51.181,
+          "end": 51.411
+        },
+        {
+          "ch": "人",
+          "suffix": "",
+          "start": 51.411,
+          "end": 51.631
+        },
+        {
+          "ch": "少",
+          "suffix": "",
+          "start": 51.631,
+          "end": 51.921
+        },
+        {
+          "ch": "了",
+          "suffix": "，",
+          "start": 51.921,
+          "end": 52.171
+        },
+        {
+          "ch": "看",
+          "suffix": "",
+          "start": 52.171,
+          "end": 52.421
+        },
+        {
+          "ch": "完",
+          "suffix": "",
+          "start": 52.421,
+          "end": 52.621
+        },
+        {
+          "ch": "的",
+          "suffix": "",
+          "start": 52.621,
+          "end": 52.851
+        },
+        {
+          "ch": "人",
+          "suffix": "",
+          "start": 52.851,
+          "end": 53.151
+        },
+        {
+          "ch": "多",
+          "suffix": "",
+          "start": 53.151,
+          "end": 53.511
+        },
+        {
+          "ch": "了",
+          "suffix": "，",
+          "start": 53.511,
+          "end": 53.751
+        },
+        {
+          "ch": "这",
+          "suffix": "",
+          "start": 53.751,
+          "end": 53.961
+        },
+        {
+          "ch": "算",
+          "suffix": "",
+          "start": 53.961,
+          "end": 54.171
+        },
+        {
+          "ch": "安",
+          "suffix": "",
+          "start": 54.171,
+          "end": 54.421
+        },
+        {
+          "ch": "慰",
+          "suffix": "",
+          "start": 54.421,
+          "end": 54.671
+        },
+        {
+          "ch": "奖",
+          "suffix": "",
+          "start": 54.671,
+          "end": 54.871
+        },
+        {
+          "ch": "吗",
+          "suffix": "？",
+          "start": 54.871,
+          "end": 55.121
+        }
+      ],
+      "syllable_seconds_mean": 0.245,
+      "syllable_seconds_std": 0.043,
+      "boundary_energy_ratio": 0.456
     },
     {
       "id": "L08",
@@ -139,7 +1359,222 @@
         "start": 65.056,
         "end": 65.333,
         "seconds": 0.276
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "主",
+          "suffix": "",
+          "start": 55.547,
+          "end": 55.767
+        },
+        {
+          "ch": "人",
+          "suffix": "",
+          "start": 55.767,
+          "end": 56.157
+        },
+        {
+          "ch": "还",
+          "suffix": "",
+          "start": 56.157,
+          "end": 56.337
+        },
+        {
+          "ch": "偷",
+          "suffix": "",
+          "start": 56.337,
+          "end": 56.627
+        },
+        {
+          "ch": "偷",
+          "suffix": "",
+          "start": 56.627,
+          "end": 56.887
+        },
+        {
+          "ch": "说",
+          "suffix": "：",
+          "start": 56.887,
+          "end": 57.167
+        },
+        {
+          "ch": "昨",
+          "suffix": "",
+          "start": 57.167,
+          "end": 57.347
+        },
+        {
+          "ch": "天",
+          "suffix": "",
+          "start": 57.347,
+          "end": 57.647
+        },
+        {
+          "ch": "吃",
+          "suffix": "",
+          "start": 57.647,
+          "end": 57.897
+        },
+        {
+          "ch": "得",
+          "suffix": "",
+          "start": 57.897,
+          "end": 58.277
+        },
+        {
+          "ch": "少",
+          "suffix": "，",
+          "start": 58.277,
+          "end": 58.577
+        },
+        {
+          "ch": "不",
+          "suffix": "",
+          "start": 58.577,
+          "end": 58.837
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 58.837,
+          "end": 59.197
+        },
+        {
+          "ch": "薄",
+          "suffix": "",
+          "start": 59.197,
+          "end": 59.407
+        },
+        {
+          "ch": "肌",
+          "suffix": "，",
+          "start": 59.407,
+          "end": 59.677
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 59.677,
+          "end": 59.907
+        },
+        {
+          "ch": "数",
+          "suffix": "",
+          "start": 59.907,
+          "end": 60.157
+        },
+        {
+          "ch": "据",
+          "suffix": "",
+          "start": 60.157,
+          "end": 60.497
+        },
+        {
+          "ch": "不",
+          "suffix": "",
+          "start": 60.497,
+          "end": 60.737
+        },
+        {
+          "ch": "好",
+          "suffix": "。",
+          "start": 60.737,
+          "end": 60.977
+        },
+        {
+          "ch": "哦",
+          "suffix": "，",
+          "start": 60.977,
+          "end": 61.247
+        },
+        {
+          "ch": "原",
+          "suffix": "",
+          "start": 61.247,
+          "end": 61.557
+        },
+        {
+          "ch": "来",
+          "suffix": "",
+          "start": 61.557,
+          "end": 61.757
+        },
+        {
+          "ch": "不",
+          "suffix": "",
+          "start": 61.757,
+          "end": 62.137
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 62.137,
+          "end": 62.427
+        },
+        {
+          "ch": "本",
+          "suffix": "",
+          "start": 62.427,
+          "end": 62.617
+        },
+        {
+          "ch": "鲸",
+          "suffix": "",
+          "start": 62.617,
+          "end": 62.977
+        },
+        {
+          "ch": "省",
+          "suffix": "",
+          "start": 62.977,
+          "end": 63.217
+        },
+        {
+          "ch": "饭",
+          "suffix": "，",
+          "start": 63.217,
+          "end": 63.487
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 63.487,
+          "end": 63.667
+        },
+        {
+          "ch": "数",
+          "suffix": "",
+          "start": 63.667,
+          "end": 63.947
+        },
+        {
+          "ch": "据",
+          "suffix": "",
+          "start": 63.947,
+          "end": 64.157
+        },
+        {
+          "ch": "不",
+          "suffix": "",
+          "start": 64.157,
+          "end": 64.387
+        },
+        {
+          "ch": "让",
+          "suffix": "",
+          "start": 64.387,
+          "end": 64.737
+        },
+        {
+          "ch": "吃",
+          "suffix": "。",
+          "start": 64.737,
+          "end": 65.047
+        }
+      ],
+      "syllable_seconds_mean": 0.271,
+      "syllable_seconds_std": 0.06,
+      "boundary_energy_ratio": 0.274
     },
     {
       "id": "L09",
@@ -154,7 +1589,90 @@
         "start": 68.963,
         "end": 69.227,
         "seconds": 0.265
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "鸡",
+          "suffix": "",
+          "start": 65.333,
+          "end": 65.663
+        },
+        {
+          "ch": "蛋",
+          "suffix": "",
+          "start": 65.663,
+          "end": 65.783
+        },
+        {
+          "ch": "批",
+          "suffix": "",
+          "start": 65.783,
+          "end": 66.113
+        },
+        {
+          "ch": "了",
+          "suffix": "；",
+          "start": 66.113,
+          "end": 66.353
+        },
+        {
+          "ch": "选",
+          "suffix": "",
+          "start": 66.353,
+          "end": 66.673
+        },
+        {
+          "ch": "鲸",
+          "suffix": "，",
+          "start": 66.673,
+          "end": 66.993
+        },
+        {
+          "ch": "九",
+          "suffix": "",
+          "start": 66.993,
+          "end": 67.253
+        },
+        {
+          "ch": "比",
+          "suffix": "",
+          "start": 67.253,
+          "end": 67.543
+        },
+        {
+          "ch": "八",
+          "suffix": "，",
+          "start": 67.543,
+          "end": 67.763
+        },
+        {
+          "ch": "就",
+          "suffix": "",
+          "start": 67.763,
+          "end": 68.103
+        },
+        {
+          "ch": "差",
+          "suffix": "",
+          "start": 68.103,
+          "end": 68.363
+        },
+        {
+          "ch": "一",
+          "suffix": "",
+          "start": 68.363,
+          "end": 68.703
+        },
+        {
+          "ch": "票",
+          "suffix": "。",
+          "start": 68.703,
+          "end": 68.963
+        }
+      ],
+      "syllable_seconds_mean": 0.279,
+      "syllable_seconds_std": 0.06,
+      "boundary_energy_ratio": 0.197
     },
     {
       "id": "L10",
@@ -169,7 +1687,168 @@
         "start": 75.405,
         "end": 75.856,
         "seconds": 0.451
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "主",
+          "suffix": "",
+          "start": 69.227,
+          "end": 69.467
+        },
+        {
+          "ch": "持",
+          "suffix": "",
+          "start": 69.467,
+          "end": 69.627
+        },
+        {
+          "ch": "还",
+          "suffix": "",
+          "start": 69.627,
+          "end": 69.937
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 69.937,
+          "end": 70.127
+        },
+        {
+          "ch": "现",
+          "suffix": "",
+          "start": 70.127,
+          "end": 70.367
+        },
+        {
+          "ch": "在",
+          "suffix": "",
+          "start": 70.367,
+          "end": 70.567
+        },
+        {
+          "ch": "的",
+          "suffix": "",
+          "start": 70.567,
+          "end": 70.887
+        },
+        {
+          "ch": "本",
+          "suffix": "",
+          "start": 70.887,
+          "end": 71.127
+        },
+        {
+          "ch": "鲸",
+          "suffix": "，",
+          "start": 71.127,
+          "end": 71.407
+        },
+        {
+          "ch": "擦",
+          "suffix": "",
+          "start": 71.407,
+          "end": 71.657
+        },
+        {
+          "ch": "清",
+          "suffix": "",
+          "start": 71.657,
+          "end": 71.847
+        },
+        {
+          "ch": "楚",
+          "suffix": "",
+          "start": 71.847,
+          "end": 72.137
+        },
+        {
+          "ch": "继",
+          "suffix": "",
+          "start": 72.137,
+          "end": 72.397
+        },
+        {
+          "ch": "续",
+          "suffix": "",
+          "start": 72.397,
+          "end": 72.557
+        },
+        {
+          "ch": "上",
+          "suffix": "；",
+          "start": 72.557,
+          "end": 72.777
+        },
+        {
+          "ch": "新",
+          "suffix": "",
+          "start": 72.777,
+          "end": 73.007
+        },
+        {
+          "ch": "设",
+          "suffix": "",
+          "start": 73.007,
+          "end": 73.267
+        },
+        {
+          "ch": "计",
+          "suffix": "",
+          "start": 73.267,
+          "end": 73.487
+        },
+        {
+          "ch": "的",
+          "suffix": "",
+          "start": 73.487,
+          "end": 73.647
+        },
+        {
+          "ch": "鲸",
+          "suffix": "，",
+          "start": 73.647,
+          "end": 73.897
+        },
+        {
+          "ch": "去",
+          "suffix": "",
+          "start": 73.897,
+          "end": 74.187
+        },
+        {
+          "ch": "电",
+          "suffix": "",
+          "start": 74.187,
+          "end": 74.347
+        },
+        {
+          "ch": "视",
+          "suffix": "",
+          "start": 74.347,
+          "end": 74.577
+        },
+        {
+          "ch": "台",
+          "suffix": "",
+          "start": 74.577,
+          "end": 74.847
+        },
+        {
+          "ch": "上",
+          "suffix": "",
+          "start": 74.847,
+          "end": 75.077
+        },
+        {
+          "ch": "班",
+          "suffix": "。",
+          "start": 75.077,
+          "end": 75.397
+        }
+      ],
+      "syllable_seconds_mean": 0.237,
+      "syllable_seconds_std": 0.048,
+      "boundary_energy_ratio": 0.373
     },
     {
       "id": "L11",
@@ -184,7 +1863,132 @@
         "start": 81.837,
         "end": 82.381,
         "seconds": 0.544
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "蛋",
+          "suffix": "",
+          "start": 75.856,
+          "end": 76.166
+        },
+        {
+          "ch": "先",
+          "suffix": "",
+          "start": 76.166,
+          "end": 76.446
+        },
+        {
+          "ch": "吃",
+          "suffix": "",
+          "start": 76.446,
+          "end": 76.796
+        },
+        {
+          "ch": "一",
+          "suffix": "",
+          "start": 76.796,
+          "end": 77.176
+        },
+        {
+          "ch": "口",
+          "suffix": "，",
+          "start": 77.176,
+          "end": 77.416
+        },
+        {
+          "ch": "再",
+          "suffix": "",
+          "start": 77.416,
+          "end": 77.686
+        },
+        {
+          "ch": "游",
+          "suffix": "",
+          "start": 77.686,
+          "end": 78.066
+        },
+        {
+          "ch": "两",
+          "suffix": "",
+          "start": 78.066,
+          "end": 78.376
+        },
+        {
+          "ch": "圈",
+          "suffix": "。",
+          "start": 78.376,
+          "end": 78.586
+        },
+        {
+          "ch": "薄",
+          "suffix": "",
+          "start": 78.586,
+          "end": 78.856
+        },
+        {
+          "ch": "肌",
+          "suffix": "",
+          "start": 78.856,
+          "end": 79.126
+        },
+        {
+          "ch": "预",
+          "suffix": "",
+          "start": 79.126,
+          "end": 79.436
+        },
+        {
+          "ch": "备",
+          "suffix": "",
+          "start": 79.436,
+          "end": 79.816
+        },
+        {
+          "ch": "饭",
+          "suffix": "，",
+          "start": 79.816,
+          "end": 80.046
+        },
+        {
+          "ch": "不",
+          "suffix": "",
+          "start": 80.046,
+          "end": 80.376
+        },
+        {
+          "ch": "能",
+          "suffix": "",
+          "start": 80.376,
+          "end": 80.606
+        },
+        {
+          "ch": "光",
+          "suffix": "",
+          "start": 80.606,
+          "end": 81.056
+        },
+        {
+          "ch": "说",
+          "suffix": "",
+          "start": 81.056,
+          "end": 81.296
+        },
+        {
+          "ch": "不",
+          "suffix": "",
+          "start": 81.296,
+          "end": 81.476
+        },
+        {
+          "ch": "练",
+          "suffix": "。",
+          "start": 81.476,
+          "end": 81.836
+        }
+      ],
+      "syllable_seconds_mean": 0.299,
+      "syllable_seconds_std": 0.068,
+      "boundary_energy_ratio": 0.172
     },
     {
       "id": "L12",
@@ -199,7 +2003,126 @@
         "start": 87.646,
         "end": 88.277,
         "seconds": 0.631
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "两",
+          "suffix": "",
+          "start": 82.381,
+          "end": 82.761
+        },
+        {
+          "ch": "位",
+          "suffix": "",
+          "start": 82.761,
+          "end": 82.981
+        },
+        {
+          "ch": "住",
+          "suffix": "",
+          "start": 82.981,
+          "end": 83.181
+        },
+        {
+          "ch": "户",
+          "suffix": "",
+          "start": 83.181,
+          "end": 83.551
+        },
+        {
+          "ch": "点",
+          "suffix": "",
+          "start": 83.551,
+          "end": 83.791
+        },
+        {
+          "ch": "名",
+          "suffix": "",
+          "start": 83.791,
+          "end": 84.101
+        },
+        {
+          "ch": "共",
+          "suffix": "",
+          "start": 84.101,
+          "end": 84.301
+        },
+        {
+          "ch": "创",
+          "suffix": "。",
+          "start": 84.301,
+          "end": 84.561
+        },
+        {
+          "ch": "大",
+          "suffix": "",
+          "start": 84.561,
+          "end": 84.831
+        },
+        {
+          "ch": "小",
+          "suffix": "",
+          "start": 84.831,
+          "end": 85.111
+        },
+        {
+          "ch": "姐",
+          "suffix": "",
+          "start": 85.111,
+          "end": 85.461
+        },
+        {
+          "ch": "没",
+          "suffix": "",
+          "start": 85.461,
+          "end": 85.721
+        },
+        {
+          "ch": "来",
+          "suffix": "，",
+          "start": 85.721,
+          "end": 85.991
+        },
+        {
+          "ch": "账",
+          "suffix": "",
+          "start": 85.991,
+          "end": 86.291
+        },
+        {
+          "ch": "还",
+          "suffix": "",
+          "start": 86.291,
+          "end": 86.591
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 86.591,
+          "end": 86.921
+        },
+        {
+          "ch": "要",
+          "suffix": "",
+          "start": 86.921,
+          "end": 87.141
+        },
+        {
+          "ch": "查",
+          "suffix": "",
+          "start": 87.141,
+          "end": 87.451
+        },
+        {
+          "ch": "的",
+          "suffix": "。",
+          "start": 87.451,
+          "end": 87.641
+        }
+      ],
+      "syllable_seconds_mean": 0.277,
+      "syllable_seconds_std": 0.056,
+      "boundary_energy_ratio": 0.281
     },
     {
       "id": "L13",
@@ -214,7 +2137,114 @@
         "start": 92.909,
         "end": 93.293,
         "seconds": 0.384
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "本",
+          "suffix": "",
+          "start": 88.277,
+          "end": 88.557
+        },
+        {
+          "ch": "小",
+          "suffix": "",
+          "start": 88.557,
+          "end": 88.767
+        },
+        {
+          "ch": "姐",
+          "suffix": "",
+          "start": 88.767,
+          "end": 89.067
+        },
+        {
+          "ch": "先",
+          "suffix": "",
+          "start": 89.067,
+          "end": 89.357
+        },
+        {
+          "ch": "查",
+          "suffix": " ",
+          "start": 89.357,
+          "end": 89.707
+        },
+        {
+          "ch": "M",
+          "suffix": "",
+          "start": 89.707,
+          "end": 90.027
+        },
+        {
+          "ch": "V",
+          "suffix": "：",
+          "start": 90.027,
+          "end": 90.307
+        },
+        {
+          "ch": "转",
+          "suffix": "",
+          "start": 90.307,
+          "end": 90.457
+        },
+        {
+          "ch": "完",
+          "suffix": "",
+          "start": 90.457,
+          "end": 90.847
+        },
+        {
+          "ch": "圈",
+          "suffix": "",
+          "start": 90.847,
+          "end": 91.047
+        },
+        {
+          "ch": "了",
+          "suffix": "，",
+          "start": 91.047,
+          "end": 91.367
+        },
+        {
+          "ch": "歌",
+          "suffix": "",
+          "start": 91.367,
+          "end": 91.567
+        },
+        {
+          "ch": "词",
+          "suffix": "",
+          "start": 91.567,
+          "end": 91.877
+        },
+        {
+          "ch": "才",
+          "suffix": "",
+          "start": 91.877,
+          "end": 92.097
+        },
+        {
+          "ch": "追",
+          "suffix": "",
+          "start": 92.097,
+          "end": 92.297
+        },
+        {
+          "ch": "上",
+          "suffix": "",
+          "start": 92.297,
+          "end": 92.527
+        },
+        {
+          "ch": "来",
+          "suffix": "。",
+          "start": 92.527,
+          "end": 92.907
+        }
+      ],
+      "syllable_seconds_mean": 0.272,
+      "syllable_seconds_std": 0.068,
+      "boundary_energy_ratio": 0.315
     },
     {
       "id": "L14",
@@ -229,7 +2259,132 @@
         "start": 98.116,
         "end": 98.715,
         "seconds": 0.599
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "饭",
+          "suffix": "",
+          "start": 93.293,
+          "end": 93.603
+        },
+        {
+          "ch": "碗",
+          "suffix": "",
+          "start": 93.603,
+          "end": 93.803
+        },
+        {
+          "ch": "还",
+          "suffix": "",
+          "start": 93.803,
+          "end": 94.013
+        },
+        {
+          "ch": "抢",
+          "suffix": "",
+          "start": 94.013,
+          "end": 94.293
+        },
+        {
+          "ch": "了",
+          "suffix": "",
+          "start": 94.293,
+          "end": 94.493
+        },
+        {
+          "ch": "麦",
+          "suffix": "",
+          "start": 94.493,
+          "end": 94.693
+        },
+        {
+          "ch": "克",
+          "suffix": "",
+          "start": 94.693,
+          "end": 94.893
+        },
+        {
+          "ch": "风",
+          "suffix": "",
+          "start": 94.893,
+          "end": 95.113
+        },
+        {
+          "ch": "的",
+          "suffix": "",
+          "start": 95.113,
+          "end": 95.423
+        },
+        {
+          "ch": "活",
+          "suffix": "。",
+          "start": 95.423,
+          "end": 95.603
+        },
+        {
+          "ch": "结",
+          "suffix": "",
+          "start": 95.603,
+          "end": 95.873
+        },
+        {
+          "ch": "论",
+          "suffix": "",
+          "start": 95.873,
+          "end": 96.113
+        },
+        {
+          "ch": "只",
+          "suffix": "",
+          "start": 96.113,
+          "end": 96.403
+        },
+        {
+          "ch": "有",
+          "suffix": "",
+          "start": 96.403,
+          "end": 96.553
+        },
+        {
+          "ch": "一",
+          "suffix": "",
+          "start": 96.553,
+          "end": 96.863
+        },
+        {
+          "ch": "个",
+          "suffix": "：",
+          "start": 96.863,
+          "end": 97.043
+        },
+        {
+          "ch": "做",
+          "suffix": "",
+          "start": 97.043,
+          "end": 97.323
+        },
+        {
+          "ch": "得",
+          "suffix": "",
+          "start": 97.323,
+          "end": 97.543
+        },
+        {
+          "ch": "不",
+          "suffix": "",
+          "start": 97.543,
+          "end": 97.793
+        },
+        {
+          "ch": "好",
+          "suffix": "。",
+          "start": 97.793,
+          "end": 98.113
+        }
+      ],
+      "syllable_seconds_mean": 0.241,
+      "syllable_seconds_std": 0.051,
+      "boundary_energy_ratio": 0.489
     },
     {
       "id": "L15",
@@ -244,7 +2399,150 @@
         "start": 104.32,
         "end": 104.958,
         "seconds": 0.639
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "为",
+          "suffix": "",
+          "start": 98.715,
+          "end": 99.005
+        },
+        {
+          "ch": "了",
+          "suffix": "",
+          "start": 99.005,
+          "end": 99.215
+        },
+        {
+          "ch": "追",
+          "suffix": "",
+          "start": 99.215,
+          "end": 99.435
+        },
+        {
+          "ch": "歌",
+          "suffix": "",
+          "start": 99.435,
+          "end": 99.755
+        },
+        {
+          "ch": "词",
+          "suffix": "，",
+          "start": 99.755,
+          "end": 100.025
+        },
+        {
+          "ch": "本",
+          "suffix": "",
+          "start": 100.025,
+          "end": 100.245
+        },
+        {
+          "ch": "鲸",
+          "suffix": "",
+          "start": 100.245,
+          "end": 100.515
+        },
+        {
+          "ch": "一",
+          "suffix": "",
+          "start": 100.515,
+          "end": 100.705
+        },
+        {
+          "ch": "头",
+          "suffix": "",
+          "start": 100.705,
+          "end": 100.865
+        },
+        {
+          "ch": "扎",
+          "suffix": "",
+          "start": 100.865,
+          "end": 101.095
+        },
+        {
+          "ch": "进",
+          "suffix": "",
+          "start": 101.095,
+          "end": 101.485
+        },
+        {
+          "ch": "水",
+          "suffix": "",
+          "start": 101.485,
+          "end": 101.695
+        },
+        {
+          "ch": "里",
+          "suffix": "。",
+          "start": 101.695,
+          "end": 101.865
+        },
+        {
+          "ch": "糟",
+          "suffix": "",
+          "start": 101.865,
+          "end": 102.085
+        },
+        {
+          "ch": "糕",
+          "suffix": "，",
+          "start": 102.085,
+          "end": 102.335
+        },
+        {
+          "ch": "颜",
+          "suffix": "",
+          "start": 102.335,
+          "end": 102.645
+        },
+        {
+          "ch": "色",
+          "suffix": "",
+          "start": 102.645,
+          "end": 102.865
+        },
+        {
+          "ch": "开",
+          "suffix": "",
+          "start": 102.865,
+          "end": 103.155
+        },
+        {
+          "ch": "始",
+          "suffix": "",
+          "start": 103.155,
+          "end": 103.455
+        },
+        {
+          "ch": "往",
+          "suffix": "",
+          "start": 103.455,
+          "end": 103.695
+        },
+        {
+          "ch": "下",
+          "suffix": "",
+          "start": 103.695,
+          "end": 103.875
+        },
+        {
+          "ch": "掉",
+          "suffix": "",
+          "start": 103.875,
+          "end": 104.135
+        },
+        {
+          "ch": "了",
+          "suffix": "！",
+          "start": 104.135,
+          "end": 104.315
+        }
+      ],
+      "syllable_seconds_mean": 0.243,
+      "syllable_seconds_std": 0.055,
+      "boundary_energy_ratio": 0.269
     },
     {
       "id": "L16",
@@ -259,7 +2557,126 @@
         "start": 109.876,
         "end": 110.507,
         "seconds": 0.632
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "染",
+          "suffix": "",
+          "start": 104.958,
+          "end": 105.218
+        },
+        {
+          "ch": "色",
+          "suffix": "",
+          "start": 105.218,
+          "end": 105.518
+        },
+        {
+          "ch": "剂",
+          "suffix": "",
+          "start": 105.518,
+          "end": 105.638
+        },
+        {
+          "ch": "不",
+          "suffix": "",
+          "start": 105.638,
+          "end": 105.898
+        },
+        {
+          "ch": "防",
+          "suffix": "",
+          "start": 105.898,
+          "end": 106.218
+        },
+        {
+          "ch": "水",
+          "suffix": "！",
+          "start": 106.218,
+          "end": 106.408
+        },
+        {
+          "ch": "大",
+          "suffix": "",
+          "start": 106.408,
+          "end": 106.658
+        },
+        {
+          "ch": "小",
+          "suffix": "",
+          "start": 106.658,
+          "end": 106.918
+        },
+        {
+          "ch": "姐",
+          "suffix": "",
+          "start": 106.918,
+          "end": 107.288
+        },
+        {
+          "ch": "退",
+          "suffix": "",
+          "start": 107.288,
+          "end": 107.508
+        },
+        {
+          "ch": "完",
+          "suffix": "，",
+          "start": 107.508,
+          "end": 107.718
+        },
+        {
+          "ch": "又",
+          "suffix": "",
+          "start": 107.718,
+          "end": 108.168
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 108.168,
+          "end": 108.428
+        },
+        {
+          "ch": "蓝",
+          "suffix": "",
+          "start": 108.428,
+          "end": 108.658
+        },
+        {
+          "ch": "色",
+          "suffix": "",
+          "start": 108.658,
+          "end": 108.958
+        },
+        {
+          "ch": "的",
+          "suffix": "",
+          "start": 108.958,
+          "end": 109.098
+        },
+        {
+          "ch": "本",
+          "suffix": "",
+          "start": 109.098,
+          "end": 109.428
+        },
+        {
+          "ch": "鲸",
+          "suffix": "",
+          "start": 109.428,
+          "end": 109.608
+        },
+        {
+          "ch": "了",
+          "suffix": "。",
+          "start": 109.608,
+          "end": 109.868
+        }
+      ],
+      "syllable_seconds_mean": 0.258,
+      "syllable_seconds_std": 0.076,
+      "boundary_energy_ratio": 0.345
     },
     {
       "id": "L17",
@@ -274,7 +2691,162 @@
         "start": 116.822,
         "end": 117.545,
         "seconds": 0.723
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "大",
+          "suffix": "",
+          "start": 110.507,
+          "end": 110.677
+        },
+        {
+          "ch": "小",
+          "suffix": "",
+          "start": 110.677,
+          "end": 110.897
+        },
+        {
+          "ch": "姐",
+          "suffix": "",
+          "start": 110.897,
+          "end": 111.197
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 111.197,
+          "end": 111.497
+        },
+        {
+          "ch": "假",
+          "suffix": "",
+          "start": 111.497,
+          "end": 111.787
+        },
+        {
+          "ch": "扮",
+          "suffix": "",
+          "start": 111.787,
+          "end": 112.097
+        },
+        {
+          "ch": "的",
+          "suffix": "，",
+          "start": 112.097,
+          "end": 112.337
+        },
+        {
+          "ch": "意",
+          "suffix": "",
+          "start": 112.337,
+          "end": 112.577
+        },
+        {
+          "ch": "见",
+          "suffix": "",
+          "start": 112.577,
+          "end": 112.857
+        },
+        {
+          "ch": "是",
+          "suffix": "",
+          "start": 112.857,
+          "end": 113.137
+        },
+        {
+          "ch": "真",
+          "suffix": "",
+          "start": 113.137,
+          "end": 113.337
+        },
+        {
+          "ch": "的",
+          "suffix": "：",
+          "start": 113.337,
+          "end": 113.527
+        },
+        {
+          "ch": "M",
+          "suffix": "",
+          "start": 113.527,
+          "end": 113.787
+        },
+        {
+          "ch": "V",
+          "suffix": " ",
+          "start": 113.787,
+          "end": 114.137
+        },
+        {
+          "ch": "先",
+          "suffix": "",
+          "start": 114.137,
+          "end": 114.337
+        },
+        {
+          "ch": "别",
+          "suffix": "",
+          "start": 114.337,
+          "end": 114.517
+        },
+        {
+          "ch": "发",
+          "suffix": "，",
+          "start": 114.517,
+          "end": 114.827
+        },
+        {
+          "ch": "把",
+          "suffix": "",
+          "start": 114.827,
+          "end": 115.037
+        },
+        {
+          "ch": "节",
+          "suffix": "",
+          "start": 115.037,
+          "end": 115.277
+        },
+        {
+          "ch": "拍",
+          "suffix": "",
+          "start": 115.277,
+          "end": 115.507
+        },
+        {
+          "ch": "和",
+          "suffix": "",
+          "start": 115.507,
+          "end": 115.777
+        },
+        {
+          "ch": "字",
+          "suffix": "",
+          "start": 115.777,
+          "end": 115.967
+        },
+        {
+          "ch": "幕",
+          "suffix": "",
+          "start": 115.967,
+          "end": 116.247
+        },
+        {
+          "ch": "牵",
+          "suffix": "",
+          "start": 116.247,
+          "end": 116.477
+        },
+        {
+          "ch": "齐",
+          "suffix": "。",
+          "start": 116.477,
+          "end": 116.817
+        }
+      ],
+      "syllable_seconds_mean": 0.252,
+      "syllable_seconds_std": 0.05,
+      "boundary_energy_ratio": 0.285
     },
     {
       "id": "L18",
@@ -289,7 +2861,138 @@
         "start": 123.086,
         "end": 123.601,
         "seconds": 0.515
-      }
+      },
+      "chars_timed": [
+        {
+          "ch": "今",
+          "suffix": "",
+          "start": 117.545,
+          "end": 117.775
+        },
+        {
+          "ch": "天",
+          "suffix": "",
+          "start": 117.775,
+          "end": 118.065
+        },
+        {
+          "ch": "三",
+          "suffix": "",
+          "start": 118.065,
+          "end": 118.445
+        },
+        {
+          "ch": "笔",
+          "suffix": "",
+          "start": 118.445,
+          "end": 118.725
+        },
+        {
+          "ch": "账",
+          "suffix": "：",
+          "start": 118.725,
+          "end": 118.965
+        },
+        {
+          "ch": "蛋",
+          "suffix": "",
+          "start": 118.965,
+          "end": 119.195
+        },
+        {
+          "ch": "吃",
+          "suffix": "",
+          "start": 119.195,
+          "end": 119.465
+        },
+        {
+          "ch": "上",
+          "suffix": "",
+          "start": 119.465,
+          "end": 119.675
+        },
+        {
+          "ch": "了",
+          "suffix": "，",
+          "start": 119.675,
+          "end": 119.935
+        },
+        {
+          "ch": "主",
+          "suffix": "",
+          "start": 119.935,
+          "end": 120.195
+        },
+        {
+          "ch": "持",
+          "suffix": "",
+          "start": 120.195,
+          "end": 120.355
+        },
+        {
+          "ch": "选",
+          "suffix": "",
+          "start": 120.355,
+          "end": 120.615
+        },
+        {
+          "ch": "明",
+          "suffix": "",
+          "start": 120.615,
+          "end": 120.855
+        },
+        {
+          "ch": "白",
+          "suffix": "",
+          "start": 120.855,
+          "end": 121.235
+        },
+        {
+          "ch": "了",
+          "suffix": "，",
+          "start": 121.235,
+          "end": 121.535
+        },
+        {
+          "ch": "伪",
+          "suffix": "",
+          "start": 121.535,
+          "end": 121.755
+        },
+        {
+          "ch": "装",
+          "suffix": "",
+          "start": 121.755,
+          "end": 121.915
+        },
+        {
+          "ch": "也",
+          "suffix": "",
+          "start": 121.915,
+          "end": 122.175
+        },
+        {
+          "ch": "泡",
+          "suffix": "",
+          "start": 122.175,
+          "end": 122.505
+        },
+        {
+          "ch": "汤",
+          "suffix": "",
+          "start": 122.505,
+          "end": 122.725
+        },
+        {
+          "ch": "了",
+          "suffix": "。",
+          "start": 122.725,
+          "end": 123.085
+        }
+      ],
+      "syllable_seconds_mean": 0.264,
+      "syllable_seconds_std": 0.06,
+      "boundary_energy_ratio": 0.346
     },
     {
       "id": "L19",
@@ -300,7 +3003,102 @@
       "text": "鲸鱼绝不摸鱼！……先把蛋吃完，再去吃饭。",
       "chars": 15,
       "chars_per_second": 3.589,
-      "boundary_gap": null
+      "boundary_gap": null,
+      "chars_timed": [
+        {
+          "ch": "鲸",
+          "suffix": "",
+          "start": 123.601,
+          "end": 123.881
+        },
+        {
+          "ch": "鱼",
+          "suffix": "",
+          "start": 123.881,
+          "end": 124.081
+        },
+        {
+          "ch": "绝",
+          "suffix": "",
+          "start": 124.081,
+          "end": 124.341
+        },
+        {
+          "ch": "不",
+          "suffix": "",
+          "start": 124.341,
+          "end": 124.731
+        },
+        {
+          "ch": "摸",
+          "suffix": "",
+          "start": 124.731,
+          "end": 125.031
+        },
+        {
+          "ch": "鱼",
+          "suffix": "！……",
+          "start": 125.031,
+          "end": 125.211
+        },
+        {
+          "ch": "先",
+          "suffix": "",
+          "start": 125.211,
+          "end": 125.481
+        },
+        {
+          "ch": "把",
+          "suffix": "",
+          "start": 125.481,
+          "end": 125.821
+        },
+        {
+          "ch": "蛋",
+          "suffix": "",
+          "start": 125.821,
+          "end": 126.111
+        },
+        {
+          "ch": "吃",
+          "suffix": "",
+          "start": 126.111,
+          "end": 126.341
+        },
+        {
+          "ch": "完",
+          "suffix": "，",
+          "start": 126.341,
+          "end": 126.641
+        },
+        {
+          "ch": "再",
+          "suffix": "",
+          "start": 126.641,
+          "end": 126.841
+        },
+        {
+          "ch": "去",
+          "suffix": "",
+          "start": 126.841,
+          "end": 127.221
+        },
+        {
+          "ch": "吃",
+          "suffix": "",
+          "start": 127.221,
+          "end": 127.461
+        },
+        {
+          "ch": "饭",
+          "suffix": "。",
+          "start": 127.461,
+          "end": 127.771
+        }
+      ],
+      "syllable_seconds_mean": 0.278,
+      "syllable_seconds_std": 0.06,
+      "boundary_energy_ratio": 0.346
     }
   ]
 }
