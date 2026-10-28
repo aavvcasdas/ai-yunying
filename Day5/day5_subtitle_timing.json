@@ -17,6 +17,7 @@
       "start": 0.0,
       "end": 4.02,
       "duration_seconds": 4.02,
+      "speech_end": 3.57,
       "cue_start": 0.0,
       "cue_end": 4.02,
       "chars": 12
@@ -28,6 +29,7 @@
       "start": 4.02,
       "end": 6.13,
       "duration_seconds": 2.11,
+      "speech_end": 5.43,
       "cue_start": 4.02,
       "cue_end": 6.13,
       "chars": 7
@@ -39,6 +41,7 @@
       "start": 6.13,
       "end": 7.94,
       "duration_seconds": 1.81,
+      "speech_end": 7.68,
       "cue_start": 6.13,
       "cue_end": 7.94,
       "chars": 7
@@ -50,6 +53,7 @@
       "start": 7.94,
       "end": 9.34,
       "duration_seconds": 1.4,
+      "speech_end": 8.7,
       "cue_start": 7.94,
       "cue_end": 9.34,
       "chars": 3
@@ -61,6 +65,7 @@
       "start": 9.34,
       "end": 10.35,
       "duration_seconds": 1.01,
+      "speech_end": 10.23,
       "cue_start": 9.34,
       "cue_end": 11.835,
       "chars": 3
@@ -72,6 +77,7 @@
       "start": 10.35,
       "end": 11.835,
       "duration_seconds": 1.485,
+      "speech_end": 11.76,
       "cue_start": 9.34,
       "cue_end": 11.835,
       "chars": 7
@@ -83,6 +89,7 @@
       "start": 11.835,
       "end": 13.24,
       "duration_seconds": 1.405,
+      "speech_end": 12.9,
       "cue_start": 11.835,
       "cue_end": 13.24,
       "chars": 4
@@ -94,6 +101,7 @@
       "start": 13.24,
       "end": 14.46,
       "duration_seconds": 1.22,
+      "speech_end": 14.46,
       "cue_start": 13.24,
       "cue_end": 15.57,
       "chars": 5
@@ -105,6 +113,7 @@
       "start": 14.46,
       "end": 15.57,
       "duration_seconds": 1.11,
+      "speech_end": 15.24,
       "cue_start": 13.24,
       "cue_end": 15.57,
       "chars": 3
@@ -116,6 +125,7 @@
       "start": 15.57,
       "end": 17.18,
       "duration_seconds": 1.61,
+      "speech_end": 16.62,
       "cue_start": 15.57,
       "cue_end": 17.18,
       "chars": 5
@@ -127,6 +137,7 @@
       "start": 17.18,
       "end": 20.44,
       "duration_seconds": 3.26,
+      "speech_end": 19.86,
       "cue_start": 17.18,
       "cue_end": 20.44,
       "chars": 11
@@ -138,6 +149,7 @@
       "start": 20.44,
       "end": 23.36,
       "duration_seconds": 2.92,
+      "speech_end": 22.62,
       "cue_start": 20.44,
       "cue_end": 23.36,
       "chars": 9
@@ -149,6 +161,7 @@
       "start": 23.36,
       "end": 24.49,
       "duration_seconds": 1.13,
+      "speech_end": 23.918,
       "cue_start": 23.36,
       "cue_end": 24.49,
       "chars": 1
@@ -160,6 +173,7 @@
       "start": 24.49,
       "end": 26.9,
       "duration_seconds": 2.41,
+      "speech_end": 26.61,
       "cue_start": 24.49,
       "cue_end": 26.9,
       "chars": 7
@@ -171,6 +185,7 @@
       "start": 26.9,
       "end": 28.88,
       "duration_seconds": 1.98,
+      "speech_end": 28.47,
       "cue_start": 26.9,
       "cue_end": 28.88,
       "chars": 6
@@ -182,6 +197,7 @@
       "start": 28.88,
       "end": 32.67,
       "duration_seconds": 3.79,
+      "speech_end": 32.22,
       "cue_start": 28.88,
       "cue_end": 32.67,
       "chars": 8
@@ -193,6 +209,7 @@
       "start": 32.67,
       "end": 34.08,
       "duration_seconds": 1.41,
+      "speech_end": 33.84,
       "cue_start": 32.67,
       "cue_end": 35.78,
       "chars": 4
@@ -204,6 +221,7 @@
       "start": 34.08,
       "end": 35.78,
       "duration_seconds": 1.7,
+      "speech_end": 35.708,
       "cue_start": 32.67,
       "cue_end": 35.78,
       "chars": 4
@@ -215,6 +233,7 @@
       "start": 35.78,
       "end": 38.73,
       "duration_seconds": 2.95,
+      "speech_end": 38.185,
       "cue_start": 35.78,
       "cue_end": 38.73,
       "chars": 10
@@ -226,6 +245,7 @@
       "start": 38.73,
       "end": 39.57,
       "duration_seconds": 0.84,
+      "speech_end": 38.73,
       "cue_start": 38.73,
       "cue_end": 43.08,
       "chars": 1
@@ -237,6 +257,7 @@
       "start": 39.57,
       "end": 43.08,
       "duration_seconds": 3.51,
+      "speech_end": 41.73,
       "cue_start": 38.73,
       "cue_end": 43.08,
       "chars": 11
@@ -248,6 +269,7 @@
       "start": 43.08,
       "end": 44.13,
       "duration_seconds": 1.05,
+      "speech_end": 43.89,
       "cue_start": 43.08,
       "cue_end": 46.55,
       "chars": 3
@@ -259,6 +281,7 @@
       "start": 44.13,
       "end": 46.55,
       "duration_seconds": 2.42,
+      "speech_end": 45.93,
       "cue_start": 43.08,
       "cue_end": 46.55,
       "chars": 7
@@ -270,6 +293,7 @@
       "start": 46.55,
       "end": 47.37,
       "duration_seconds": 0.82,
+      "speech_end": 47.37,
       "cue_start": 46.55,
       "cue_end": 48.83,
       "chars": 3
@@ -281,6 +305,7 @@
       "start": 47.37,
       "end": 48.83,
       "duration_seconds": 1.46,
+      "speech_end": 48.27,
       "cue_start": 46.55,
       "cue_end": 48.83,
       "chars": 3
@@ -292,6 +317,7 @@
       "start": 48.83,
       "end": 49.83,
       "duration_seconds": 1.0,
+      "speech_end": 49.59,
       "cue_start": 48.83,
       "cue_end": 51.27,
       "chars": 3
@@ -303,6 +329,7 @@
       "start": 49.83,
       "end": 51.27,
       "duration_seconds": 1.44,
+      "speech_end": 50.79,
       "cue_start": 48.83,
       "cue_end": 51.27,
       "chars": 4
@@ -314,6 +341,7 @@
       "start": 51.27,
       "end": 52.29,
       "duration_seconds": 1.02,
+      "speech_end": 51.96,
       "cue_start": 51.27,
       "cue_end": 53.28,
       "chars": 2
@@ -325,6 +353,7 @@
       "start": 52.29,
       "end": 53.28,
       "duration_seconds": 0.99,
+      "speech_end": 52.74,
       "cue_start": 51.27,
       "cue_end": 53.28,
       "chars": 2
@@ -336,6 +365,7 @@
       "start": 53.28,
       "end": 55.47,
       "duration_seconds": 2.19,
+      "speech_end": 55.17,
       "cue_start": 53.28,
       "cue_end": 57.42,
       "chars": 8
@@ -347,6 +377,7 @@
       "start": 55.47,
       "end": 57.42,
       "duration_seconds": 1.95,
+      "speech_end": 56.73,
       "cue_start": 53.28,
       "cue_end": 57.42,
       "chars": 5
@@ -358,6 +389,7 @@
       "start": 57.42,
       "end": 58.83,
       "duration_seconds": 1.41,
+      "speech_end": 58.53,
       "cue_start": 57.42,
       "cue_end": 60.71,
       "chars": 4
@@ -369,6 +401,7 @@
       "start": 58.83,
       "end": 60.71,
       "duration_seconds": 1.88,
+      "speech_end": 60.21,
       "cue_start": 57.42,
       "cue_end": 60.71,
       "chars": 6
@@ -380,6 +413,7 @@
       "start": 60.71,
       "end": 61.92,
       "duration_seconds": 1.21,
+      "speech_end": 61.71,
       "cue_start": 60.71,
       "cue_end": 63.57,
       "chars": 4
@@ -391,6 +425,7 @@
       "start": 61.92,
       "end": 63.57,
       "duration_seconds": 1.65,
+      "speech_end": 63.12,
       "cue_start": 60.71,
       "cue_end": 63.57,
       "chars": 6
@@ -402,6 +437,7 @@
       "start": 63.57,
       "end": 65.78,
       "duration_seconds": 2.21,
+      "speech_end": 65.37,
       "cue_start": 63.57,
       "cue_end": 65.78,
       "chars": 9
@@ -413,6 +449,7 @@
       "start": 65.78,
       "end": 68.16,
       "duration_seconds": 2.38,
+      "speech_end": 67.71,
       "cue_start": 65.78,
       "cue_end": 68.16,
       "chars": 10
@@ -424,6 +461,7 @@
       "start": 68.16,
       "end": 69.15,
       "duration_seconds": 0.99,
+      "speech_end": 68.91,
       "cue_start": 68.16,
       "cue_end": 70.384,
       "chars": 3
@@ -435,6 +473,7 @@
       "start": 69.15,
       "end": 70.384,
       "duration_seconds": 1.234,
+      "speech_end": 70.149,
       "cue_start": 68.16,
       "cue_end": 70.384,
       "chars": 7
@@ -446,6 +485,7 @@
       "start": 70.384,
       "end": 71.55,
       "duration_seconds": 1.166,
+      "speech_end": 71.34,
       "cue_start": 70.384,
       "cue_end": 72.84,
       "chars": 3
@@ -457,6 +497,7 @@
       "start": 71.55,
       "end": 72.84,
       "duration_seconds": 1.29,
+      "speech_end": 72.81,
       "cue_start": 70.384,
       "cue_end": 72.84,
       "chars": 7
@@ -468,6 +509,7 @@
       "start": 72.84,
       "end": 73.92,
       "duration_seconds": 1.08,
+      "speech_end": 73.77,
       "cue_start": 72.84,
       "cue_end": 75.07,
       "chars": 3
@@ -479,6 +521,7 @@
       "start": 73.92,
       "end": 75.07,
       "duration_seconds": 1.15,
+      "speech_end": 74.7,
       "cue_start": 72.84,
       "cue_end": 75.07,
       "chars": 3
@@ -490,6 +533,7 @@
       "start": 75.07,
       "end": 76.38,
       "duration_seconds": 1.31,
+      "speech_end": 76.23,
       "cue_start": 75.07,
       "cue_end": 77.79,
       "chars": 5
@@ -501,6 +545,7 @@
       "start": 76.38,
       "end": 77.79,
       "duration_seconds": 1.41,
+      "speech_end": 77.37,
       "cue_start": 75.07,
       "cue_end": 77.79,
       "chars": 5
@@ -512,6 +557,7 @@
       "start": 77.79,
       "end": 79.42,
       "duration_seconds": 1.63,
+      "speech_end": 79.05,
       "cue_start": 77.79,
       "cue_end": 79.42,
       "chars": 7
@@ -523,6 +569,7 @@
       "start": 79.42,
       "end": 81.2,
       "duration_seconds": 1.78,
+      "speech_end": 80.88,
       "cue_start": 79.42,
       "cue_end": 81.2,
       "chars": 8
@@ -534,6 +581,7 @@
       "start": 81.2,
       "end": 82.93,
       "duration_seconds": 1.73,
+      "speech_end": 82.59,
       "cue_start": 81.2,
       "cue_end": 82.93,
       "chars": 7
@@ -545,6 +593,7 @@
       "start": 82.93,
       "end": 85.27,
       "duration_seconds": 2.34,
+      "speech_end": 84.75,
       "cue_start": 82.93,
       "cue_end": 85.27,
       "chars": 8
@@ -556,6 +605,7 @@
       "start": 85.27,
       "end": 87.25,
       "duration_seconds": 1.98,
+      "speech_end": 86.76,
       "cue_start": 85.27,
       "cue_end": 87.25,
       "chars": 7
@@ -567,6 +617,7 @@
       "start": 87.25,
       "end": 90.17,
       "duration_seconds": 2.92,
+      "speech_end": 89.55,
       "cue_start": 87.25,
       "cue_end": 90.17,
       "chars": 10
@@ -578,6 +629,7 @@
       "start": 90.17,
       "end": 91.95,
       "duration_seconds": 1.78,
+      "speech_end": 91.47,
       "cue_start": 90.17,
       "cue_end": 91.95,
       "chars": 6
@@ -589,6 +641,7 @@
       "start": 91.95,
       "end": 93.0,
       "duration_seconds": 1.05,
+      "speech_end": 92.97,
       "cue_start": 91.95,
       "cue_end": 94.71,
       "chars": 4
@@ -600,6 +653,7 @@
       "start": 93.0,
       "end": 94.71,
       "duration_seconds": 1.71,
+      "speech_end": 94.08,
       "cue_start": 91.95,
       "cue_end": 94.71,
       "chars": 5
@@ -611,6 +665,7 @@
       "start": 94.71,
       "end": 96.87,
       "duration_seconds": 2.16,
+      "speech_end": 96.57,
       "cue_start": 94.71,
       "cue_end": 98.51,
       "chars": 7
@@ -622,6 +677,7 @@
       "start": 96.87,
       "end": 98.51,
       "duration_seconds": 1.64,
+      "speech_end": 98.07,
       "cue_start": 94.71,
       "cue_end": 98.51,
       "chars": 6
@@ -633,6 +689,7 @@
       "start": 98.51,
       "end": 100.26,
       "duration_seconds": 1.75,
+      "speech_end": 100.26,
       "cue_start": 98.51,
       "cue_end": 100.26,
       "chars": 6

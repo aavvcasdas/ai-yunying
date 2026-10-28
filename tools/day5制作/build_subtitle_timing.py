@@ -62,20 +62,28 @@ def _jieba_tokens(text: str) -> list[str]:
 def split_screens(text: str, timed: list[dict], cue_start: float, cue_end: float) -> list[dict]:
     """一句话 → 若干「短屏」：**一屏一个分句**（Day2 加更版的字幕口径）。
 
-    · 起点＝这个分句第一个字的 ASR 实测时间 −0.10s（句首则用句子起点）；
-    · 终点＝下一个分句第一个字的时间；
-    · 短于 0.8s 的屏并到相邻分句，避免一闪而过；
-    · 不在句子中间硬切字：短字幕靠标点分句，不靠字数。
+    每屏带三个时间：
+      · start     —— 这个分句第一个字的 ASR 实测时间（句首屏直接用句子起点）；
+      · speech_end—— 这个分句最后一个字的实测**结束**时间（说完那一刻）；
+      · end       —— 下一屏上屏时间；
+    渲染器用 start 上屏、用 speech_end +HOLD 清屏，所以**说完就撤，不会挂在那儿等下一句**。
     """
     chars = list(text)
     t_of: list[float | None] = []
+    e_of: list[float | None] = []
     ti = 0
     for ch in chars:
         if is_timed(ch):
-            t_of.append(timed[ti]["start"] if ti < len(timed) else None)
+            if ti < len(timed):
+                t_of.append(timed[ti]["start"])
+                e_of.append(timed[ti]["end"])
+            else:
+                t_of.append(None)
+                e_of.append(None)
             ti += 1
         else:
             t_of.append(None)
+            e_of.append(None)
     # 标点跟着后一个字的时间走
     for i in range(len(chars) - 1, -1, -1):
         if t_of[i] is None:
@@ -84,9 +92,16 @@ def split_screens(text: str, timed: list[dict], cue_start: float, cue_end: float
     for i, t in enumerate(t_of):
         if t is None:
             t_of[i] = cue_start if i == 0 else t_of[i - 1]
+    for i in range(len(chars) - 1, -1, -1):
+        if e_of[i] is None:
+            prev = next((e_of[k] for k in range(i - 1, -1, -1) if e_of[k] is not None), None)
+            e_of[i] = prev if prev is not None else cue_end
 
     def ct(i: int) -> float:
         return t_of[min(i, len(chars) - 1)]
+
+    def ce(i: int) -> float:
+        return e_of[min(i, len(chars) - 1)]
 
     pieces, begin = [], 0
     for i, ch in enumerate(chars):
@@ -96,9 +111,7 @@ def split_screens(text: str, timed: list[dict], cue_start: float, cue_end: float
     if begin < len(chars):
         pieces.append((begin, len(chars)))
 
-    # 长分句（>2.2s）在词边界补一刀：切在「字与字之间停得最久」的地方
-    word_starts = []
-    pos = 0
+    word_starts, pos = [], 0
     for tok in _jieba_tokens(text):
         pos += len(tok)
         if 0 < pos < len(chars):
@@ -125,7 +138,12 @@ def split_screens(text: str, timed: list[dict], cue_start: float, cue_end: float
     for n, (a, b) in enumerate(pieces):
         for m, (a2, b2) in enumerate(chop(a, b)):
             s0 = cue_start if (n == 0 and m == 0) else max(cue_start, ct(a2) - LEAD)
-            screens.append({"text": "".join(chars[a2:b2]).strip(), "start": s0, "end": None})
+            screens.append({
+                "text": "".join(chars[a2:b2]).strip(),
+                "start": round(s0, 3),
+                "speech_end": round(min(cue_end, max(s0, ce(b2 - 1))), 3),
+                "end": None,
+            })
     for i, sc in enumerate(screens):
         sc["end"] = screens[i + 1]["start"] if i + 1 < len(screens) else cue_end
 
@@ -142,12 +160,14 @@ def split_screens(text: str, timed: list[dict], cue_start: float, cue_end: float
             else:
                 screens[n - 1]["text"] = screens[n - 1]["text"] + sc["text"]
                 screens[n - 1]["end"] = sc["end"]
+                screens[n - 1]["speech_end"] = max(screens[n - 1]["speech_end"], sc["speech_end"])
             screens.pop(n)
             changed = True
             break
 
     for sc in screens:
         sc["start"] = round(max(cue_start, sc["start"]), 3)
+        sc["speech_end"] = round(min(cue_end, max(sc["start"], sc["speech_end"])), 3)
         sc["end"] = round(min(cue_end, max(sc["end"], sc["start"] + 0.2)), 3)
     return screens
 
@@ -169,6 +189,7 @@ def main(argv=None) -> None:
                 "start": sc["start"],
                 "end": sc["end"],
                 "duration_seconds": round(sc["end"] - sc["start"], 3),
+                "speech_end": sc["speech_end"],
                 "cue_start": c["start"],
                 "cue_end": c["end"],
                 "chars": len(KEEP.sub("", sc["text"])),

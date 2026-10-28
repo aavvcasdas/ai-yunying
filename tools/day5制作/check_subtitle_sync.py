@@ -108,20 +108,36 @@ def main(argv=None) -> None:
     print(f"检出变化 {len(changed)} 处；其中落在正片字幕区间内 {len(screen_changes)} 处")
     print(f"时间轴屏数 {len(screens)}（首屏 {screens[0]['start']:.2f}s 起，不需要换屏动画）")
 
-    starts = [s["start"] for s in screens]
-    matched, worst = 0, 0.0
+    # 期望的「画面变化」有两类：上屏（start）与撤屏（speech_end + hold，若下一屏还没来）
+    HOLD = 0.30
+    events = []
+    for i, sc in enumerate(screens):
+        events.append((sc["start"], "上屏", sc["id"]))
+        se = sc.get("speech_end", sc["end"])
+        nxt = screens[i + 1]["start"] if i + 1 < len(screens) else None
+        clear = se + HOLD
+        if nxt is None or clear < nxt - 1e-6:
+            if clear <= screens[-1]["end"] + 0.2:
+                events.append((clear, "撤屏", sc["id"]))
+    events.sort()
+    matched, worst, unmatched = 0, 0.0, []
     for t in screen_changes:
-        near = min(starts, key=lambda x: abs(x - t))
-        d = abs(near - t)
+        near = min(events, key=lambda e: abs(e[0] - t))
+        d = abs(near[0] - t)
         worst = max(worst, d)
         if d <= 3.0 / args.fps + 1e-6:
             matched += 1
         else:
-            print(f"   ✗ 换屏 {t:.2f}s 对不上任何屏起点（最近 {near:.2f}s，差 {d:.2f}s）")
-    missing = [s for s in screens[1:] if not any(abs(s["start"] - t) <= 3.0 / args.fps for t in screen_changes)]
-    print(f"   换屏点匹配 {matched}/{len(screen_changes)}；最大偏差 {worst * 1000:.0f}ms（30fps 一帧=33ms）")
+            unmatched.append((t, near))
+    missing = [e for e in events
+               if e[1] == "上屏" and e[0] > 0
+               and not any(abs(e[0] - t) <= 3.0 / args.fps for t in screen_changes)]
+    print(f"   画面变化：期望 {len(events)} 处（上屏 + 说完撤屏），检出 {len(screen_changes)} 处，"
+          f"对上 {matched}/{len(screen_changes)}；最大偏差 {worst * 1000:.0f}ms")
+    for t, near in unmatched[:8]:
+        print(f"      ✗ 变化 {t:.2f}s 对不上（最近期望 {near[1]} {near[0]:.2f}s）")
     if missing:
-        print("   ✗ 这些屏上屏时刻没在画面上检到：", [f"{m['id']}@{m['start']:.2f}" for m in missing])
+        print("   ✗ 这些屏上屏时刻没在画面上检到：", [f"{m[2]}@{m[0]:.2f}" for m in missing])
 
     # ── 2. 空屏 ──────────────────────────────────────────────────
     # 参照「无字幕」帧：片尾卡中段
@@ -129,7 +145,9 @@ def main(argv=None) -> None:
     ref = frames[min(n - 1, int(ref_t * args.fps))]
     blank = np.abs(frames - ref).mean(axis=(1, 2)) < 0.35
     win = (frames_start := int(screens[0]["start"] * args.fps), int(screens[-1]["end"] * args.fps))
-    holes = [t / args.fps for t, b in enumerate(blank) if b and win[0] <= t <= win[1]]
+    # 空白帧只在「有声音却说不出字幕」时算错；静音时清屏是设计（说完 0.3s 撤）
+    holes_all = [t / args.fps for t, b in enumerate(blank) if b and win[0] <= t <= win[1]]
+    holes = holes_all
     merged = []
     for t in holes:
         if merged and t - merged[-1][-1] <= 0.12:
@@ -137,9 +155,17 @@ def main(argv=None) -> None:
         else:
             merged.append([t])
     long_holes = [m for m in merged if m[-1] - m[0] >= 0.10]
-    print(f"   空屏：正片区间内空白帧 {len(holes)} 帧；连续 ≥0.10s 的空屏段 {len(long_holes)} 处")
-    for m in long_holes[:12]:
-        print(f"      {m[0]:.2f}–{m[-1]:.2f}s")
+    db_pre, hop_pre = audio_db(ff, args.video, tmp / "mux_pre.wav")
+    voiced_holes = []
+    for m in long_holes:
+        mid = 0.5 * (m[0] + m[-1])
+        i = int(round(mid / hop_pre))
+        if float(db_pre[max(0, i - 2):i + 3].max()) > args.quiet_thr:
+            voiced_holes.append(m)
+    print(f"   空屏：正片内空白 {len(holes_all)} 帧（{len(long_holes)} 段）；"
+          f"其中**有声音却空着**的 {len(voiced_holes)} 段")
+    for m in voiced_holes[:12]:
+        print(f"      ✗ {m[0]:.2f}–{m[-1]:.2f}s 有声音没字幕")
 
     # ── 3. 静音弹字 ──────────────────────────────────────────────
     db, hop = audio_db(ff, args.video, tmp / "mux.wav")
@@ -182,7 +208,7 @@ def main(argv=None) -> None:
         for c in content:
             if c[2] < 0.6:
                 print(f"      · {c[0]}@{c[1]:.2f} 覆盖 {c[2]:.0%}  屏={c[3]}  ASR={c[4]}")
-    ok = (matched == len(screen_changes)) and not missing and not long_holes and not silent
+    ok = (matched == len(screen_changes)) and not missing and not voiced_holes and not silent
     first = np.argmax(db > -40) * hop
     last = (len(db) - np.argmax(db[::-1] > -40)) * hop
     print(f"   成片音轨发声区间 {first:.2f}–{last:.2f}s（末屏 {screens[-1]['start']:.2f}–{screens[-1]['end']:.2f}s）")

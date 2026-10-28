@@ -2030,9 +2030,12 @@ const SUB = createDay2Subtitle({
 const SUBS_JSON = argOf('--subs');
 const SUB_SCREENS = SUBS_JSON
   ? JSON.parse(fs.readFileSync(SUBS_JSON, 'utf8')).screens.map((x) => ({
-      text: x.text, start: x.start, end: x.end, cueId: x.id
+      text: x.text, start: x.start, end: x.end,
+      speechEnd: typeof x.speech_end === 'number' ? x.speech_end : x.end,
+      cueId: x.id
     }))
   : null;
+const SUB_HOLD = 0.30;   // 说完之后再挂 0.3 秒就撤（久挂会显得「字幕慢半拍」）
 const SUB_SEGS = LINES.map((l, i) => SUB.clauses(l, CUES[i].chars, CUES[i].start, CUES[i].end));
 
 function drawSubtitle(ctx, t) {
@@ -2045,7 +2048,8 @@ function drawSubtitle(ctx, t) {
       else { next = sc; break; }
     }
     if (!hit) return;
-    if (!next && t >= ENDCARD.start) return;   // 末屏一直挂到片尾卡
+    if (!next && t >= ENDCARD.start) return;                 // 末屏挂到片尾卡
+    if (t > hit.speechEnd + SUB_HOLD) return;                // 这句说完了就撤，不空挂着
     SUB.draw(ctx, {
       lines: SUB.wrap(hit.text),
       speaker: speakerFor({ isClaude: false }),
