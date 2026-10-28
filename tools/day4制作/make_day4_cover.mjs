@@ -22,6 +22,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -294,14 +295,29 @@ function pill(ctx, x, y, text, fs, color, o = {}) {
 //   第一行：越努力 / 越没人看
 //   第二行：本鲸把号做到 7.4 万，现在只剩 2000
 // ---------------------------------------------------------------------------
-function coverA(W, H) {
+function coverA(W, H, o = {}) {
+  const T1 = o.l1 || '越努力';
+  const T2 = o.l2 || '越没人看';
+  const subA = o.subA || '本鲸把号做到 ';
+  const subNum = o.subNum || '7.4 万';
+  const subB = o.subB || '，现在只剩';
+  const subEnd = o.subEnd || ' 2000';
+  const line3 = o.line3 || '一个 MV 做了 4 版 · 一版一锅米';
+  const bigFs = o.headFs || null;
   const cv = createCanvas(W, H);
   const ctx = cv.getContext('2d');
   const portrait = H > W;
   bgLayer(ctx, W, H, portrait ? 11 : 7);
 
   const S = Math.min(W, H) / 1080;             // 统一缩放基准
-  const headFs = Math.round(W * (portrait ? 0.196 : 0.132));
+  let headFs = Math.round(W * (o.headFs ? o.headFs : (portrait ? 0.196 : 0.132)));
+  // 自动缩字：两行标题都不能超出左右内边距
+  {
+    const avail = W - Math.round(W * 0.055) * 2;
+    ctx.font = `900 ${headFs}px "NotoSansSC", sans-serif`;
+    const wMax = Math.max(ctx.measureText(T1).width, ctx.measureText(T2).width);
+    if (wMax > avail) headFs = Math.floor(headFs * (avail / wMax));
+  }
 
   // 角色 + 电视（先画身体，文字压在最上层）
   const tvH = Math.round(H * (portrait ? 0.225 : 0.345));
@@ -333,21 +349,21 @@ function coverA(W, H) {
   // 主标题（两行，第二行用色块砸出来）
   const y1 = Math.round(H * (portrait ? 0.248 : 0.36));
   const y2 = y1 + Math.round(headFs * 1.12);
-  big(ctx, '越努力', padX, y1, headFs, { color: K.cream, stroke: K.ink, sw: 0.16 });
-  big(ctx, '越没人看', padX, y2, headFs, { color: '#0F172A', bg: K.gold, font: 'NotoSansSC' });
+  big(ctx, T1, padX, y1, headFs, { color: K.cream, stroke: K.ink, sw: 0.16 });
+  big(ctx, T2, padX, y2, headFs, { color: '#0F172A', bg: K.gold, font: 'NotoSansSC' });
 
   // 副标题：真实数字（逐段累加，宽度用各段自己字体的度量）
   const y3 = y2 + Math.round(headFs * 0.74);
   const subFs = Math.round(S * (portrait ? 40 : 38));
   let cx2 = padX;
-  cx2 += big(ctx, '本鲸把号做到 ', cx2, y3, subFs, { color: K.cream2, stroke: K.ink, sw: 0.1 });
-  cx2 += big(ctx, '7.4 万', cx2, y3, subFs, { color: K.gold, stroke: K.ink, sw: 0.1 });
-  cx2 += big(ctx, '，现在只剩', cx2, y3, subFs, { color: K.cream2, stroke: K.ink, sw: 0.1 });
-  big(ctx, ' 2000', cx2, y3, subFs, { color: K.red, stroke: K.ink, sw: 0.1 });
+  cx2 += big(ctx, subA, cx2, y3, subFs, { color: K.cream2, stroke: K.ink, sw: 0.1 });
+  cx2 += big(ctx, subNum, cx2, y3, subFs, { color: K.gold, stroke: K.ink, sw: 0.1 });
+  cx2 += big(ctx, subB, cx2, y3, subFs, { color: K.cream2, stroke: K.ink, sw: 0.1 });
+  big(ctx, subEnd, cx2, y3, subFs, { color: K.red, stroke: K.ink, sw: 0.1 });
 
   // 第三行小字：一个 MV 四版
   const y4 = y3 + Math.round(subFs * 1.5);
-  big(ctx, '一个 MV 做了 4 版 · 一版一锅米', padX, y4, Math.round(subFs * 0.86), { color: '#93C5FD', stroke: K.ink, sw: 0.12 });
+  big(ctx, line3, padX, y4, Math.round(subFs * 0.86), { color: '#93C5FD', stroke: K.ink, sw: 0.12 });
 
   // 底部信息条
   const barY = Math.round(H * (portrait ? 0.905 : 0.9));
@@ -477,12 +493,111 @@ function stampAI(cv) {
   return cv;
 }
 
+// ---------------------------------------------------------------------------
+// 封面 E：首帧保险版（严格按「封面＝第一帧」：直接用成片第 0 帧）
+//   4:3 → 16:9 首帧中间裁切，除合规小字外一个字都不加
+//   3:4 → 16:9 塞不进 3:4，改成「首帧卡片 + 深色底 + 底部进度条」，画面仍是真帧
+// ---------------------------------------------------------------------------
+function coverFrame(W, H, img) {
+  const cv = createCanvas(W, H);
+  const ctx = cv.getContext('2d');
+  const portrait = H > W;
+  ctx.imageSmoothingEnabled = true;
+
+  if (!portrait) {
+    // 4:3：等比放大到铺满，再居中裁切（保留角色 + 四张返工单 + 空碗）
+    const k = Math.max(W / img.width, H / img.height);
+    const dw = img.width * k, dh = img.height * k;
+    ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    return cv;
+  }
+
+  // 3:4：纯色底 + 完整 16:9 首帧卡片（不重复首帧里的字）
+  ctx.fillStyle = '#0A1224';
+  ctx.fillRect(0, 0, W, H);
+  radial(ctx, W * 0.5, H * 0.36, W * 0.85, 'rgba(111,216,232,A)', 0.16);
+
+  const S = Math.min(W, H) / 1080;
+  const padX = Math.round(W * 0.055);
+  pill(ctx, padX, Math.round(H * 0.045), 'AI 运营日记 · 第 4 天 / 30', Math.round(S * 27), '#93C5FD');
+
+  const cardW = Math.round(W * 0.90);
+  const cardH = Math.round(cardW * img.height / img.width);
+  const cardX = Math.round((W - cardW) / 2);
+  const cardY = Math.round(H * 0.135);
+  paint(ctx, rrPts(cardX - 10, cardY - 10, cardW + 20, cardH + 20, 18, 3),
+    { wash: '#0D1730', ink: 'rgba(111,216,232,0.55)', sw: 2 });
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(cardX, cardY, cardW, cardH, 10);
+  ctx.clip();
+  ctx.drawImage(img, cardX, cardY, cardW, cardH);
+  ctx.restore();
+
+  big(ctx, '成片第 0 帧 · 原样', cardX + 4, cardY + cardH + 62, Math.round(S * 28), { color: '#93C5FD', stroke: K.ink, sw: 0.12 });
+
+  // 数字行：一条线读完，重点落在 2000
+  const numFs = Math.round(W * 0.105);
+  const ny = Math.round(H * 0.685);
+  let nx = padX;
+  nx += big(ctx, '7.4 万', nx, ny, numFs, { color: K.gold, stroke: K.ink, sw: 0.14 });
+  nx += big(ctx, ' → ', nx, ny, numFs, { color: K.cream2, stroke: K.ink, sw: 0.14 });
+  big(ctx, '2000', nx, ny, numFs, { color: K.red, stroke: K.ink, sw: 0.14 });
+  big(ctx, '一版一锅米 · 第 4 天还在改', padX, Math.round(H * 0.755), Math.round(S * 34), { color: '#93C5FD', stroke: K.ink, sw: 0.12 });
+
+  const barY = Math.round(H * 0.895);
+  const barH = Math.round(H * 0.055);
+  ctx.font = `bold ${Math.round(S * 26)}px "NotoSansSC", sans-serif`;
+  const barText = '粉丝 2,180 / 10,000 · 第 4 天 / 30';
+  const barW = ctx.measureText(barText).width + barH * 0.9;
+  paint(ctx, rrPts(padX, barY, barW, barH, barH * 0.28, 1.4), { wash: 'rgba(8,14,32,0.86)', ink: 'rgba(111,216,232,0.5)', sw: 1.6 });
+  ctx.fillStyle = K.cream;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(barText, padX + barH * 0.45, barY + barH * 0.5 + 1);
+  ctx.textBaseline = 'alphabetic';
+  return cv;
+}
+
+async function grabFirstFrame() {
+  const film = path.join(ROOT, 'Day4/成片/样片/day4_样片_v8_像素版_配音对齐.mp4');
+  const ff = process.env.FFMPEG
+    || ['ffmpeg', '/tmp/node_render/node_modules/@ffmpeg-installer/linux-x64/ffmpeg']
+      .find((c) => { try { execFileSync(c, ['-version'], { stdio: 'ignore' }); return true; } catch { return false; } });
+  if (!ff || !fs.existsSync(film)) return null;
+  const out = path.join(os.tmpdir(), 'day4_frame0.png');
+  execFileSync(ff, ['-hide_banner', '-loglevel', 'error', '-y', '-ss', '0', '-i', film, '-frames:v', '1', out]);
+  return await loadImage(fs.readFileSync(out));
+}
+
+// ---------------------------------------------------------------------------
+// 封面 D：数字版（最硬的一组信息，适合投放 / 冷启动）
+//   4 版 MV / 2000 播放  ← 全是可查的真数，不承诺剧情
+// ---------------------------------------------------------------------------
+const JOB_D = {
+  l1: '4 版 MV',
+  l2: '2000 播放',
+  subA: '本鲸把号做到 ',
+  subNum: '7.4 万',
+  subB: '，现在只剩',
+  subEnd: ' 2000',
+  line3: '一版一锅米 · 第 4 天还在改'
+};
+
 const jobs = [
   ['封面_4x3_主推_越努力越没人看.png', () => stampAI(coverA(1440, 1080))],
   ['封面_3x4_主推_越努力越没人看.png', () => stampAI(coverA(1080, 1440))],
   ['封面_4x3_备选_米饭被MV吃光了.png', () => stampAI(coverB(1440, 1080, true))],
-  ['封面_3x4_备选_米饭被MV吃光了.png', () => stampAI(coverB(1080, 1440, true))]
+  ['封面_3x4_备选_米饭被MV吃光了.png', () => stampAI(coverB(1080, 1440, true))],
+  ['封面_4x3_数字版_4版MV.png', () => stampAI(coverA(1440, 1080, JOB_D))],
+  ['封面_3x4_数字版_4版MV.png', () => stampAI(coverA(1080, 1440, JOB_D))]
 ];
+const FRAME = await grabFirstFrame();
+if (FRAME) {
+  jobs.push(['封面_4x3_保险_成片首帧.png', () => stampAI(coverFrame(1440, 1080, FRAME))]);
+  jobs.push(['封面_3x4_保险_成片首帧.png', () => stampAI(coverFrame(1080, 1440, FRAME))]);
+} else {
+  console.warn('⚠ 找不到成片或 ffmpeg，跳过「首帧保险版」');
+}
 for (const [name, fn] of jobs) {
   const p = path.join(OUT_DIR, name);
   fs.writeFileSync(p, fn().toBuffer('image/png'));
