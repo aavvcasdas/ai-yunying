@@ -257,14 +257,18 @@ CORE.DURATION = DURATION;
 //   ② 把 alpha 二值化（≥110 → 255，其余 0），砍掉旋转/摆动留下的半透明边；
 //   ③ 用 imageSmoothingEnabled=false 整张贴回主画布，位置也取整。
 // 效果 = 老像素骨架的正方形硬边，不再有灰糊边。--soft 可关掉 ②③ 做对照。
-const CHAR_MODE = (argOf('--char') || 'ss2').toLowerCase();   // 主角＝Day2 像素骨架（电视里才用 DSH 贴纸）
-if (!['dsh', 'day2', 'ss2', 'crisp'].includes(CHAR_MODE)) {
-  throw new Error(`--char 只接受 dsh|day2|ss2|crisp，实得 ${CHAR_MODE}`);
+// 主角＝**Day3 的高清立绘**（whale_girl_src/whale_*.png，1024 高，9 套姿势 + 程序化动作）。
+// 2026-10-29 用户：「把这个改成新版的生成，不要用这个老版本的了。用 day3 的形象。」
+// 老路径 day2/ss2/crisp（Day2 像素骨架）与 dsh（39 张贴纸）只留作对照，不再默认。
+const CHAR_MODE = (argOf('--char') || 'sprite').toLowerCase();
+if (!['sprite', 'dsh', 'day2', 'ss2', 'crisp'].includes(CHAR_MODE)) {
+  throw new Error(`--char 只接受 sprite|dsh|day2|ss2|crisp，实得 ${CHAR_MODE}`);
 }
 const SS = Math.max(1, Number(argOf('--ss') || 2));   // ss2 的超采样倍数
 const ALPHA_SNAP = CHAR_MODE === 'crisp';
-const SUFFIX = CHAR_MODE === 'dsh' ? '_dsh'
-  : CHAR_MODE === 'day2' ? '_day2' : (CHAR_MODE === 'ss2' ? `_ss${SS}` : '_crisp');
+const SUFFIX = CHAR_MODE === 'sprite' ? '_hd'
+  : CHAR_MODE === 'dsh' ? '_dsh'
+    : CHAR_MODE === 'day2' ? '_day2' : (CHAR_MODE === 'ss2' ? `_ss${SS}` : '_crisp');
 const CHAR_BOX = { halfW: 5.6, top: -10.6, bottom: 1.6 };
 const layerCache = new Map();
 function charLayer(w, h) {
@@ -405,19 +409,160 @@ function drawDsh(ctx, x, y, u, o = {}) {
   ctx.restore();
 }
 
-// 主角色入口：Day2 口径的像素骨架（style='pixel'）
+// ---------------------------------------------------------------------------
+// 3.1 鲸鱼娘（新版）= Day3 高清立绘 + 程序化动作
+// ---------------------------------------------------------------------------
+// 用户 2026-10-29：「用 day3 的形象」。所以主角不再是 40 格像素骨架，而是
+// `tools/day3制作/whale_girl_src/whale_*.png`（926×1024 透明 PNG，同一角色的姿势差分）。
+// 姿势本身不重绘（原画线条永远清晰），只叠整体位移/倾斜/挤压，
+// 换姿势靠 EMOTION_POSE 映射，动作节奏靠 ACT_MOTION。
+const SPRITE_DIR = path.resolve(__dirname, '../day3制作/whale_girl_src');
+const SPRITE_H_U = 10.4;        // 立绘高度（单位 u）：和像素骨架同高，分镜坐标不用改
+const SPRITE_FOOT_U = 0.30;     // 脚底相对 y 的偏移（与 Day3 同口径）
+const WHALE_POSES = {
+  idle:              { file: 'whale_idle.png',              foot: 0.988 },
+  wave:              { file: 'whale_wave.png',              foot: 0.989 },
+  cheer:             { file: 'whale_cheer.png',             foot: 0.980 },
+  jump_joy:          { file: 'whale_jump_joy.png',          foot: 0.979 },
+  confident_hips:    { file: 'whale_confident_hips.png',    foot: 0.989 },
+  peek_curious:      { file: 'whale_peek_curious.png',      foot: 0.988 },
+  shy_fidget:        { file: 'whale_shy_fidget.png',        foot: 0.988 },
+  shock:             { file: 'whale_shock.png',             foot: 0.988 },
+  cry:               { file: 'whale_cry.png',               foot: 0.989 },
+  playful_fists:     { file: 'whale_playful_fists.png',     foot: 0.988 },
+  think:             { file: 'whale_think.png',             foot: 0.989 },
+  eat:               { file: 'whale_eat.png',               foot: 0.989 },
+  point:             { file: 'whale_point.png',             foot: 0.988 },
+  camera_shutter:    { file: 'whale_camera_shutter.png',    foot: 0.988 },
+  tail_wag_dance:    { file: 'whale_tail_wag_dance.png',    foot: 0.991 },
+  walk_stand:        { file: 'whale_walk_stand.png',        foot: 0.990 },
+  run_stand:         { file: 'whale_run_stand.png',         foot: 0.989 }
+};
+const POSE_IMG = {};
+let SPRITE_OK = false;
+async function loadSpritePoses() {
+  let n = 0;
+  const missing = [];
+  for (const [key, meta] of Object.entries(WHALE_POSES)) {
+    const f = path.join(SPRITE_DIR, meta.file);
+    if (!fs.existsSync(f)) { missing.push(meta.file); continue; }
+    POSE_IMG[key] = await loadImage(fs.readFileSync(f));
+    n++;
+  }
+  SPRITE_OK = n > 0;
+  console.log(`Day3 立绘：${n}/${Object.keys(WHALE_POSES).length} 张（${SPRITE_DIR}）`);
+  if (missing.length) console.warn('  缺图（该姿势退回 idle）：', missing.join(', '));
+}
+
+// emotion → 姿势（口播里那些情绪词，一个都不丢）
+const EMOTION_POSE = {
+  happy: 'idle', idle: 'idle', calm: 'idle', neutral: 'idle', deadpan: 'idle',
+  excited: 'cheer', celebrate: 'cheer', star: 'cheer', starstruck: 'cheer',
+  proud: 'confident_hips', smug: 'confident_hips', love: 'cheer',
+  shy: 'shy_fidget', blush: 'shy_fidget', embarrassed: 'shy_fidget',
+  confused: 'peek_curious', curious: 'peek_curious', question: 'peek_curious',
+  thinking: 'think', focused: 'think', tired: 'idle',
+  sleepy: 'idle', pout: 'playful_fists', angry: 'playful_fists', rage: 'playful_fists',
+  nervous: 'shy_fidget', worried: 'shy_fidget',
+  shocked: 'shock', surprised: 'shock', scared: 'shock', panic: 'shock',
+  sad: 'cry', cry: 'cry', sob: 'cry',
+  hungry: 'eat', eat: 'eat',
+  point: 'point', proud_point: 'point'
+};
+
+// 姿势 → 微动（dx/dy 单位是 u；jump 只影响影子）
+function actMotion(pose, t) {
+  const sn = Math.sin, ab = Math.abs;
+  switch (pose) {
+    case 'cheer':
+    case 'jump_joy':
+      return { dy: -ab(sn(t * 3.1)) * 0.10, rot: sn(t * 3.1) * 0.02, sx: 1 + sn(t * 3.1) * 0.012, sy: 1 - sn(t * 3.1) * 0.012, jump: ab(sn(t * 3.1)) };
+    case 'confident_hips':
+      return { dx: sn(t * 1.5) * 0.05, dy: -0.02 + sn(t * 2.0) * 0.015, rot: sn(t * 1.5) * 0.03 };
+    case 'peek_curious':
+      return { dx: sn(t * 1.25) * 0.09, dy: -0.03 + sn(t * 2.0) * 0.018, rot: 0.02 + sn(t * 1.25) * 0.05 };
+    case 'shock':
+      return { dx: sn(t * 24) * 0.012, dy: -0.03 + sn(t * 24) * 0.006, rot: sn(t * 20) * 0.008 };
+    case 'cry':
+      return { dy: -0.01 + sn(t * 2.6) * 0.05, rot: sn(t * 2.6 + 1.1) * 0.025 };
+    case 'shy_fidget':
+      return { dx: sn(t * 3.0) * 0.06, dy: -0.02 + ab(sn(t * 3.0)) * 0.035, rot: sn(t * 3.0 + 0.6) * 0.045 };
+    case 'playful_fists':
+      return { dx: sn(t * 6.2) * 0.04, dy: -0.01 + ab(sn(t * 6.2)) * 0.02, rot: sn(t * 6.2) * 0.02 };
+    case 'think':
+      return { dy: -0.02 + sn(t * 2.0) * 0.014, rot: -0.015 + sn(t * 1.1) * 0.008 };
+    case 'eat':
+      return { dy: -0.01 + ab(sn(t * 2.6)) * 0.02, rot: sn(t * 1.6) * 0.012 };
+    case 'point':
+      return { dy: -0.03 + sn(t * 2.4) * 0.016, rot: -0.01 + sn(t * 1.7) * 0.012 };
+    case 'camera_shutter':
+      return { dy: -0.02 + sn(t * 3.4) * 0.012, rot: sn(t * 1.9) * 0.01 };
+    case 'tail_wag_dance':
+      return { dx: sn(t * 2.6) * 0.07, rot: sn(t * 2.6) * 0.04, dy: -0.02 + sn(t * 5.2) * 0.012 };
+    default:
+      return { dy: -0.02 + sn(t * 2.2) * 0.018, rot: sn(t * 1.4) * 0.012 };
+  }
+}
+
+function drawPoseSprite(ctx, name, x, y, u, o = {}) {
+  const img = POSE_IMG[name] || POSE_IMG.idle;
+  if (!img) return false;
+  const meta = WHALE_POSES[name] || WHALE_POSES.idle;
+  const H = (o.heightU || SPRITE_H_U) * u;
+  const w = H * (img.width / img.height);
+  const dx = (o.dx || 0) * u;
+  const dy = (o.dy || 0) * u;
+  const footY = y + SPRITE_FOOT_U * u + dy;
+  const bottomEdge = footY - (1 - meta.foot) * H;
+  ctx.save();
+  ctx.globalAlpha *= (o.alpha ?? 1);
+  ctx.translate(x + dx, bottomEdge);
+  if (o.rot) ctx.rotate(o.rot);
+  ctx.scale(o.sx ?? 1, o.sy ?? 1);
+  if (o.flip) ctx.scale(-1, 1);
+  ctx.imageSmoothingEnabled = true;
+  if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, -w / 2, -H, w, H);
+  ctx.restore();
+  return true;
+}
+
+// 主角色入口：默认画 Day3 高清立绘；--char day2/ss2/crisp 仍可退回像素骨架做对照
 function WGF(ctx, x, y, u, o = {}) {
+  const t = Number(o.t) || 0;
   if (CHAR_MODE === 'dsh') {
     drawDsh(ctx, x, y, u, o);
     return;
   }
+  if (CHAR_MODE === 'sprite') {
+    const pose = o.pose || EMOTION_POSE[o.emotion || o.emo] || 'idle';
+    const st = actMotion(pose, t);
+    if (o.shadow !== false) {
+      const j = st.jump || 0;
+      paint(ctx, ellPts(x + (st.dx || 0) * u, y + SPRITE_FOOT_U * u + 0.06 * u,
+        2.05 * u * (1 - j * 0.3), 0.38 * u * (1 - j * 0.3), 16),
+        { wash: PAL.ink, washOp: Math.round(62 * (1 - j * 0.5)), ink: null });
+    }
+    drawPoseSprite(ctx, pose, x, y, u, {
+      dx: (st.dx || 0) + (o.dx || 0),
+      dy: (st.dy || 0) + (o.dy || 0),
+      rot: (st.rot || 0) + (o.headTilt || 0) * 0.5 + (o.rot || 0),
+      sx: (st.sx ?? 1) * (o.sx ?? 1),
+      sy: (st.sy ?? 1) * (o.sy ?? 1),
+      flip: o.flip,
+      alpha: o.alpha,
+      heightU: o.heightU || SPRITE_H_U
+    });
+    return;
+  }
+  // —— 老路径（Day2 像素骨架），只用来出对照帧 ——
   const opts = safePixelOptions({
     style: 'pixel',
     showActionBadge: false,
     tailScale: 1.0,
     noFinBows: true,
     eyePatch: false,
-    vectorMouth: true,      // Day4 起：嘴型走引擎矢量版，不铺肤色方块
+    vectorMouth: true,
     mouth: 'smile',
     ...o
   });
@@ -929,11 +1074,11 @@ function smallWhale(ctx, x, y, u, t, o = {}) {
   });
   // 头上的青色小蝴蝶结：和本鲸区分开（一眼看出「另一条」）
   const bx = x + (o.bowDx ?? 0.1) * u;
-  const by = y - (o.bowDy ?? 8.6) * u;
+  const by = y - (o.bowDy ?? 8.55) * u;
   paint(ctx, [[bx, by], [bx - 0.62 * u, by - 0.34 * u], [bx - 0.62 * u, by + 0.34 * u]], { wash: '#5CE1E6', ink: PAL.ink, sw: 1.1 });
   paint(ctx, [[bx, by], [bx + 0.62 * u, by - 0.34 * u], [bx + 0.62 * u, by + 0.34 * u]], { wash: '#5CE1E6', ink: PAL.ink, sw: 1.1 });
   paint(ctx, ellPts(bx, by, 0.16 * u, 0.16 * u, 10), { wash: '#B8F7FA', ink: PAL.ink, sw: 0.9 });
-  if (o.badge !== false) badge(ctx, x + (o.badgeDx ?? 0.86) * u, y - 3.85 * u, o.badgeText || '新来的', { color: o.badgeColor, h: o.badgeH || 24 });
+  if (o.badge !== false) badge(ctx, x + (o.badgeDx ?? 0.86) * u, y - 3.72 * u, o.badgeText || '新来的', { color: o.badgeColor, h: o.badgeH || 24 });
 }
 
 // 技能标签（会私信 / 会评论 / 不会收尾）
@@ -998,6 +1143,8 @@ function calendar(ctx, x, y, w, h, o = {}) {
 function boss(ctx, x, y, s, t, o = {}) {
   ctx.save();
   ctx.translate(x, y + Math.sin(t * 0.9) * s * 0.02);
+  // 外晕：剪影边缘被环境光吃一点，读起来是「站在暗处的人」而不是黑纸片
+  glow(ctx, 0, -s * 1.1, s * 2.6, '#2E67A0', 0.16);
   const dark = '#080E1C';
   const rim = 'rgba(96,133,190,0.5)';
   // 肩 → 腰
@@ -1290,11 +1437,11 @@ function shotC01(ctx, t, lt, p) {
   ctx.strokeStyle = 'rgba(242,193,78,0.95)';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(690 - 2.1 * 26, 544 - 3.6 * 26);
-  ctx.quadraticCurveTo(610, 486, 508 + 2.0 * 17.5, 546 - 3.5 * 17.5);
+  ctx.moveTo(690 - 1.7 * 26, 544 - 4.5 * 26);
+  ctx.quadraticCurveTo(604, 486, 508 + 1.7 * 17.5, 546 - 4.4 * 17.5);
   ctx.stroke();
   // 牵着的手上冒颗小星星
-  paint(ctx, starPts(598, 487 + Math.sin(t * 3) * 3, 9, 0.42, 4, t * 0.6), { wash: '#FDE68A', ink: 'rgba(59,29,11,0.45)', sw: 0.8 });
+  paint(ctx, starPts(596, 472 + Math.sin(t * 3) * 3, 9, 0.42, 4, t * 0.6), { wash: '#FDE68A', ink: 'rgba(59,29,11,0.45)', sw: 0.8 });
   ctx.restore();
   // L03–L04：单休，就一天
   const q = clamp((t - C(3)) / 0.9);
@@ -1464,10 +1611,10 @@ function shotC05(ctx, t, lt, p) {
   camBegin(ctx, 620, 450, 1.06, 0);
   bg(ctx, t);
   // 本鲸坐在板凳上，盯着表
-  stool(ctx, 452, 552, 1);
-  WGF(ctx, 470, 552, 24, {
+  stool(ctx, 470, 520, 1);
+  WGF(ctx, 470, 528, 24, {
     t, emotion: p < 0.5 ? 'deadpan' : 'sleepy',
-    mouth: 'flat', headTilt: 0.1 + Math.sin(t * 0.9) * 0.02, dy: 0.1
+    mouth: 'flat', headTilt: 0.1 + Math.sin(t * 0.9) * 0.02, dy: -0.62
   });
   clockCard(ctx, 866, 268, 96, t, { sweep: true });
   // 「读一次 → 等一次」的循环箭头
@@ -1714,7 +1861,7 @@ function shotC10(ctx, t, lt, p) {
     if (q <= 0) continue;
     ctx.save();
     ctx.globalAlpha = clamp(q * 1.4);
-    ctx.translate(910 + i * 22, 398 - Math.sin(q * Math.PI) * 26 - i * 6);
+    ctx.translate(930 + i * 21, 356 - Math.sin(q * Math.PI) * 24 - i * 6);
     ctx.rotate(-0.2 + i * 0.12 + Math.sin(t * 2 + i) * 0.05);
     paint(ctx, rrPts(-16, -20, 32, 40, 3, 0.8), { wash: '#EFE3C8', fill: '#0B1526', fillOp: 14, ink: PAL.ink, sw: 1 });
     ctx.restore();
@@ -1725,7 +1872,7 @@ function shotC10(ctx, t, lt, p) {
     mouth: t < C(34) ? 'pout' : 'flat',
     headTilt: 0.05, dy: 0.04
   });
-  paperStack(ctx, 680, 500, 0.9, 4, t);
+  paperStack(ctx, 700, 522, 0.82, 4, t);
   if (t >= C(34)) {
     label(ctx, '收的尾 · 全是本鲸的', 680, 330, { h: 30, font: '900 18px "ZCOOLKuaiLe", sans-serif', stroke: '#F87171' });
   }
@@ -1747,8 +1894,8 @@ function shotC11(ctx, t, lt, p) {
   });
   // 空碗（虚线，表示「空着等你们丢」）
   const bowls = [
-    { x: 640 - 152, y: 516, txt: '升级啥', at: C(36) },
-    { x: 640 + 152, y: 516, txt: '干啥', at: C(38) }
+    { x: 640 - 178, y: 516, txt: '升级啥', at: C(36) },
+    { x: 640 + 178, y: 516, txt: '干啥', at: C(38) }
   ];
   bowls.forEach((b, i) => {
     const q = clamp((t - b.at + 1.2) / 0.8);
@@ -1779,7 +1926,7 @@ function shotC11(ctx, t, lt, p) {
   if (t >= C(36) && t < C(38)) {
     ctx.save();
     ctx.globalAlpha = clamp((t - C(36)) / 0.4);
-    letter(ctx, '？', 640 - 152, 344 + Math.sin(t * 4) * 5, 56, '#FDE68A', { stroke: '#3B1D0B' });
+    letter(ctx, '？', 640 - 178, 344 + Math.sin(t * 4) * 5, 56, '#FDE68A', { stroke: '#3B1D0B' });
     ctx.restore();
   }
   // L35：评论区点一个
@@ -1797,7 +1944,7 @@ function shotC11(ctx, t, lt, p) {
   // L39：等你们丢一个（往下丢的箭头）
   if (t >= C(39) && t < C(40)) {
     for (let i = 0; i < 2; i++) {
-      const bx = 640 + (i ? 152 : -152);
+      const bx = 640 + (i ? 178 : -178);
       const q = (t * 1.6 + i * 0.4) % 1;
       ctx.save();
       ctx.globalAlpha = 0.85 * (1 - q);
@@ -2057,10 +2204,11 @@ async function renderVideo(outFile) {
   console.log(`✓ ${outFile}（${(fs.statSync(outFile).size / 1e6).toFixed(2)} MB）`);
 }
 
+await loadSpritePoses();
 await loadDsh();
 await loadMvFrames();
 await loadClaude();
-console.log(`角色：像素骨架 · Day2 清理口径 · 画法=${CHAR_MODE}${CHAR_MODE === 'ss2' ? `（${SS}× 超采样）` : ''}；字幕：Day2 加更版；时长 ${DURATION.toFixed(2)}s`);
+console.log(`角色：${CHAR_MODE === 'sprite' ? 'Day3 高清立绘（whale_girl_src）' : CHAR_MODE + ' 老路径'}；字幕：Day2 加更版；时长 ${DURATION.toFixed(2)}s`);
 
 const timesArg = argOf('--times');
 if (timesArg) {
