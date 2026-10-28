@@ -2025,18 +2025,42 @@ const SUB = createDay2Subtitle({
   fontOf: (size, weight) => `${weight || 800} ${size}px "NotoSansSC", sans-serif`,
   measureCtx: createCanvas(16, 16).getContext('2d')
 });
+// 字幕时间轴：优先用 `--subs`（build_subtitle_timing.py 从音频量出来的每屏起止）；
+// 没有就退回「字级启发式分句」，但那一条已经证明会晚 0.2–1.0s，只作兜底。
+const SUBS_JSON = argOf('--subs');
+const SUB_SCREENS = SUBS_JSON
+  ? JSON.parse(fs.readFileSync(SUBS_JSON, 'utf8')).screens.map((x) => ({
+      text: x.text, start: x.start, end: x.end, cueId: x.id
+    }))
+  : null;
 const SUB_SEGS = LINES.map((l, i) => SUB.clauses(l, CUES[i].chars, CUES[i].start, CUES[i].end));
 
 function drawSubtitle(ctx, t) {
+  if (SUB_SCREENS) {
+    // 屏起止都由发声段量出来（build_subtitle_timing.py）。这里只负责「气口不空屏」：
+    // 找到最后一个已经上屏的屏，一直挂到下一屏上屏为止；末屏挂到片尾卡。
+    let hit = null, next = null;
+    for (const sc of SUB_SCREENS) {
+      if (t >= sc.start - 1e-6) hit = sc;
+      else { next = sc; break; }
+    }
+    if (!hit) return;
+    if (!next && t >= ENDCARD.start) return;   // 末屏一直挂到片尾卡
+    SUB.draw(ctx, {
+      lines: SUB.wrap(hit.text),
+      speaker: speakerFor({ isClaude: false }),
+      vis: 1, W, H
+    });
+    return;
+  }
   let idx = -1;
   for (let i = 0; i < CUES.length; i++) if (t >= CUES[i].start && t < CUES[i].end) idx = i;
   if (idx < 0) return;
   const seg = SUB.segmentAt(SUB_SEGS[idx], t);
-  const vis = 1;
   SUB.draw(ctx, {
     lines: SUB.wrap(seg.text),
     speaker: speakerFor({ isClaude: false }),
-    vis, W, H
+    vis: 1, W, H
   });
 }
 
@@ -2183,7 +2207,7 @@ async function renderVideo(outFile) {
   } else {
     audioArgs = ['-an'];
   }
-  console.log(`Day5: ${total} 帧 / ${DURATION.toFixed(2)}s / ${OUT_W}×${OUT_H} / ${VOICE_CUES ? '实测 cue' : '4.3 字/秒估算'} / ${SOFT ? '关清晰化' : '像素清晰化'}`);
+  console.log(`Day5: ${total} 帧 / ${DURATION.toFixed(2)}s / ${OUT_W}×${OUT_H} / ${VOICE_CUES ? '实测 cue' : '4.3 字/秒估算'} / 字幕=${SUB_SCREENS ? `实测屏（${SUB_SCREENS.length}）` : '字级兜底'} / ${SOFT ? '关清晰化' : '像素清晰化'}`);
   const ff = spawn(ffmpeg, [
     '-y', '-f', 'rawvideo', '-vcodec', 'rawvideo', '-pix_fmt', 'rgba',
     '-s', `${OUT_W}x${OUT_H}`, '-r', String(FPS), '-i', '-',
