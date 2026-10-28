@@ -44,3 +44,6 @@ Day4/成片/无配音样片/day4_无配音样片_v2_像素Day2版.mp4
 
 # Day4：MV 抽帧进电视用（可重跑，别入库）
 tools/day4制作/assets/mv_pip/
+
+# Day5 配音源（用户上传在 main 分支，16MB）：本分支按需 `git show origin/main:day5.wav > day5.wav` 取，不重复入库
+day5.wav

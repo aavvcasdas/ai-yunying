@@ -1355,26 +1355,40 @@ function deepSea(ctx, t) {
 }
 
 function whaleFall(ctx, x, y, s, p, t) {
+  // 一头正在下沉的鲸（俯视偏侧）：身体比海水亮一档，不然会跟背景糊成一片
   const k = ease(clamp(p));
   const bx = x + Math.sin(t * 0.5) * 6;
-  const by = y;
+  const by = y + (1 - k) * 40;
+  const BODY = '#1D5378';
+  const BELLY = '#2E6E97';
+  const RIM = 'rgba(160,240,255,0.85)';
+  const FLIP = Math.sin(t * 0.8) * 0.05;
   ctx.save();
-  ctx.translate(bx, by + (1 - k) * 40);
-  ctx.rotate(0.14 + Math.sin(t * 0.6) * 0.02);
-  // 身体
-  paint(ctx, ellPts(0, 0, s * 2.0, s * 0.82, 24),
-    { wash: '#0E2A46', washOp: 248, ink: 'rgba(125,211,252,0.55)', sw: 1.4 });
-  // 尾鳍
-  paint(ctx, [[-s * 1.85, 0], [-s * 2.7, -s * 0.56], [-s * 2.35, 0], [-s * 2.7, s * 0.56]],
-    { wash: '#0E2A46', washOp: 248, ink: 'rgba(125,211,252,0.5)', sw: 1.3 });
-  // 胸鳍
-  paint(ctx, [[s * 0.35, s * 0.45], [s * 0.75, s * 1.4], [s * 1.2, s * 0.3]],
-    { wash: '#0E2A46', washOp: 248, ink: 'rgba(125,211,252,0.5)', sw: 1.2 });
-  // 眼（闭着，安静）
-  inkLine(ctx, [[s * 1.44, -s * 0.12], [s * 1.62, -s * 0.16]], 2.2, '#9FE8FF', 'inkfine', 0);
-  // 背脊纹
-  for (let i = 0; i < 4; i++) {
-    inkLine(ctx, [[-s * 0.9 + i * s * 0.62, -s * 0.72], [-s * 0.86 + i * s * 0.62, -s * 0.5]], 1.4, 'rgba(125,211,252,0.4)', 'inkfine', 0);
+  ctx.translate(bx, by);
+  ctx.rotate(0.12 + FLIP);
+  glow(ctx, 0, 0, s * 2.6, '#38BDF8', 0.16 * k);
+  // 尾鳍（两瓣）
+  paint(ctx, [[-s * 1.7, 0], [-s * 2.9, -s * 0.78], [-s * 2.25, -s * 0.1], [-s * 2.25, s * 0.1], [-s * 2.9, s * 0.78]],
+    { wash: BODY, washOp: 255, ink: RIM, sw: 1.6 });
+  // 胸鳍（左右各一）
+  paint(ctx, [[s * 0.5, -s * 0.5], [s * 0.05, -s * 1.15], [s * 0.95, -s * 0.78]],
+    { wash: BELLY, washOp: 250, ink: RIM, sw: 1.3 });
+  paint(ctx, [[s * 0.5, s * 0.5], [s * 0.05, s * 1.15], [s * 0.95, s * 0.78]],
+    { wash: BELLY, washOp: 250, ink: RIM, sw: 1.3 });
+  // 身体：头在右，尾在左
+  paint(ctx, ellPts(0, 0, s * 1.95, s * 0.86, 26), { wash: BODY, washOp: 255, ink: RIM, sw: 1.8 });
+  // 腹面（下侧一亮条，让它看起来是圆的）
+  paint(ctx, ellPts(-s * 0.1, s * 0.3, s * 1.55, s * 0.4, 22), { wash: BELLY, washOp: 200, ink: null });
+  // 背脊线 + 头部隆起
+  inkLine(ctx, [[-s * 1.2, -s * 0.1], [-s * 0.2, -s * 0.34], [s * 1.0, -s * 0.2]], 1.6, 'rgba(190,245,255,0.55)', 'inkfine', 0.4);
+  paint(ctx, ellPts(s * 1.35, -s * 0.1, s * 0.5, s * 0.42, 18), { wash: BODY, washOp: 255, ink: null });
+  // 闭着的眼 + 嘴线
+  inkLine(ctx, [[s * 1.28, -s * 0.12], [s * 1.44, -s * 0.16]], 2.4, '#CFF7FF', 'inkfine', 0);
+  inkLine(ctx, [[s * 1.62, s * 0.1], [s * 1.9, s * 0.24]], 2.0, 'rgba(190,245,255,0.7)', 'inkfine', 0);
+  // 身上的白色斑纹（座头鲸那种感觉，不画具体数字）
+  for (let i = 0; i < 5; i++) {
+    const px = -s * 1.0 + i * s * 0.5;
+    inkLine(ctx, [[px, -s * 0.5], [px + s * 0.16, -s * 0.4]], 2.2, 'rgba(226,250,255,0.5)', 'inkfine', 0);
   }
   ctx.restore();
   // 落点周围：一圈亮起来的小生物（只画光点，不写数字）
