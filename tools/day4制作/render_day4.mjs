@@ -798,7 +798,7 @@ function chartCard(ctx, x, y, w, h, t, p = 1) {
   ctx.fillText('播放量', x + 22, y + 10);
   ctx.font = 'bold 14px "NotoSansSC", sans-serif';
   ctx.fillStyle = '#93C5FD';
-  ctx.fillText('Day0 7.4万（10-24 截图）', x + 22, y + h - 26);
+  ctx.fillText('Day0 7.4万（10-24）', x + 22, y + h - 26);
   ctx.textAlign = 'right';
   ctx.fillStyle = '#FCA5A5';
   ctx.fillText('现在 ≈2000', x + w - 22, y + h - 26);
