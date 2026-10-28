@@ -61,6 +61,12 @@ PLACEHOLDER_PATTERNS = [
     r'【[^】]{0,12}】', r'\[待[^\]]{0,6}\]', r'待填', r'待定', r'TBD', r'TODO',
     r'_{2,}', r'X{2,}', r'某某',
 ]
+# 过审黑名单（2026-10-28 用户：这种剧情过不了抖音，擦屁股/拉屎这类一律不要）
+# 出现即不合格：不是风格问题，是审核风险。
+BAN_WORDS = [
+    '擦屁股', '屁股', '屎', '拉屎', '撒尿', '尿', '粪便', '排泄', '屁',
+]
+
 # 第一句禁止：招呼 / 前情 / 复盘（这些对没看过前几集的人是零信息）
 # 2026-10-28 用户拍板「删除 skill，很克制，需要黑话」：
 #   Day / token / Claude / 大肥鱼 / 账本 / 播放 / 跳出率 从黑名单移除——自家黑话是资产，不再判失败。
@@ -153,6 +159,7 @@ def main():
                   or any(re.search(p, first) for p in CUTE_PATTERNS))
     first_ban = [w for w in FIRST_BAN if w in first]
     fillers = sorted({w for w in FILLER_BLACKLIST for x in lines if w in x})
+    bans = sorted({w for w in BAN_WORDS for x in lines if w in x})
     placeholders = []
     for i, x in enumerate(lines, 1):
         hit = [x[m.start():m.end()] for p in PLACEHOLDER_PATTERNS for m in re.finditer(p, x)]
@@ -172,6 +179,7 @@ def main():
     print(f'  第一句呆萌信号：{"有" if first_cute else "无"}；第一句黑话/招呼命中：{first_ban or "无"}')
     print(f'  解释腔黑名单命中：{fillers or "无"}')
     print(f'  占位符（【待填】/XXX/__）：{len(placeholders)} 处')
+    print(f'  过审黑名单（擦屁股/屎/尿/排泄…）：{bans or "无"}')
     print()
     for i, l, x in long_lines[:6]:
         print(f'  ⚠ 长句 L{i}（{l} 字）：{x}')
@@ -192,6 +200,8 @@ def main():
         bad.append(f'命中解释腔黑名单：{fillers}')
     if placeholders:
         bad.append(f'口播里还有 {len(placeholders)} 处占位符（【待填】/XXX/__），这稿不能配音')
+    if bans:
+        bad.append(f'命中过审黑名单：{bans}（抖音这类内容会被限流/下架，换梗）')
     if cute_ratio < 0.30:
         bad.append(f'呆萌覆盖率 {cute_ratio*100:.0f}% < 30%，台词太干')
     if dev > 0.25:
