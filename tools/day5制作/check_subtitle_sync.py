@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -75,7 +76,7 @@ def main(argv=None) -> None:
     ap.add_argument("video", type=Path)
     ap.add_argument("--subs", type=Path, default=REPO_ROOT / "Day5" / "day5_subtitle_timing.json")
     ap.add_argument("--fps", type=int, default=30)
-    ap.add_argument("--change-thr", type=float, default=1.0, help="逐帧平均灰度差阈值")
+    ap.add_argument("--change-thr", type=float, default=0.6, help="逐帧平均灰度差阈值")
     ap.add_argument("--quiet-thr", type=float, default=-45.0, help="算静音的 dB 阈值")
     args = ap.parse_args(argv)
 
@@ -162,6 +163,25 @@ def main(argv=None) -> None:
 
     silent = [x for x in silent_list if x[1] > 0.0]      # 第一屏贴在片头，允许淡入
     silent_list = [x for x in silent_list if x[1] > 0.0]
+    # ── 4. 内容参考（只作参考，不计入结论：小模型错字多）：这屏的字，在这个时间窗里 ASR 是不是也在说 ──
+    asr_path = REPO_ROOT / "Day5" / "day5_asr_tokens.json"
+    content = []
+    if asr_path.exists():
+        toks = json.loads(asr_path.read_text(encoding="utf-8"))
+        for sc in screens:
+            win = "".join(t["word"] for t in toks
+                          if sc["start"] - 0.12 <= t["start"] <= sc["end"] + 0.05)
+            txt = "".join(c for c in sc["text"] if re.match(r"[\u4e00-\u9fffA-Za-z0-9]", c))
+            if not txt:
+                continue
+            common = sum(min(txt.count(c), win.count(c)) for c in set(txt))
+            content.append((sc["id"], sc["start"], round(common / len(txt), 2), txt, win))
+        good = [c for c in content if c[2] >= 0.6]
+        print(f"   内容参考：{len(good)}/{len(content)} 屏的窗口里，ASR 吐的字覆盖这屏 ≥60%"
+              "（小模型错字多，此项只作参考，不进结论）")
+        for c in content:
+            if c[2] < 0.6:
+                print(f"      · {c[0]}@{c[1]:.2f} 覆盖 {c[2]:.0%}  屏={c[3]}  ASR={c[4]}")
     ok = (matched == len(screen_changes)) and not missing and not long_holes and not silent
     first = np.argmax(db > -40) * hop
     last = (len(db) - np.argmax(db[::-1] > -40)) * hop
