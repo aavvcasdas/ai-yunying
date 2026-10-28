@@ -236,8 +236,10 @@ if (VOICE_CUES) {
     _t += d + GAP;
   }
 }
-const ENDCARD = { start: CUES[CUES.length - 1].end + 0.3, end: CUES[CUES.length - 1].end + 3.6 };
-const DURATION = ENDCARD.end;
+// 2026-10-29 用户：「所有都去掉这个，就是说完话就结束了。」
+// → **不再有片尾卡**（没有天数卡、没有粉丝数、没有任何卡片）。最后一句说完就结束，只留 0.2s 收尾尾巴。
+const TAIL = 0.20;
+const DURATION = CUES[CUES.length - 1].end + TAIL;
 const C = (n) => CUES[n - 1].start;
 const CE = (n) => CUES[n - 1].end;
 const cueP = (t, n) => clamp((t - C(n)) / Math.max(0.001, CE(n) - C(n)));
@@ -1889,35 +1891,9 @@ function shotC11(ctx, t, lt, p) {
   camEnd(ctx);
 }
 
-function shotEndCard(ctx, t, lt, p) {
-  // 2026-10-29 用户：「这种东西就不要出现了」——指**粉丝数 + 总目标 + 进度条**那张卡。
-  // 片尾卡从此只留：天数、明天的钩子、合规小字。不写粉丝数、不写目标数、不画任何「条」。
-  bg(ctx, t);
-  const k = clamp(lt * 2);
-  ctx.save();
-  ctx.globalAlpha = k;
-  paint(ctx, rrPts(300, 150, 680, 320, 18, 1.4),
-    { wash: '#0B1C34', fill: '#07122A', fillOp: 195, ink: '#F2C14E', sw: 2 });
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = 'bold 22px "NotoSansSC", sans-serif';
-  ctx.fillStyle = '#93C5FD';
-  ctx.fillText('本鲸的 30 天', 640, 196);
-  ctx.font = '900 56px "ZCOOLKuaiLe", "NotoSansSC", sans-serif';
-  ctx.fillStyle = '#FDE68A';
-  ctx.fillText('第 5 天 / 30', 640, 258);
-  // 明天接着看的那句话（不带任何数字，也不带任何“进度”）
-  ctx.font = 'bold 24px "NotoSansSC", sans-serif';
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillText('明天：让小鲸鲸真干一次活', 640, 330);
-  ctx.font = 'bold 22px "NotoSansSC", sans-serif';
-  ctx.fillStyle = '#A7F3D0';
-  ctx.fillText('翻车了本鲸去兜', 640, 372);
-  ctx.font = 'bold 15px "NotoSansSC", sans-serif';
-  ctx.fillStyle = '#64748B';
-  ctx.fillText('非官方同人 · 本视频含 AI 生成内容', 640, 432);
-  ctx.restore();
-}
+// 片尾卡已删除（2026-10-29 用户：「所有都去掉这个，就是说完话就结束了。」）
+// 想加回来的人先读 00_运营总览/画面红线_不要出现的东西_2026-10-29.md：
+// 天数卡 / 粉丝数 / 目标值 / 进度条 / 合规小字卡，一律不做。片子最后一句说完就停。
 
 const SHOTS = {
   C01: shotC01, C02: shotC02, C03: shotC03, C04: shotC04, C05: shotC05, C06: shotC06,
@@ -1954,7 +1930,7 @@ function drawSubtitle(ctx, t) {
       else { next = sc; break; }
     }
     if (!hit) return;
-    if (!next && t >= ENDCARD.start) return;                 // 末屏挂到片尾卡
+    if (!next && t >= DURATION - 0.02) return;               // 最后一句说完，片子就结束
     if (t > hit.speechEnd + SUB_HOLD) return;                // 这句说完了就撤，不空挂着
     SUB.draw(ctx, {
       lines: SUB.wrap(hit.text),
@@ -1990,16 +1966,14 @@ function shotAt(lineNo) {
 function renderFrame(ctx, t) {
   reseedBoil(t);
   let idx = CUES.findIndex((c) => t >= c.start && t < c.end);
-  if (idx < 0 && t < ENDCARD.start) {
-    // 镜间缝隙：停在上一镜，不黑屏
+  if (idx < 0) {
+    // 镜间缝隙 / 末尾 0.2s：停在上一镜，不黑屏、不加卡
     idx = CUES.reduce((acc, c, i) => (t >= c.end && i > acc ? i : acc), 0);
   }
-  if (idx >= 0 && t < ENDCARD.start) {
+  if (idx >= 0) {
     const sh = shotAt(idx + 1);
     const s = C(sh.from), e = CE(sh.to);
     SHOTS[sh.id](ctx, t, t - s, clamp((t - s) / Math.max(0.001, e - s)));
-  } else {
-    shotEndCard(ctx, t, clamp(t - ENDCARD.start), clamp((t - ENDCARD.start) / (ENDCARD.end - ENDCARD.start)));
   }
   hud(ctx, t);
   drawSubtitle(ctx, t);
@@ -2039,7 +2013,7 @@ async function renderStills() {
     ['c10_60', C(32) + (CE(34) - C(32)) * 0.6],
     ['c11_40', C(35) + (CE(40) - C(35)) * 0.4],
     ['c11_92', C(35) + (CE(40) - C(35)) * 0.92],
-    ['end', ENDCARD.start + 1.4]
+    ['last', DURATION - 0.05]
   ];
   for (const [name, t] of marks) {
     prepareFrame(ctx);

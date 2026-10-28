@@ -34,7 +34,7 @@ TARGETS = [
 TARGETS = sorted({p for p in TARGETS if p.is_file()})
 
 # 已交付、不重渲的历史片子：提示，不判违规
-LEGACY = re.compile(r"day([1-4])制作")
+LEGACY = re.compile(r"day([1-4](加更)?)制作")
 
 CHECKS = [
     # (名字, 正则, 说明)
@@ -52,6 +52,8 @@ CHECKS = [
      "音量条：电视里外都不许有"),
     ("目标卡文案", re.compile(r"月度目标|月目标|新增粉丝"),
      "目标卡文案：删"),
+    ("片尾卡", re.compile(r"shotEndCard|ENDCARD|本鯨的 30 天|本鲸的 30 天|非官方同人"),
+     "片尾卡整张都不做：最后一句说完就结束（见 00_运营总览/画面红线_…_2026-10-29.md 第二节）"),
 ]
 
 # 口播数字：只查 LINES 里汉字句中的阿拉伯数字（字幕/卡片里的秒数不算）
