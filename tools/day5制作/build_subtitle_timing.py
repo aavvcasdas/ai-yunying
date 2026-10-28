@@ -37,46 +37,99 @@ def is_timed(ch: str) -> bool:
 
 
 MIN_SCREEN = 0.80          # 一屏至少挂 0.8s，否则并到相邻分句
+LEAD = 0.0                 # 不提前：字幕就在开口那一刻上屏（提前会在静音里弹字，用户明确否过）
+MAX_SCREEN = 99.0          # 不按字数补刀：短字幕＝一屏一个分句（Day2 加更版口径），不在句中切字
+MIN_CHARS = 3              # 补刀后每屏至少 3 个字，别切出「呜…」这种孤字
+
+_CUT = "，。！？；：、"
+
+
+KEEP_WORDS = ["本鲸", "鲸鲸", "鲸鱼娘", "鲸鱼", "老大", "升级", "收尾", "赔不是",
+              "白饭", "伙食费", "私信", "评论", "鲸落", "万物生", "摸鱼", "单休"]
+
+
+def _jieba_tokens(text: str) -> list[str]:
+    """分词只用来找「词边界」，不参与计时；没装 jieba 就退回逐字（也能跑，就是切得碎）。"""
+    try:
+        import jieba
+        for w in KEEP_WORDS:
+            jieba.add_word(w)
+        return [t for t in jieba.cut(text) if t]
+    except ImportError:
+        return list(text)
 
 
 def split_screens(text: str, timed: list[dict], cue_start: float, cue_end: float) -> list[dict]:
-    """把一句话按标点切屏，每屏的首字时间来自 ASR。"""
+    """一句话 → 若干「短屏」：**一屏一个分句**（Day2 加更版的字幕口径）。
+
+    · 起点＝这个分句第一个字的 ASR 实测时间 −0.10s（句首则用句子起点）；
+    · 终点＝下一个分句第一个字的时间；
+    · 短于 0.8s 的屏并到相邻分句，避免一闪而过；
+    · 不在句子中间硬切字：短字幕靠标点分句，不靠字数。
+    """
     chars = list(text)
-    t_idx = 0
-    starts: list[float] = []
+    t_of: list[float | None] = []
+    ti = 0
     for ch in chars:
         if is_timed(ch):
-            starts.append(timed[t_idx]["start"] if t_idx < len(timed) else cue_end)
-            t_idx += 1
+            t_of.append(timed[ti]["start"] if ti < len(timed) else None)
+            ti += 1
         else:
-            starts.append(None)                      # 标点没有自己的时间
+            t_of.append(None)
+    # 标点跟着后一个字的时间走
+    for i in range(len(chars) - 1, -1, -1):
+        if t_of[i] is None:
+            nxt = next((t_of[k] for k in range(i + 1, len(chars)) if t_of[k] is not None), None)
+            t_of[i] = nxt if nxt is not None else (t_of[i - 1] if i > 0 else cue_start)
+    for i, t in enumerate(t_of):
+        if t is None:
+            t_of[i] = cue_start if i == 0 else t_of[i - 1]
 
-    # 标点归前一个分句；记录每个分句的起始字符下标
-    clauses: list[tuple[int, int]] = []
-    begin = 0
+    def ct(i: int) -> float:
+        return t_of[min(i, len(chars) - 1)]
+
+    pieces, begin = [], 0
     for i, ch in enumerate(chars):
-        if ch in CLAUSE_END:
-            if any(is_timed(c) for c in chars[begin:i + 1]):
-                clauses.append((begin, i + 1))
-                begin = i + 1
-    if begin < len(chars) and any(is_timed(c) for c in chars[begin:]):
-        clauses.append((begin, len(chars)))
-    if not clauses:
-        clauses = [(0, len(chars))]
+        if ch in _CUT:
+            pieces.append((begin, i + 1))
+            begin = i + 1
+    if begin < len(chars):
+        pieces.append((begin, len(chars)))
 
-    def first_time(a: int) -> float:
-        for k in range(a, len(chars)):
-            if starts[k] is not None:
-                return starts[k]
-        return cue_end
+    # 长分句（>2.2s）在词边界补一刀：切在「字与字之间停得最久」的地方
+    word_starts = []
+    pos = 0
+    for tok in _jieba_tokens(text):
+        pos += len(tok)
+        if 0 < pos < len(chars):
+            word_starts.append(pos)
+
+    def chop(a: int, b: int) -> list[tuple[int, int]]:
+        dur = ct(b - 1) - ct(a)
+        nchars = sum(1 for c in chars[a:b] if is_timed(c))
+        if dur <= MAX_SCREEN or nchars < 2 * MIN_CHARS:
+            return [(a, b)]
+        inner = [w for w in word_starts if a + MIN_CHARS <= w <= b - MIN_CHARS]
+        if not inner:
+            return [(a, b)]
+        target = ct(a) + dur / 2
+
+        def score(w: int) -> float:
+            gap = ct(w) - ct(w - 1)
+            return abs(ct(w) - target) - 0.40 * min(gap, 0.35)
+
+        k = min(inner, key=score)
+        return chop(a, k) + chop(k, b)
 
     screens = []
-    for n, (a, b) in enumerate(clauses):
-        s = cue_start if n == 0 else first_time(a)
-        e = first_time(clauses[n + 1][0]) if n + 1 < len(clauses) else cue_end
-        screens.append({"text": "".join(chars[a:b]).strip(), "start": s, "end": e})
+    for n, (a, b) in enumerate(pieces):
+        for m, (a2, b2) in enumerate(chop(a, b)):
+            s0 = cue_start if (n == 0 and m == 0) else max(cue_start, ct(a2) - LEAD)
+            screens.append({"text": "".join(chars[a2:b2]).strip(), "start": s0, "end": None})
+    for i, sc in enumerate(screens):
+        sc["end"] = screens[i + 1]["start"] if i + 1 < len(screens) else cue_end
 
-    # 太短并进相邻屏（宁可少一屏，也不要闪一下）
+    # 太短并进相邻屏
     changed = True
     while changed and len(screens) > 1:
         changed = False
@@ -92,6 +145,7 @@ def split_screens(text: str, timed: list[dict], cue_start: float, cue_end: float
             screens.pop(n)
             changed = True
             break
+
     for sc in screens:
         sc["start"] = round(max(cue_start, sc["start"]), 3)
         sc["end"] = round(min(cue_end, max(sc["end"], sc["start"] + 0.2)), 3)
