@@ -258,3 +258,6 @@ See [`docs/DIRECTION_AND_CHARACTER_FIX.md`](docs/DIRECTION_AND_CHARACTER_FIX.md)
 ## 6. Selected continuation: 《潮汐》 only
 
 The user has now requested a focused rerender of exactly two videos: `mv_chaoxi_whale_girl.mp4` and `mv_pengyou_de_jiu_whale_girl.mp4`; no other MVs. For 《潮汐》, lyric cue onsets remain Vosk-verified, props sourced from the shared shot plan are disabled, intrusive hand-prop actions are replaced with clear gestures, and the lead is enlarged with a reduced whale-tail footprint. For 《朋友的酒》, the heroine is the solo lead, enlarged, and the mug props are staged at the far table edges; extra cast, the extra fat-fish sprite, and the top-right HUD badge are removed. Both storyboards are regenerated and approved internally; MP4 rerenders and media validation remain to be completed.
+
+> **画面红线（2026-10-29 起硬规则）**：任何成片/封面/卡片都不许出现粉丝数、播放量、目标值（`X / 10,000`）、进度条、音量条、数据曲线。
+> 出处 `00_运营总览/画面红线_不要出现的东西_2026-10-29.md`；出片前跑 `python3 tools/剧本/画面红线体检.py`（非 0 退出就别出片）。

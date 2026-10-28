@@ -5,7 +5,7 @@
 //      没有配音就按 4.3 字/秒 + 0.18s 气口估时间轴（**只用于样片**，成片必须 --cues 实测对齐）。
 //   2. 分镜重排成 11 镜（C01–C11），新增：小鲸鲸（另一条鲸鲸）、升级按钮、日历单休、
 //      能力卡/消息流、板凳、表盘、米缸、鲸落、两只空碗。
-//   3. 全部道具程序绘制；**不出现进度条 / 音量条**；口播零数字（2,108 只在片尾卡）。
+//   3. 全部道具程序绘制；**全片不出现进度条 / 音量条 / 粉丝数 / 目标数**（2026-10-29 用户要求）；口播零数字。
 //   4. 主角＝Day2 像素骨架（--char ss2 默认）；DSH 贴纸本集不出现（电视梗本集没有）。
 //
 // 两条红线沿用 agent.md：
@@ -900,97 +900,10 @@ function shoddyMV(ctx, sx, sy, sw, sh, tt) {
 }
 
 // 折线图卡
-function chartCard(ctx, x, y, w, h, t, p = 1) {
-  paint(ctx, rrPts(x, y, w, h, 14, 1.4), { wash: '#0B1C34', fill: '#07122A', fillOp: 180, ink: '#48C8FF', sw: 1.6 });
-  ctx.save();
-  ctx.beginPath();
-  ctx.roundRect(x + 6, y + 6, w - 12, h - 12, 10);
-  ctx.clip();
-  const x0 = x + 28, x1 = x + w - 28, y0 = y + 26, y1 = y + h - 34;
-  for (let i = 0; i <= 4; i++) inkLine(ctx, [[x0, y0 + (y1 - y0) * i / 4], [x1, y0 + (y1 - y0) * i / 4]], 1, 'rgba(90,130,190,0.25)', 'inkfine', 0);
-  const pts = [[0.02, 0.06], [0.26, 0.30], [0.52, 0.62], [0.74, 0.72], [0.98, 0.93]];
-  const drawn = Math.min(pts.length, 2 + Math.floor(p * (pts.length - 1)));
-  ctx.beginPath();
-  for (let i = 0; i < drawn; i++) {
-    const px = x0 + (x1 - x0) * pts[i][0];
-    const py = y0 + (y1 - y0) * pts[i][1];
-    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-  }
-  ctx.strokeStyle = '#F2C14E';
-  ctx.lineWidth = 3;
-  ctx.lineJoin = 'round';
-  ctx.stroke();
-  for (let i = 0; i < drawn; i++) {
-    const px = x0 + (x1 - x0) * pts[i][0];
-    const py = y0 + (y1 - y0) * pts[i][1];
-    paint(ctx, ellPts(px, py, 5, 5, 10), { wash: '#FF6B6B', ink: PAL.ink, sw: 1 });
-  }
-  ctx.restore();
-  ctx.save();
-  ctx.font = '900 20px "ZCOOLKuaiLe", sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = '#FDE68A';
-  ctx.fillText('播放量', x + 22, y + 10);
-  ctx.font = 'bold 14px "NotoSansSC", sans-serif';
-  ctx.fillStyle = '#93C5FD';
-  ctx.fillText('Day0 7.4万（10-24）', x + 22, y + h - 26);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#FCA5A5';
-  ctx.fillText('现在 ≈2000', x + w - 22, y + h - 26);
-  ctx.restore();
-}
+// 2026-10-29 删除：chartCard / targetCard / ledgerCard（会画粉丝数、目标数、数据曲线，
+// 全部属于「不要出现的东西」，且三个函数当时已无人调用，直接删掉防止以后又被接上）。
 
-// 目标卡：明确写「播放量 / 粉丝」
-function targetCard(ctx, x, y, w, h, o = {}) {
-  paint(ctx, rrPts(x, y, w, h, 14, 1.4), { wash: o.wash || '#12294A', fill: '#08182F', fillOp: 170, ink: o.ink || '#F2C14E', sw: 1.8 });
-  ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = '900 26px "ZCOOLKuaiLe", sans-serif';
-  ctx.fillStyle = '#FDE68A';
-  ctx.fillText(o.title, x + w / 2, y + 34);
-  ctx.font = '900 46px "NotoSansSC", sans-serif';
-  ctx.fillStyle = o.valueColor || '#FFFFFF';
-  ctx.fillText(o.value, x + w / 2, y + h / 2 + 8);
-  ctx.font = 'bold 17px "NotoSansSC", sans-serif';
-  ctx.fillStyle = '#A5D8FF';
-  ctx.fillText(o.unit, x + w / 2, y + h - 34);
-  if (o.note) {
-    ctx.font = 'bold 14px "NotoSansSC", sans-serif';
-    ctx.fillStyle = 'rgba(254,240,138,0.85)';
-    ctx.fillText(o.note, x + w / 2, y + h - 12);
-  }
-  ctx.restore();
-}
 
-// 账本卡（留白，等真截图）
-function ledgerCard(ctx, x, y, w, h, t) {
-  paint(ctx, rrPts(x, y, w, h, 12, 1.2), { wash: '#F6E7C8', fill: '#2A1F12', fillOp: 40, ink: PAL.ink, sw: 1.6 });
-  ctx.save();
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#7F1D1D';
-  ctx.font = '900 22px "ZCOOLKuaiLe", sans-serif';
-  ctx.fillText('本鲸的账本 · 第 1 张', x + 20, y + 26);
-  const rows = [['播放量', '______'], ['新增粉丝', '______'], ['米饭钱', '______']];
-  rows.forEach((r, i) => {
-    const ry = y + 68 + i * 40;
-    ctx.font = 'bold 18px "NotoSansSC", sans-serif';
-    ctx.fillStyle = '#334155';
-    ctx.fillText(r[0], x + 24, ry);
-    ctx.fillStyle = '#94A3B8';
-    ctx.font = 'bold 18px "Silkscreen", "NotoSansSC", monospace';
-    ctx.fillText(r[1], x + w * 0.52, ry);
-    inkLine(ctx, [[x + 20, ry + 16], [x + w - 20, ry + 16]], 1, 'rgba(51,65,85,0.25)', 'inkfine', 0);
-  });
-  ctx.font = 'bold 13px "NotoSansSC", sans-serif';
-  ctx.fillStyle = '#B91C1C';
-  ctx.fillText('明早用真截图填 · 难看也填', x + 24, y + h - 22);
-  ctx.restore();
-}
-
-// 评论气泡
 function commentBubble(ctx, x, y, author, text, p = 1) {
   ctx.save();
   ctx.globalAlpha = clamp(p * 1.4);
@@ -1977,6 +1890,8 @@ function shotC11(ctx, t, lt, p) {
 }
 
 function shotEndCard(ctx, t, lt, p) {
+  // 2026-10-29 用户：「这种东西就不要出现了」——指**粉丝数 + 总目标 + 进度条**那张卡。
+  // 片尾卡从此只留：天数、明天的钩子、合规小字。不写粉丝数、不写目标数、不画任何「条」。
   bg(ctx, t);
   const k = clamp(lt * 2);
   ctx.save();
@@ -1991,22 +1906,13 @@ function shotEndCard(ctx, t, lt, p) {
   ctx.font = '900 56px "ZCOOLKuaiLe", "NotoSansSC", sans-serif';
   ctx.fillStyle = '#FDE68A';
   ctx.fillText('第 5 天 / 30', 640, 258);
+  // 明天接着看的那句话（不带任何数字，也不带任何“进度”）
+  ctx.font = 'bold 24px "NotoSansSC", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText('明天：让小鲸鲸真干一次活', 640, 330);
   ctx.font = 'bold 22px "NotoSansSC", sans-serif';
   ctx.fillStyle = '#A7F3D0';
-  ctx.textAlign = 'left';
-  ctx.fillText('粉丝', 356, 322);
-  ctx.textAlign = 'right';
-  ctx.font = '900 30px "NotoSansSC", sans-serif';
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillText('2,108 / 10,000', 924, 322);
-  const bx = 356, by = 348, bw = 568, bh = 16;
-  paint(ctx, rrPts(bx, by, bw, bh, 8, 0.5), { wash: '#16304F', ink: null });
-  const fill = clamp((2108 / 10000) * clamp(lt * 1.6));
-  paint(ctx, rrPts(bx, by, bw * fill, bh, 8, 0.5), { wash: '#4ADE80', ink: null });
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 16px "NotoSansSC", sans-serif';
-  ctx.fillStyle = '#94A3B8';
-  ctx.fillText('明天：让小鲸鲸真干一次活，翻车本鲸去兜', 640, 396);
+  ctx.fillText('翻车了本鲸去兜', 640, 372);
   ctx.font = 'bold 15px "NotoSansSC", sans-serif';
   ctx.fillStyle = '#64748B';
   ctx.fillText('非官方同人 · 本视频含 AI 生成内容', 640, 432);
