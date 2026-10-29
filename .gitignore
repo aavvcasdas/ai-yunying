@@ -37,3 +37,7 @@ Day3/成片/旧动作复刻样片/strip_*.png
 # 《朋友的酒》Q 弹 MV：成片与 A/B 样片体积大，留在工作区不入库（说明文档照常入库）
 Day3/成片/MV/*.mp4
 Day3/成片/MV/hook_ab/*.mp4
+
+# 调研脚本缓存（可删，删后重建）
+tools/调研/.cache.json
+tools/调研/.repos.json
