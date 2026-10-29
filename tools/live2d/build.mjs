@@ -1,54 +1,42 @@
 #!/usr/bin/env node
 /**
- * 鲸鱼娘 Live2D 素材构建器
- *   src/character.svg  ──►  out/parts/*.png   （每个部件一张，2048×2048 对齐）
- *                      ──►  out/whale_girl.psd（分层 PSD，图层名按 psd2live 规范）
- *                      ──►  out/preview.png    （合成预览）
- *                      ──►  out/manifest.json  （网页预览用）
+ * 原创 Live2D 素材构建器（多角色）
+ *   src/chars/<id>.mjs  ──►  out/<id>/parts/*.png   （每个部件一张，2048² 对齐）
+ *                       ──►  out/<id>/<id>.psd     （分层 PSD，图层名按 psd2live 规范）
+ *                       ──►  out/<id>/preview.png  （合成定妆图）
+ *                       ──►  out/chars.json        （角色索引，预览页用）
  *
- * 用法：node build.mjs [--size 2048]
+ * 用法：node build.mjs [--size 2048] [--only lumi,nelly]
  */
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 import sharp from "sharp";
 import { writePsdBuffer } from "ag-psd";
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
-const SRC = path.join(HERE, "src/character.svg");
+const SRC = path.join(HERE, "src/chars");
 const OUT = path.join(HERE, "out");
-const PARTS_DIR = path.join(OUT, "parts");
 
-const argSize = process.argv.indexOf("--size");
-const SIZE = argSize > -1 ? parseInt(process.argv[argSize + 1], 10) : 2048;
+const arg = (k, d) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : d; };
+const SIZE = parseInt(arg("--size", "2048"), 10);
+const ONLY = arg("--only", "") ? arg("--only", "").split(",") : null;
 
-const svgText = fs.readFileSync(SRC, "utf8");
-const defs = (svgText.match(/<defs>[\s\S]*?<\/defs>/) || [""])[0];
-
-/** 按 <!--PART:name--> ... <!--/PART--> 切层，顺序即 PSD 图层顺序（下→上） */
-function parseParts(text) {
-  const re = /<!--PART:([^>]+?)-->([\s\S]*?)<!--\/PART-->/g;
-  const out = [];
-  let m;
-  while ((m = re.exec(text))) out.push({ name: m[1].trim(), body: m[2].trim() });
-  return out;
+function svgDoc(defs, body) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="${SIZE}" height="${SIZE}">${defs}${body}</svg>`;
 }
 
-function renderSvg(body) {
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="${SIZE}" height="${SIZE}">` +
-    defs +
-    body +
-    `</svg>`;
-  return Buffer.from(new Resvg(svg, { fitTo: { mode: "width", value: SIZE } }).render().asPng());
+function render(body, defs) {
+  return Buffer.from(new Resvg(svgDoc(defs, body), { fitTo: { mode: "width", value: SIZE } }).render().asPng());
 }
 
-/** 裁到 alpha 包围盒，返回 {data,left,top,w,h}（画布坐标） */
-function trimRgba(raw, width, height, canvas) {
+function trimRgba(raw, width, height) {
   let minX = width, minY = height, maxX = -1, maxY = -1;
   for (let y = 0; y < height; y++) {
+    const row = y * width * 4;
     for (let x = 0; x < width; x++) {
-      if (raw[(y * width + x) * 4 + 3] > 2) {
+      if (raw[row + x * 4 + 3] > 2) {
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
         if (y < minY) minY = y;
@@ -63,62 +51,61 @@ function trimRgba(raw, width, height, canvas) {
     const from = ((minY + y) * width + minX) * 4;
     dst.set(raw.subarray(from, from + w * 4), y * w * 4);
   }
-  return { data: dst, left: minX, top: minY, w, h, canvas };
+  return { data: dst, left: minX, top: minY, w, h };
 }
 
-async function main() {
-  fs.mkdirSync(PARTS_DIR, { recursive: true });
-  const parts = parseParts(svgText);
-  if (!parts.length) throw new Error("没有解析到任何 PART 块");
+async function buildChar(file) {
+  const mod = await import(pathToFileURL(path.join(SRC, file)).href);
+  const { meta, render: make } = mod;
+  if (ONLY && !ONLY.includes(meta.id)) return null;
 
+  const { defs, layers } = make();
+  const dir = path.join(OUT, meta.id);
+  const partsDir = path.join(dir, "parts");
+  fs.mkdirSync(partsDir, { recursive: true });
+
+  console.log(`\n▸ ${meta.id}  「${meta.theme}」 ${meta.name}`);
   const manifest = [];
   const psdChildren = [];
 
-  for (const part of parts) {
-    const png = renderSvg(part.body);
+  for (const layer of layers) {
+    const png = render(layer.body, defs);
     const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-    const trimmed = trimRgba(data, info.width, info.height, SIZE);
-    if (!trimmed) { console.warn(`  跳过空图层：${part.name}`); continue; }
+    const t = trimRgba(data, info.width, info.height);
+    if (!t) { console.warn(`  跳过空图层：${layer.name}`); continue; }
 
-    const file = `${part.name.replace(/\s+/g, "_")}.png`;
-    await sharp(Buffer.from(trimmed.data.buffer, trimmed.data.byteOffset, trimmed.data.length), {
-      raw: { width: trimmed.w, height: trimmed.h, channels: 4 },
-    }).png().toFile(path.join(PARTS_DIR, file));
+    const f = `${layer.name.replace(/\s+/g, "_")}.png`;
+    await sharp(Buffer.from(t.data.buffer, t.data.byteOffset, t.data.length), {
+      raw: { width: t.w, height: t.h, channels: 4 },
+    }).png().toFile(path.join(partsDir, f));
 
-    manifest.push({ name: part.name, file: `parts/${file}`, left: trimmed.left, top: trimmed.top, w: trimmed.w, h: trimmed.h });
+    manifest.push({ name: layer.name, file: `parts/${f}`, left: t.left, top: t.top, w: t.w, h: t.h });
     psdChildren.push({
-      name: part.name,
-      left: trimmed.left,
-      top: trimmed.top,
-      right: trimmed.left + trimmed.w,
-      bottom: trimmed.top + trimmed.h,
-      opacity: 255,
-      hidden: false,
-      imageData: { width: trimmed.w, height: trimmed.h, data: trimmed.data },
-    });
-    console.log(`  ✓ ${part.name.padEnd(14)} ${String(trimmed.w).padStart(4)}×${String(trimmed.h).padEnd(4)} @ ${trimmed.left},${trimmed.top}`);
-  }
-
-  // 分层 PSD（Cubism / psd2live 都可直接导入）
-  const psd = { width: SIZE, height: SIZE, children: psdChildren };
-  fs.writeFileSync(path.join(OUT, "whale_girl.psd"), writePsdBuffer(psd, { generateThumbnail: false }));
-  console.log(`\n  PSD: out/whale_girl.psd  (${(fs.statSync(path.join(OUT, "whale_girl.psd")).size / 1e6).toFixed(1)} MB, ${psdChildren.length} 层, ${SIZE}×${SIZE})`);
-
-  // 合成预览
-  const base = sharp({ create: { width: SIZE, height: SIZE, channels: 4, background: { r: 22, g: 26, b: 44, alpha: 0 } } });
-  const composites = [];
-  for (const c of psdChildren) {
-    composites.push({
-      input: Buffer.from(c.imageData.data.buffer, c.imageData.data.byteOffset, c.imageData.data.length),
-      raw: { width: c.imageData.width, height: c.imageData.height, channels: 4 },
-      left: c.left, top: c.top,
+      name: layer.name, left: t.left, top: t.top, right: t.left + t.w, bottom: t.top + t.h,
+      opacity: 255, hidden: false, imageData: { width: t.w, height: t.h, data: t.data },
     });
   }
-  await base.composite(composites).png().toFile(path.join(OUT, "preview.png"));
-  console.log("  预览: out/preview.png");
 
-  fs.writeFileSync(path.join(OUT, "manifest.json"), JSON.stringify({ size: SIZE, parts: manifest }, null, 2));
-  console.log("  清单: out/manifest.json");
+  fs.writeFileSync(path.join(dir, `${meta.id}.psd`), writePsdBuffer({ width: SIZE, height: SIZE, children: psdChildren }, { generateThumbnail: false }));
+
+  const base = sharp({ create: { width: SIZE, height: SIZE, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
+  await base.composite(psdChildren.map((c) => ({
+    input: Buffer.from(c.imageData.data.buffer, c.imageData.data.byteOffset, c.imageData.data.length),
+    raw: { width: c.imageData.width, height: c.imageData.height, channels: 4 },
+    left: c.left, top: c.top,
+  }))).png().toFile(path.join(dir, "preview.png"));
+
+  fs.writeFileSync(path.join(dir, "manifest.json"), JSON.stringify({ size: SIZE, parts: manifest }, null, 2));
+  console.log(`  ${psdChildren.length} 层 · PSD ${(fs.statSync(path.join(dir, `${meta.id}.psd`)).size / 1e6).toFixed(1)}MB · 预览已出`);
+
+  return { id: meta.id, name: meta.name, theme: meta.theme, nameAscii: meta.nameAscii, themeAscii: meta.themeAscii, desc: meta.desc, palette: meta.palette,
+           manifest: `${meta.id}/manifest.json`, preview: `${meta.id}/preview.png` };
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+const chars = [];
+for (const f of fs.readdirSync(SRC).filter((x) => x.endsWith(".mjs")).sort()) {
+  const r = await buildChar(f);
+  if (r) chars.push(r);
+}
+fs.writeFileSync(path.join(OUT, "chars.json"), JSON.stringify(chars, null, 2));
+console.log(`\n完成：${chars.length} 个角色 → out/chars.json`);

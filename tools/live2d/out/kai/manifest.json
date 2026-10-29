@@ -4,168 +4,168 @@
     {
       "name": "back hair",
       "file": "parts/back_hair.png",
-      "left": 464,
-      "top": 236,
-      "w": 1120,
-      "h": 1276
+      "left": 475,
+      "top": 268,
+      "w": 1098,
+      "h": 996
     },
     {
       "name": "tail",
       "file": "parts/tail.png",
-      "left": 1432,
-      "top": 1644,
-      "w": 540,
-      "h": 164
+      "left": 1380,
+      "top": 1790,
+      "w": 492,
+      "h": 160
     },
     {
       "name": "neck",
       "file": "parts/neck.png",
       "left": 952,
-      "top": 1096,
+      "top": 1092,
       "w": 144,
-      "h": 208
+      "h": 204
     },
     {
       "name": "topwear",
       "file": "parts/topwear.png",
-      "left": 528,
-      "top": 1216,
-      "w": 992,
-      "h": 832
+      "left": 512,
+      "top": 1204,
+      "w": 1024,
+      "h": 844
     },
     {
       "name": "handwear-l",
       "file": "parts/handwear-l.png",
-      "left": 522,
-      "top": 1352,
-      "w": 182,
-      "h": 639
+      "left": 502,
+      "top": 1380,
+      "w": 186,
+      "h": 627
     },
     {
       "name": "handwear-r",
       "file": "parts/handwear-r.png",
-      "left": 1344,
-      "top": 1352,
-      "w": 182,
-      "h": 639
+      "left": 1360,
+      "top": 1380,
+      "w": 186,
+      "h": 627
     },
     {
       "name": "neckwear",
       "file": "parts/neckwear.png",
-      "left": 896,
-      "top": 1228,
-      "w": 256,
-      "h": 180
+      "left": 904,
+      "top": 1246,
+      "w": 240,
+      "h": 166
     },
     {
       "name": "face",
       "file": "parts/face.png",
-      "left": 640,
-      "top": 392,
-      "w": 768,
-      "h": 824
+      "left": 656,
+      "top": 408,
+      "w": 736,
+      "h": 792
     },
     {
       "name": "facedetail",
       "file": "parts/facedetail.png",
       "left": 672,
-      "top": 942,
+      "top": 765,
       "w": 704,
-      "h": 76
+      "h": 273
     },
     {
       "name": "eyewhite-l",
       "file": "parts/eyewhite-l.png",
-      "left": 776,
-      "top": 752,
-      "w": 200,
-      "h": 224
+      "left": 780,
+      "top": 776,
+      "w": 192,
+      "h": 200
     },
     {
       "name": "eyewhite-r",
       "file": "parts/eyewhite-r.png",
-      "left": 1072,
-      "top": 752,
-      "w": 200,
-      "h": 224
+      "left": 1076,
+      "top": 776,
+      "w": 192,
+      "h": 200
     },
     {
       "name": "irides-l",
       "file": "parts/irides-l.png",
-      "left": 798,
-      "top": 790,
-      "w": 156,
-      "h": 156
+      "left": 804,
+      "top": 808,
+      "w": 144,
+      "h": 144
     },
     {
       "name": "irides-r",
       "file": "parts/irides-r.png",
-      "left": 1094,
-      "top": 790,
-      "w": 156,
-      "h": 156
+      "left": 1100,
+      "top": 808,
+      "w": 144,
+      "h": 144
     },
     {
       "name": "eyelash-l",
       "file": "parts/eyelash-l.png",
-      "left": 741,
-      "top": 735,
-      "w": 287,
-      "h": 109
+      "left": 716,
+      "top": 768,
+      "w": 254,
+      "h": 94
     },
     {
       "name": "eyelash-r",
       "file": "parts/eyelash-r.png",
-      "left": 1020,
-      "top": 735,
-      "w": 287,
-      "h": 109
+      "left": 1078,
+      "top": 768,
+      "w": 254,
+      "h": 94
     },
     {
       "name": "eye close-l",
       "file": "parts/eye_close-l.png",
-      "left": 780,
-      "top": 823,
-      "w": 196,
-      "h": 49
+      "left": 783,
+      "top": 836,
+      "w": 186,
+      "h": 47
     },
     {
       "name": "eye close-r",
       "file": "parts/eye_close-r.png",
-      "left": 1072,
-      "top": 823,
-      "w": 196,
-      "h": 49
+      "left": 1079,
+      "top": 836,
+      "w": 186,
+      "h": 47
     },
     {
       "name": "eyebrow-l",
       "file": "parts/eyebrow-l.png",
-      "left": 795,
-      "top": 684,
-      "w": 162,
-      "h": 37
+      "left": 790,
+      "top": 697,
+      "w": 172,
+      "h": 69
     },
     {
       "name": "eyebrow-r",
       "file": "parts/eyebrow-r.png",
-      "left": 1091,
-      "top": 684,
-      "w": 162,
-      "h": 37
+      "left": 1086,
+      "top": 693,
+      "w": 172,
+      "h": 41
     },
     {
       "name": "mouth close",
       "file": "parts/mouth_close.png",
-      "left": 985,
-      "top": 1041,
-      "w": 78,
-      "h": 32
+      "left": 978,
+      "top": 1038,
+      "w": 92,
+      "h": 16
     },
     {
       "name": "mouth open",
       "file": "parts/mouth_open.png",
       "left": 976,
-      "top": 1009,
+      "top": 1017,
       "w": 96,
       "h": 73
     },
@@ -173,49 +173,49 @@
       "name": "front hair",
       "file": "parts/front_hair.png",
       "left": 632,
-      "top": 304,
+      "top": 284,
       "w": 784,
-      "h": 480
+      "h": 417
     },
     {
       "name": "front hair 2",
       "file": "parts/front_hair_2.png",
-      "left": 572,
-      "top": 220,
-      "w": 904,
-      "h": 1130
+      "left": 588,
+      "top": 208,
+      "w": 872,
+      "h": 1312
     },
     {
       "name": "ear-l",
       "file": "parts/ear-l.png",
-      "left": 445,
-      "top": 849,
-      "w": 262,
-      "h": 165
+      "left": 469,
+      "top": 876,
+      "w": 215,
+      "h": 157
     },
     {
       "name": "ear-r",
       "file": "parts/ear-r.png",
-      "left": 1341,
-      "top": 849,
-      "w": 262,
-      "h": 165
+      "left": 1364,
+      "top": 876,
+      "w": 215,
+      "h": 157
     },
     {
       "name": "headwear",
       "file": "parts/headwear.png",
-      "left": 572,
-      "top": 300,
-      "w": 904,
-      "h": 451
+      "left": 600,
+      "top": 372,
+      "w": 905,
+      "h": 590
     },
     {
       "name": "objects",
       "file": "parts/objects.png",
-      "left": 820,
-      "top": 82,
-      "w": 340,
-      "h": 202
+      "left": 1564,
+      "top": 420,
+      "w": 136,
+      "h": 216
     }
   ]
 }

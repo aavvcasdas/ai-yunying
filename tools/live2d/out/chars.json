@@ -1,0 +1,66 @@
+[
+  {
+    "id": "kai",
+    "name": "凯 Kai",
+    "theme": "赤潮机甲",
+    "nameAscii": "Kai",
+    "themeAscii": "Crimson Mech",
+    "desc": "墨绿黑短发 + 机械鳍耳 + 红色目镜耳机 + 立领机能外套，荧光电路；酷帅型。",
+    "palette": [
+      "#22303C",
+      "#1C242E",
+      "#E03C46",
+      "#5FE8E0"
+    ],
+    "manifest": "kai/manifest.json",
+    "preview": "kai/preview.png"
+  },
+  {
+    "id": "lumi",
+    "name": "露米 Lumi",
+    "theme": "星鲸",
+    "nameAscii": "Lumi",
+    "themeAscii": "Star Whale",
+    "desc": "长直深蓝紫发 + 星环额饰 + 水手领，鳍状耳与鲸尾；冷色系，安静型。",
+    "palette": [
+      "#3B3A7E",
+      "#6663C4",
+      "#7CE0D0",
+      "#FFE7A8"
+    ],
+    "manifest": "lumi/manifest.json",
+    "preview": "lumi/preview.png"
+  },
+  {
+    "id": "momo",
+    "name": "桃桃 Momo",
+    "theme": "甜梦草莓",
+    "nameAscii": "Momo",
+    "themeAscii": "Sweet Berry",
+    "desc": "粉色双马尾 + 熊猫连帽 + 草莓发卡 + 荷叶边连衣裙，半困眼；软萌型。",
+    "palette": [
+      "#F7C0D6",
+      "#F3A8C4",
+      "#E8556E",
+      "#3C3550"
+    ],
+    "manifest": "momo/manifest.json",
+    "preview": "momo/preview.png"
+  },
+  {
+    "id": "nelly",
+    "name": "妮莉 Nelly",
+    "theme": "兔兔海军",
+    "nameAscii": "Nelly",
+    "themeAscii": "Bunny Navy",
+    "desc": "奶油金短发 + 长兔耳 + 海军贝雷帽 + 红领结水手服，脸上有雀斑；活泼型。",
+    "palette": [
+      "#EFD9A3",
+      "#27355F",
+      "#E4555F",
+      "#FAFCFF"
+    ],
+    "manifest": "nelly/manifest.json",
+    "preview": "nelly/preview.png"
+  }
+]
