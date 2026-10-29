@@ -7,8 +7,9 @@
 cd tools/live2d
 npm install                       # @napi-rs/canvas  ag-psd  sharp
 
-node build-pack.mjs               # assets/whale-maid → out/dafeiyu/
-node server.mjs                   # http://localhost:8080/  ← 拖参数实时看
+node build-pack.mjs               # 四套配色全出 → out/dafeiyu/<variant>/
+node build-pack.mjs --only teal   # 只出指定配色
+node server.mjs                   # http://localhost:8080/  ← 切配色、拖参数
 ```
 
 ## 素材来源
@@ -24,12 +25,27 @@ node server.mjs                   # http://localhost:8080/  ← 拖参数实时�
 
 ## 产出物
 
-| 文件 | 说明 |
+```
+out/dafeiyu/
+├── variants.json                    配色索引（预览页用）
+├── original/ teal/ wine/ lavender/   四套配色，各含：
+│   ├── <variant>.psd                ★ 32 层 / 1024×1536 / RGB 8bit
+│   ├── preview.png                  中立姿态定妆图
+│   ├── sheet.png                    6 状态验收图
+│   ├── manifest.json                图层清单 + 被换色的层
+│   └── parts/                       换色后的 6 个布料层
+```
+
+| 配色 | 说明 |
 |---|---|
-| `out/dafeiyu/dafeiyu.psd` | **32 层 / 1024×1536 / RGB 8bit**，图层名按 psd2live 语义，无重名无蒙版，psd-tools 已校验 |
-| `out/dafeiyu/preview.png` | 中立姿态定妆图 |
-| `out/dafeiyu/sheet.png` | 4 状态验收图（idle / 转头眨眼 / 张嘴摆身 / 半闭眼害羞） |
-| `out/dafeiyu/manifest.json` | 每层的 PSD 图层名 + 画布矩形 |
+| `original` | 原色 · 藏青（对照，未改动） |
+| `teal` | 深海青：墨绿裙 + 青绿高光 + 墨绿领结 |
+| `wine` | 酒红：酒红棕裙 + 暗红飘带 |
+| `lavender` | 暮紫：深紫裙 + 紫飘带 |
+
+> 只改**裙 / 发箍织带 / 领结 / 飘带**四类布料的色相。
+> 白色围裙、蕾丝、皮肤、宝石、头发一律不动 —— 做法见 `src/recolor.mjs`
+> （布料蒙版 + 开运算去噪 + 羽化，只在蒙版内做色相旋转）。
 
 ## 文件结构
 
@@ -38,11 +54,12 @@ tools/live2d/
 ├── assets/whale-maid/       素材包原样（94 PNG + rig.json + ATTRIBUTION.md + LICENSE）
 ├── src/pack.mjs             ★ 运行时：头部转动 / 面部视差 / 头发物理 / 眨眼 / 口型 / 表情
 │                              node 与浏览器共用同一份，避免两边不一样
-├── build-pack.mjs           PNG → 语义图层名 → 分层 PSD + preview + sheet + manifest
+├── src/recolor.mjs          布料换色（蒙版 + 开运算 + 羽化）与四套配色
+├── build-pack.mjs           PNG → 换色 → 语义图层名 → 分层 PSD + preview + sheet + manifest
 ├── server.mjs               静态服务器（页面 / 素材 / 生成的 PSD 都能下）
 └── web/
     ├── index.html           预览页
-    └── pack-viewer.js       交互（7 参数 + 7 表情 + 自动眨眼/呼吸/物理/口型/视线）
+    └── pack-viewer.js       交互（配色切换 + 7 参数 + 7 表情 + 自动眨眼/呼吸/物理/口型/视线）
 ```
 
 ## 图层名映射（psd2live 靠这个自动绑骨）
@@ -69,7 +86,7 @@ tools/live2d/
 
 ```bash
 git clone https://github.com/tsunehimatoi/psd2live && cd psd2live
-./gradlew -p ./psd2live run --args="--input <repo>/tools/live2d/out/dafeiyu/dafeiyu.psd --output ./out --atlas 2048 --mesh-spacing 32"
+./gradlew -p ./psd2live run --args="--input <repo>/tools/live2d/out/dafeiyu/teal/teal.psd --output ./out --atlas 2048 --mesh-spacing 32"
 ```
 
 或用 Cubism：`Ctrl+O` 导入 PSD → 眼/嘴设开合参数 → 头发加物理 → 导出 moc3。
@@ -83,7 +100,8 @@ FREE 版限制（1 张 2048 贴图 / 100 ArtMesh / 30 参数 / 50 变形器）�
 
 - ✅ 出符合 Cubism 导入规范的分层 PSD（RGB 8bit / 每部件一层 / 层名唯一 / 无蒙版）
 - ✅ 图层名落在 psd2live 语义词表内，丢进去能自动绑骨并导出 moc3
-- ✅ 参数化预览 + 四状态验收图，先验证「层序、遮挡、眨眼口型、头摆」都对
+- ✅ 参数化预览 + 六状态验收图，先验证「层序、遮挡、眨眼口型、头摆」都对
+- ✅ 衣服/头饰换色不伤原画的蕾丝、皮肤、宝石
 - ❌ 不能直接生成 moc3
 - ❌ 预览是 canvas 2D 近似，不是 Live2D 的变形器系统；真正的九轴变形要绑骨后才有
 - ❌ 素材包是半身像，没有手、腿、尾巴（原包就没有这些层）

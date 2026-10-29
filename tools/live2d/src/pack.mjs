@@ -200,8 +200,13 @@ export function createPack(rig, images) {
   }
 
   function variantFor(id, { lidV, whiteV, mood, open }) {
-    if (id === "eyelidLeft" || id === "eyelidRight") return lidV;
-    if (id === "eyeWhiteLeft" || id === "eyeWhiteRight") return whiteV;
+    const isEye = id === "eyelidLeft" || id === "eyelidRight" || id === "eyeWhiteLeft" || id === "eyeWhiteRight";
+    if (isEye) {
+      // 眨眼优先；不眨眼时按表情走（happy 用笑眼，half 用半闭眼）
+      if (lidV !== "open") return lidV;
+      if (mood.eye === "happy" || mood.eye === "half") return mood.eye;
+      return lidV;
+    }
     if (id === "browLeft" || id === "browRight") return mood.brow;
     if (id === "mouth") return mouthVariant(open, mood.mouth);
     return null;

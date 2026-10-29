@@ -1,10 +1,14 @@
-/* 现成分层素材包预览：加载 out/dafeiyu/manifest.json + assets 里的 PNG，用 share/pack 逻辑渲染。
-   渲染代码在 src/pack.mjs（与 build-pack.mjs 出图共用同一份），这里只管交互。 */
+/* 大肥鱼 · 分层素材预览
+   渲染在 src/pack.mjs（与 build-pack.mjs 出图共用）。
+   换色是构建期用 src/recolor.mjs 算好、落盘到 out/dafeiyu/<variant>/parts/ 的，
+   这里只按配色换路径取图，不做浏览器端像素运算。 */
 import { createPack, createState } from "../src/pack.mjs";
 
 const BASE = "../assets/whale-maid/";
 const canvas = document.getElementById("stage");
 const ctx = canvas.getContext("2d");
+
+let VARIANT = new URLSearchParams(location.search).get("v") || "original";
 
 const st = { ...createState(), auto: { blink: true, breath: true, physics: true, talk: false, gaze: true } };
 let pack = null;
@@ -19,39 +23,59 @@ async function loadImage(name) {
   return img;
 }
 
-async function boot() {
-  const rig = await (await fetch(`${BASE}rig.json`)).json();
-
-  // 只加载实际会用到的图（中立 + 各个差分）
+/** 中立 + 差分共要哪些图 */
+function neededImages(rig) {
   const needed = new Set();
   for (const p of rig.parts) {
     const base = p.image.replace(/\.png$/, "").split("-")[0];
-    if (/^(eyelid)/.test(p.id)) ["open", "half", "closed"].forEach((v) => needed.add(`${base}-${v}.png`));
-    else if (/^(eyeWhite)/.test(p.id)) ["open", "half", "closed"].forEach((v) => needed.add(`${base}-${v}.png`));
+    if (/^eyelid|^eyeWhite/.test(p.id)) ["open", "half", "closed", "happy"].forEach((v) => needed.add(`${base}-${v}.png`));
     else if (/^brow/.test(p.id)) ["neutral", "happy", "sad", "angry", "surprised", "excited"].forEach((v) => needed.add(`${base}-${v}.png`));
     else if (p.id === "mouth") ["N", "A", "half", "happy-N", "happy-A", "sad-N", "sad-A", "angry-N", "angry-A", "O"].forEach((v) => needed.add(`mouth-${v}.png`));
     else needed.add(p.image);
   }
+  return needed;
+}
 
+async function boot() {
+  const [rig, variants] = await Promise.all([
+    (await fetch(`${BASE}rig.json`)).json(),
+    (await fetch("../dafeiyu/variants.json")).json().catch(() => []),
+  ]);
+
+  const meta = variants.find((v) => v.id === VARIANT) || { id: "original", label: "原色 · 藏青", labelAscii: "Original Navy", parts: null, recolored: [] };
+  const override = new Set(meta.recolored || []);
   const images = {};
-  let bytes = 0;
+  let bytes = 0, recolored = 0;
+
   await Promise.all(
-    [...needed].map(async (n) => {
-      const r = await fetch(BASE + n);
+    [...neededImages(rig)].map(async (n) => {
+      const url = override.has(n) && meta.parts ? `../dafeiyu/${meta.parts}${n}` : BASE + n;
+      const r = await fetch(url);
       if (!r.ok) return;
       const buf = await r.arrayBuffer();
       bytes += buf.byteLength;
       const img = new Image();
       img.src = URL.createObjectURL(new Blob([buf], { type: "image/png" }));
       await img.decode();
+      if (override.has(n)) recolored++;
       images[n] = img;
     })
   );
 
   pack = createPack(rig, images);
   document.getElementById("badge").textContent =
-    `${Object.keys(images).length} 张图 / ${(bytes / 1e6).toFixed(2)}MB · ${pack.parts.length} 个部件`;
+    `${Object.keys(images).length} 张图 / ${(bytes / 1e6).toFixed(2)}MB · ${pack.parts.length} 个部件 · ${meta.labelAscii}` +
+    (recolored ? ` · ${recolored} 层换色` : " · 原色");
   document.getElementById("meta").textContent = `${rig.title} · ${rig.credit}`;
+
+  const sel = document.getElementById("variant");
+  if (sel && variants.length) {
+    sel.innerHTML = variants.map((v) => `<option value="${v.id}">${v.label} · ${v.labelAscii}</option>`).join("");
+    sel.value = meta.id;
+    sel.addEventListener("change", () => { location.search = "?v=" + sel.value; });
+    const dl = document.getElementById("psd");
+    if (dl) { dl.href = `../dafeiyu/${meta.id}/${meta.id}.psd`; dl.textContent = `${meta.labelAscii} · 32 层 PSD（5.6MB）`; }
+  }
 
   buildLayerList(pack);
   requestAnimationFrame(loop);
@@ -71,6 +95,7 @@ function buildLayerList(p) {
 /* ── 控件 ── */
 const bind = (id, key, scale = 100, fmt = (v) => v.toFixed(2)) => {
   const el = document.getElementById(id), out = document.getElementById("v-" + key);
+  if (!el) return;
   const apply = () => {
     st[key] = +el.value / scale;
     if (out) out.textContent = fmt(st[key]);
@@ -81,7 +106,7 @@ const bind = (id, key, scale = 100, fmt = (v) => v.toFixed(2)) => {
 bind("yaw", "yaw"); bind("pitch", "pitch"); bind("roll", "roll");
 bind("bodyX", "bodyX"); bind("eye", "blink"); bind("mouth", "mouth"); bind("blush", "blush");
 
-document.getElementById("mood").addEventListener("change", (e) => { st.mood = e.target.value; });
+document.getElementById("mood")?.addEventListener("change", (e) => { st.mood = e.target.value; });
 
 document.querySelectorAll(".chip").forEach((chip) => {
   chip.addEventListener("click", () => {
@@ -118,9 +143,6 @@ function loop(now) {
   st.gazeX = gazeNow.x; st.gazeY = gazeNow.y;
 
   if (st.auto.talk) st.mouth = 0.35 + Math.abs(Math.sin(now / 120)) * 0.6;
-  else if (document.getElementById("mouth").value === "0") st.mouth = 0;
-
-  if (st.auto.physics === false) st.yaw = st.yaw * 0.999; // 物理仍跑，只是不额外驱动
 
   pack && pack.draw(ctx, st, dt);
   requestAnimationFrame(loop);

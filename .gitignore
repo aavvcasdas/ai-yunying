@@ -42,7 +42,5 @@ Day3/成片/MV/hook_ab/*.mp4
 tools/调研/.cache.json
 tools/调研/.repos.json
 
-# Live2D 素材生成器：依赖与中间产物
+# Live2D 素材管线：依赖与中间产物（成品 PSD / 预览图要入库）
 tools/live2d/node_modules/
-tools/live2d/out/parts/
-tools/live2d/out/states/

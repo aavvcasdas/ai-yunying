@@ -1,0 +1,63 @@
+[
+  {
+    "id": "original",
+    "label": "原色 · 藏青",
+    "labelAscii": "Original Navy",
+    "psd": "original/original.psd",
+    "preview": "original/preview.png",
+    "sheet": "original/sheet.png",
+    "parts": null,
+    "recolored": []
+  },
+  {
+    "id": "teal",
+    "label": "深海青",
+    "labelAscii": "Deep Teal",
+    "psd": "teal/teal.psd",
+    "preview": "teal/preview.png",
+    "sheet": "teal/sheet.png",
+    "parts": "teal/parts/",
+    "recolored": [
+      "body.png",
+      "headdress.png",
+      "chestBow.png",
+      "ribbonLeft.png",
+      "ribbonRight.png",
+      "tassel.png"
+    ]
+  },
+  {
+    "id": "wine",
+    "label": "酒红",
+    "labelAscii": "Wine Red",
+    "psd": "wine/wine.psd",
+    "preview": "wine/preview.png",
+    "sheet": "wine/sheet.png",
+    "parts": "wine/parts/",
+    "recolored": [
+      "body.png",
+      "headdress.png",
+      "chestBow.png",
+      "ribbonLeft.png",
+      "ribbonRight.png",
+      "tassel.png"
+    ]
+  },
+  {
+    "id": "lavender",
+    "label": "暮紫",
+    "labelAscii": "Dusk Lavender",
+    "psd": "lavender/lavender.psd",
+    "preview": "lavender/preview.png",
+    "sheet": "lavender/sheet.png",
+    "parts": "lavender/parts/",
+    "recolored": [
+      "body.png",
+      "headdress.png",
+      "chestBow.png",
+      "ribbonLeft.png",
+      "ribbonRight.png",
+      "tassel.png"
+    ]
+  }
+]

@@ -1,0 +1,20 @@
+{
+  "variant": "lavender",
+  "label": "暮紫",
+  "labelAscii": "Dusk Lavender",
+  "size": {
+    "w": 1024,
+    "h": 1536
+  },
+  "source": "FAYER-0610/dafeiyu-vtuber · overlay/avatar/packs/whale-maid",
+  "credit": "鲸鱼娘 · CC BY-NC-SA 4.0 · 上善无形 / ZipZipPipe",
+  "partsDir": "parts/",
+  "recolored": [
+    "body.png",
+    "headdress.png",
+    "chestBow.png",
+    "ribbonLeft.png",
+    "ribbonRight.png",
+    "tassel.png"
+  ]
+}

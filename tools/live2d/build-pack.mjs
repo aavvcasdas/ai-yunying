@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 /**
- * 把现成的分层素材包（FAYER-0610/dafeiyu-vtuber · whale-maid）转成 Live2D 可用素材
+ * 大肥鱼 · 分层素材 → Live2D 素材（含配色变体）
  *
  *   assets/whale-maid/*.png + rig.json
- *     ─► out/dafeiyu/dafeiyu.psd     分层 PSD（图层名按 psd2live 语义，1024×1536 / RGB 8bit）
- *     ─► out/dafeiyu/preview.png     中立姿态定妆图
- *     ─► out/dafeiyu/sheet.png       4 状态验收图
- *     ─► out/dafeiyu/manifest.json   网页预览用（rig + 图片尺寸）
+ *     ─► out/dafeiyu/<variant>/<variant>.psd    分层 PSD（psd2live 语义图层名，1024×1536 / RGB 8bit）
+ *     ─► out/dafeiyu/<variant>/preview.png      中立姿态定妆图
+ *     ─► out/dafeiyu/<variant>/sheet.png        4 状态验收图
+ *     ─► out/dafeiyu/<variant>/manifest.json    图层清单
+ *     ─► out/dafeiyu/variants.json              配色索引（预览页用）
  *
- * 用法：node build-pack.mjs
+ * 用法：
+ *   node build-pack.mjs                     # 全部配色
+ *   node build-pack.mjs --only teal         # 只做一套
+ *   node build-pack.mjs --only original,wine
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -16,62 +20,81 @@ import { createCanvas, loadImage } from "@napi-rs/canvas";
 import sharp from "sharp";
 import { writePsdBuffer } from "ag-psd";
 import { createPack, createState, CANVAS, SEMANTIC } from "./src/pack.mjs";
+import { clothMask, recolorWithMask, PALETTES, LAYER_SLOT } from "./src/recolor.mjs";
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const SRC = path.join(HERE, "assets/whale-maid");
 const OUT = path.join(HERE, "out/dafeiyu");
-const ID = "dafeiyu";
 
-fs.mkdirSync(OUT, { recursive: true });
+const arg = (k, d) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : d; };
+const ONLY = arg("--only", "") ? arg("--only", "").split(",").map((s) => s.trim()) : null;
 
 const rig = JSON.parse(fs.readFileSync(path.join(SRC, "rig.json"), "utf8"));
-const files = fs.readdirSync(SRC).filter((f) => f.endsWith(".png"));
-const images = {};
-for (const f of files) images[f] = await loadImage(fs.readFileSync(path.join(SRC, f)));
 
-const pack = createPack(rig, images);
-console.log(`素材：${files.length} 张 PNG · ${rig.parts.length} 个部件 · 画布 ${CANVAS.w}×${CANVAS.h}`);
+/* ── 1. 配色处理：只处理 6 个布料/头饰图层 ───────────── */
+const CLOTH_FILES = Object.keys(LAYER_SLOT);
 
-/* ── 1. 定妆图 ─────────────────────────────── */
-function renderState(patch) {
-  const st = { ...createState(), ...patch };
-  const cv = createCanvas(CANVAS.w, CANVAS.h);
-  const ctx = cv.getContext("2d");
-  // 先迭代几步物理，避免第一帧抖动
-  for (let i = 0; i < 40; i++) pack.draw(ctx, st, 1 / 60);
-  pack.draw(ctx, st, 1 / 60);
-  return cv;
+async function buildVariantImages(variant) {
+  const pal = PALETTES[variant];
+  const images = {};
+  const files = fs.readdirSync(SRC).filter((f) => f.endsWith(".png"));
+  for (const f of files) {
+    const buf = fs.readFileSync(path.join(SRC, f));
+    const spec = pal[LAYER_SLOT[f]];
+    if (!spec) { images[f] = await loadImage(buf); continue; }
+
+    const { data, info } = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const mask = clothMask(data, info.width, info.height);
+    recolorWithMask(data, mask, spec);
+    const png = await sharp(Buffer.from(data.buffer, data.byteOffset, data.length), {
+      raw: { width: info.width, height: info.height, channels: 4 },
+    }).png().toBuffer();
+    images[f] = await loadImage(png);
+    images[`__raw__${f}`] = png;
+  }
+  return images;
 }
 
-const neutral = renderState({});
-fs.writeFileSync(path.join(OUT, "preview.png"), neutral.toBuffer("image/png"));
-
-/* ── 2. 4 状态验收图 ───────────────────────── */
+/* ── 2. 渲染：定妆图 + 4 状态验收图 ─────────────────── */
 const STATES = [
   { label: "idle", st: {} },
   { label: "turn + blink", st: { yaw: -0.85, pitch: 0.25, roll: -0.055, blink: 0 } },
   { label: "talk + body sway", st: { yaw: 0.45, roll: 0.04, mouth: 0.95, bodyX: 0.35, bodyRoll: 0.04 } },
+  { label: "happy + blush", st: { mood: "happy", yaw: 0.2, roll: 0.03, blush: 1 } },
   { label: "half eye + shy", st: { mood: "shy", yaw: 0.35, roll: 0.03, blink: 0.45, blush: 1 } },
+  { label: "sad", st: { mood: "sad", pitch: 0.3, roll: -0.03, blink: 0.5 } },
 ];
 
-const CW = 620, CH = 900, PAD = 26, LBL = 34;
-const sheet = createCanvas(CW * 2 + PAD * 3, (CH + LBL) * 2 + PAD * 3);
-const sctx = sheet.getContext("2d");
-sctx.fillStyle = "#101827";
-sctx.fillRect(0, 0, sheet.width, sheet.height);
-STATES.forEach((s, i) => {
-  const cv = renderState(s.st);
-  const x = PAD + (i % 2) * (CW + PAD);
-  const y = PAD + Math.floor(i / 2) * (CH + LBL + PAD);
-  sctx.fillStyle = "#9fb4d8";
-  sctx.font = "26px sans-serif";
-  sctx.fillText(s.label, x + 4, y + 26);
-  sctx.drawImage(cv, x, y + LBL, CW, CH);
-});
-fs.writeFileSync(path.join(OUT, "sheet.png"), sheet.toBuffer("image/png"));
+function renderState(pack, patch) {
+  const st = { ...createState(), ...patch };
+  const cv = createCanvas(CANVAS.w, CANVAS.h);
+  const ctx = cv.getContext("2d");
+  for (let i = 0; i < 30; i++) pack.draw(ctx, st, 1 / 60);
+  pack.draw(ctx, st, 1 / 60);
+  return cv;
+}
 
-/* ── 3. 分层 PSD ───────────────────────────── */
-/** 取某个部件该用哪张图（PSD 用中立姿态的那一张） */
+const SH_W = 460, SH_H = 690, PAD = 20, LBL = 30;
+
+function buildSheet(pack) {
+  const cols = 3, rows = 2;
+  const cv = createCanvas(cols * SH_W + PAD * (cols + 1), rows * (SH_H + LBL) + PAD * (rows + 1));
+  const ctx = cv.getContext("2d");
+  ctx.fillStyle = "#101827";
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  STATES.forEach((s, i) => {
+    const x = PAD + (i % cols) * (SH_W + PAD);
+    const y = PAD + Math.floor(i / cols) * (SH_H + LBL + PAD);
+    ctx.fillStyle = "#9fb4d8";
+    ctx.font = "22px sans-serif";
+    ctx.fillText(s.label, x + 4, y + 22);
+    const img = renderState(pack, s.st);
+    ctx.drawImage(img, x, y + LBL, SH_W, SH_H);
+  });
+  return cv;
+}
+
+/* ── 3. 分层 PSD ───────────────────────────────────── */
 function variantFile(id) {
   const p = rig.parts.find((q) => q.id === id);
   const base = p.image.replace(/\.png$/, "").split("-")[0];
@@ -82,54 +105,82 @@ function variantFile(id) {
   return p.image;
 }
 
-const psdLayers = [];
-for (const p of [...rig.parts].sort((a, b) => a.z - b.z)) {
-  const [left, top, w, h] = p.rect;
-  const decode = async (file) => {
-    const { data, info } = await sharp(path.join(SRC, file)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-    return { data, info };
-  };
-
-  if (p.id === "mouth") {
-    const close = await decode("mouth-N.png");
-    psdLayers.push({ name: "mouth close", left, top, imageData: { width: w, height: h, data: new Uint8ClampedArray(close.data) } });
-    const open = await decode("mouth-A.png");
-    psdLayers.push({ name: "mouth open", left, top, imageData: { width: w, height: h, data: new Uint8ClampedArray(open.data) } });
-    continue;
-  }
-
-  const file = variantFile(p.id);
-  const { data } = await decode(file);
-  const name = SEMANTIC[p.id] || p.id;
-  psdLayers.push({ name, left, top, imageData: { width: w, height: h, data: new Uint8ClampedArray(data) } });
-
-  if (p.id === "eyelidLeft" || p.id === "eyelidRight") {
-    const side = p.id.endsWith("Left") ? "l" : "r";
-    const closed = await decode(`${p.image.replace(/\.png$/, "").split("-")[0]}-closed.png`);
-    psdLayers.push({ name: `eye close-${side}`, left, top, imageData: { width: w, height: h, data: new Uint8ClampedArray(closed.data) } });
-  }
+async function pngToLayerImage(pngBuf, w, h) {
+  const { data } = await sharp(pngBuf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  return { width: w, height: h, data: new Uint8ClampedArray(data) };
 }
 
-const psd = writePsdBuffer(
-  { width: CANVAS.w, height: CANVAS.h, children: psdLayers },
-  { generateThumbnail: false }
-);
-fs.writeFileSync(path.join(OUT, `${ID}.psd`), psd);
-console.log(`  ✓ ${ID}.psd  ${(psd.length / 1e6).toFixed(1)}MB  ${psdLayers.length} 层`);
+async function buildPsd(images) {
+  const layers = [];
+  for (const p of [...rig.parts].sort((a, b) => a.z - b.z)) {
+    const [left, top, w, h] = p.rect;
 
-/* ── 4. 网页清单 ───────────────────────────── */
-fs.writeFileSync(
-  path.join(OUT, "manifest.json"),
-  JSON.stringify(
-    {
-      size: CANVAS,
-      source: "FAYER-0610/dafeiyu-vtuber · overlay/avatar/packs/whale-maid",
-      credit: rig.credit,
-      layers: psdLayers.map((l) => ({ name: l.name, left: l.left, top: l.top, w: l.imageData.width, h: l.imageData.height })),
-    },
-    null,
-    2
-  )
-);
+    if (p.id === "mouth") {
+      const pair = [["mouth close", "mouth-N.png"], ["mouth open", "mouth-A.png"]];
+      for (const [name, f] of pair) {
+        layers.push({ name, left, top, imageData: await pngToLayerImage(images[`__raw__${f}`] || fs.readFileSync(path.join(SRC, f)), w, h) });
+      }
+      continue;
+    }
 
-console.log(`\n完成 → out/${ID}/  preview.png · sheet.png · ${ID}.psd · manifest.json`);
+    const raw = (f) => images[`__raw__${f}`] || fs.readFileSync(path.join(SRC, f));
+    layers.push({ name: SEMANTIC[p.id] || p.id, left, top, imageData: await pngToLayerImage(raw(variantFile(p.id)), w, h) });
+
+    if (p.id === "eyelidLeft" || p.id === "eyelidRight") {
+      const side = p.id.endsWith("Left") ? "l" : "r";
+      const base = p.image.replace(/\.png$/, "").split("-")[0];
+      layers.push({ name: `eye close-${side}`, left, top, imageData: await pngToLayerImage(raw(`${base}-closed.png`), w, h) });
+    }
+  }
+  return writePsdBuffer({ width: CANVAS.w, height: CANVAS.h, children: layers }, { generateThumbnail: false });
+}
+
+/* ── 主流程 ────────────────────────────────────────── */
+const index = [];
+for (const variant of Object.keys(PALETTES)) {
+  if (ONLY && !ONLY.includes(variant)) continue;
+  const pal = PALETTES[variant];
+  const dir = path.join(OUT, variant);
+  fs.mkdirSync(dir, { recursive: true });
+
+  const images = await buildVariantImages(variant);
+  const pack = createPack(rig, images);
+
+  // 换色后的布料层落盘：网页按 variant 直接取这几张，不做浏览器端像素运算
+  const partsDir = path.join(dir, "parts");
+  fs.mkdirSync(partsDir, { recursive: true });
+  let partCount = 0;
+  for (const f of CLOTH_FILES) {
+    const buf = images[`__raw__${f}`];
+    if (!buf) continue;
+    fs.writeFileSync(path.join(partsDir, f), buf);
+    partCount++;
+  }
+
+  fs.writeFileSync(path.join(dir, "preview.png"), renderState(pack, {}).toBuffer("image/png"));
+  fs.writeFileSync(path.join(dir, "sheet.png"), buildSheet(pack).toBuffer("image/png"));
+
+  const psd = await buildPsd(images);
+  fs.writeFileSync(path.join(dir, `${variant}.psd`), psd);
+
+  const manifest = {
+    variant, label: pal.label, labelAscii: pal.labelAscii,
+    size: CANVAS,
+    source: "FAYER-0610/dafeiyu-vtuber · overlay/avatar/packs/whale-maid",
+    credit: rig.credit,
+    partsDir: partCount ? "parts/" : null,
+    recolored: CLOTH_FILES.filter((f) => pal[LAYER_SLOT[f]] && images[`__raw__${f}`]).map((f) => f),
+  };
+  fs.writeFileSync(path.join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
+
+  index.push({
+    id: variant, label: pal.label, labelAscii: pal.labelAscii,
+    psd: `${variant}/${variant}.psd`, preview: `${variant}/preview.png`, sheet: `${variant}/sheet.png`,
+    parts: partCount ? `${variant}/parts/` : null,
+    recolored: manifest.recolored,
+  });
+  console.log(`  ✓ ${variant.padEnd(9)} ${pal.labelAscii.padEnd(15)} PSD ${(psd.length / 1e6).toFixed(1)}MB`);
+}
+
+fs.writeFileSync(path.join(OUT, "variants.json"), JSON.stringify(index, null, 2));
+console.log(`\n完成 → out/dafeiyu/  ${index.length} 套配色（含原色）`);

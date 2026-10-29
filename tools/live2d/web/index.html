@@ -72,6 +72,11 @@
     <div class="row"><label>ParamCheek（腮红）<b id="v-blush">0.82</b></label>
       <input id="blush" type="range" min="0" max="100" value="82"></div>
 
+    <h2>配色 / Palette</h2>
+    <select id="variant" style="margin-bottom:8px"></select>
+    <a id="psd" href="../dafeiyu/original/original.psd" download
+       style="display:block;font-size:12px;margin:0 0 14px;color:#5fa8ff">下载分层 PSD</a>
+
     <h2>表情 / Expression</h2>
     <select id="mood">
       <option value="neutral">neutral 平静</option>
@@ -96,8 +101,9 @@
     <div class="layers" id="layers"></div>
 
     <div class="foot">
-      素材包 <code>overlay/avatar/packs/whale-maid</code>（94 张 PNG + rig.json），
-      由 <code>build-pack.mjs</code> 转成 <code>out/dafeiyu/dafeiyu.psd</code>（32 层，图层名按 psd2live 语义）。<br>
+      素材包 <code>overlay/avatar/packs/whale-maid</code>（94 张 PNG + rig.json）。
+      配色只改「裙 / 发箍织带 / 领结 / 飘带」四类布料的色相，蕾丝、皮肤、宝石、头发都不动。<br>
+      每套配色在 <code>out/dafeiyu/&lt;variant&gt;/</code> 下有独立的 32 层 PSD 与状态验收图。
       本页是 canvas 2D 复刻的预览，不是 Live2D 官方运行时，也不是 <code>.moc3</code>。
     </div>
   </div>
