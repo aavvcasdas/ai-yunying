@@ -1,0 +1,230 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<!--
+  鲸鱼娘 · 分层矢量源（Live2D / psd2live 用）
+    每个 PART 标记块 = PSD 里的一层 = Live2D 的一个部件
+    图层名按 psd2live 语义规范：见 docs/LIVE2D模型制作与生成_2026-10-29.md
+  调色（对齐 DS鲸鱼娘）：
+    发 #2E3E7A / 亮 #46589C / 暗 #1E2647；肤 #FDE7E1 / 影 #F7CFC7
+    瞳 #9CC2F2→#4E74C8→#26386E；白衣 #FFFFFF / 影 #E4EAF6；裙 #26314F；蝴蝶结 #6FB3E8
+  坐标：脸心 (512,400)，眼心 y=430，下巴 y=600，肩 y=690
+-->
+
+<!--PART:back hair-->
+<path fill="#2E3E7A" d="M512,118 C676,118 792,236 792,424 C792,540 778,650 758,744 L730,684 L708,750 L680,690 L652,756 L624,696 L512,720
+L400,696 L372,756 L344,690 L316,750 L294,684 L266,744 C246,650 232,540 232,424 C232,236 348,118 512,118 Z"/>
+<path fill="#1E2647" opacity="0.45" d="M512,320 C604,320 664,382 672,470 C680,548 664,628 652,690 L624,696 L512,720 L400,696 L372,690 C360,628 344,548 352,470 C360,382 420,320 512,320 Z"/>
+<!--/PART-->
+
+<!--PART:tail-->
+<path fill="#3C5A9E" d="M716,840 C792,806 872,822 918,872 C932,888 926,904 908,904 C866,872 806,864 748,880 Z"/>
+<path fill="#3C5A9E" d="M900,856 C928,830 962,824 986,838 C972,864 944,884 914,890 Z"/>
+<path fill="#5A7BBE" opacity="0.75" d="M726,850 C788,822 852,834 890,868 C848,848 786,846 740,866 Z"/>
+<path fill="#2B4680" opacity="0.6" d="M748,880 C806,864 866,872 908,904 C860,890 800,886 754,896 Z"/>
+<!--/PART-->
+
+<!--PART:neck-->
+<path fill="#F7CFC7" d="M482,548 L542,548 L548,652 L476,652 Z"/>
+<!--/PART-->
+
+<!--PART:topwear-->
+<path fill="#26314F" d="M512,608 C570,608 622,634 664,672 C716,718 744,788 752,880 L760,1024 L264,1024 L272,880 C280,788 308,718 360,672 C402,634 454,608 512,608 Z"/>
+<path fill="#1C2540" d="M512,608 C558,608 600,624 636,648 C602,668 558,680 512,680 C466,680 422,668 388,648 C424,624 466,608 512,608 Z"/>
+<path fill="#2F3C5E" d="M300,760 C290,830 288,930 292,1024 L370,1024 C360,920 362,830 372,772 Z"/>
+<path fill="#2F3C5E" d="M724,760 C734,830 736,930 732,1024 L654,1024 C664,920 662,830 652,772 Z"/>
+<path fill="#FAFCFF" d="M432,714 C476,698 548,698 592,714 L600,940 C566,954 458,954 424,940 Z"/>
+<path fill="#E4EAF6" d="M432,714 C476,698 548,698 592,714 L594,738 C550,724 474,724 430,738 Z"/>
+<path fill="#FAFCFF" d="M418,932 C456,948 568,948 606,932 C612,952 610,968 604,980 C562,994 462,994 420,980 C414,968 412,952 418,932 Z"/>
+<path fill="#E4EAF6" d="M418,932 C456,948 568,948 606,932 L606,940 C566,956 456,956 418,940 Z"/>
+<path fill="#7EA9DC" d="M486,806 C486,790 500,780 516,780 C532,780 544,790 544,804 C544,818 530,826 514,826 C496,826 486,818 486,806 Z"/>
+<path fill="#A8C8EC" d="M488,800 C494,792 506,790 512,792 C504,796 496,802 492,810 Z"/>
+<path fill="#7EA9DC" d="M544,798 C558,786 572,784 580,790 C572,800 558,808 546,810 Z"/>
+<!--/PART-->
+
+<!--PART:handwear-l-->
+<path fill="#1F2945" d="M304,676 C272,742 258,850 262,958 C266,990 294,1002 320,992 C342,984 348,962 344,938 C334,846 336,754 352,692 Z"/>
+<path fill="#33405F" d="M310,690 C288,750 278,846 282,940 C286,958 298,964 308,960 C302,860 304,760 318,706 Z"/>
+<!--/PART-->
+
+<!--PART:handwear-r-->
+<path fill="#1F2945" d="M720,676 C752,742 766,850 762,958 C758,990 730,1002 704,992 C682,984 676,962 680,938 C690,846 688,754 672,692 Z"/>
+<path fill="#33405F" d="M714,690 C736,750 746,846 742,940 C738,958 726,964 716,960 C722,860 720,760 706,706 Z"/>
+<!--/PART-->
+
+<!--PART:neckwear-->
+<path fill="#FAFCFF" d="M448,634 C472,620 494,614 512,614 C530,614 552,620 576,634 C564,656 540,666 512,666 C484,666 460,656 448,634 Z"/>
+<path fill="#E4EAF6" d="M448,634 C472,620 494,614 512,614 C530,614 552,620 576,634 C570,640 564,646 558,648 C538,636 486,636 466,648 C460,646 454,640 448,634 Z"/>
+<path fill="#6FB3E8" d="M512,676 L460,650 L464,704 C480,700 500,696 512,694 Z"/>
+<path fill="#6FB3E8" d="M512,676 L564,650 L560,704 C544,700 524,696 512,694 Z"/>
+<circle cx="512" cy="676" r="12" fill="#4E93CC"/>
+<circle cx="508" cy="672" r="4.5" fill="#A8D2F5"/>
+<!--/PART-->
+
+<!--PART:face-->
+<path fill="#FDE7E1" d="M512,196 C620,196 702,282 704,396 C706,486 660,556 604,586 C572,602 536,608 512,608 C488,608 452,602 420,586 C364,556 318,486 320,396 C322,282 404,196 512,196 Z"/>
+<path fill="#F7CFC7" opacity="0.45" d="M356,470 C374,542 418,582 458,598 C428,600 388,578 366,538 C356,520 352,494 356,470 Z"/>
+<path fill="#F7CFC7" opacity="0.3" d="M668,470 C650,542 606,582 566,598 C596,600 636,578 658,538 C668,520 672,494 668,470 Z"/>
+<!--/PART-->
+
+<!--PART:facedetail-->
+<ellipse cx="372" cy="490" rx="36" ry="19" fill="#F7A9B0" opacity="0.5"/>
+<ellipse cx="652" cy="490" rx="36" ry="19" fill="#F7A9B0" opacity="0.5"/>
+<path stroke="#EE93A0" stroke-width="3.5" stroke-linecap="round" opacity="0.55" fill="none" d="M358,484 L365,495 M373,482 L380,493 M388,484 L395,495"/>
+<path stroke="#EE93A0" stroke-width="3.5" stroke-linecap="round" opacity="0.55" fill="none" d="M629,484 L636,495 M644,482 L651,493 M659,484 L666,495"/>
+<ellipse cx="512" cy="492" rx="7" ry="5" fill="#F2BCB4" opacity="0.75"/>
+<!--/PART-->
+
+<!--PART:eyewhite-l-->
+<ellipse cx="438" cy="432" rx="50" ry="56" fill="#FFFFFF"/>
+<!--/PART-->
+
+<!--PART:eyewhite-r-->
+<ellipse cx="586" cy="432" rx="50" ry="56" fill="#FFFFFF"/>
+<!--/PART-->
+
+<!--PART:irides-l-->
+<circle cx="438" cy="434" r="39" fill="url(#irisGrad)"/>
+<circle cx="438" cy="436" r="18" fill="#1A2242"/>
+<circle cx="426" cy="418" r="11.5" fill="#FFFFFF" opacity="0.95"/>
+<circle cx="452" cy="452" r="5.5" fill="#FFFFFF" opacity="0.85"/>
+<path fill="#FFFFFF" opacity="0.3" d="M406,444 C406,418 421,402 438,400 C416,408 406,426 406,444 Z"/>
+<!--/PART-->
+
+<!--PART:irides-r-->
+<circle cx="586" cy="434" r="39" fill="url(#irisGrad)"/>
+<circle cx="586" cy="436" r="18" fill="#1A2242"/>
+<circle cx="574" cy="418" r="11.5" fill="#FFFFFF" opacity="0.95"/>
+<circle cx="600" cy="452" r="5.5" fill="#FFFFFF" opacity="0.85"/>
+<path fill="#FFFFFF" opacity="0.3" d="M554,444 C554,418 569,402 586,400 C564,408 554,426 554,444 Z"/>
+<!--/PART-->
+
+<!--PART:eyelash-l-->
+<path fill="none" stroke="#232C4E" stroke-width="11" stroke-linecap="round" d="M392,410 C406,382 466,378 492,404"/>
+<path fill="none" stroke="#232C4E" stroke-width="9" stroke-linecap="round" d="M394,408 C384,398 378,386 375,372"/>
+<path fill="#232C4E" d="M490,414 C500,406 508,398 514,390 C510,406 500,418 490,422 Z"/>
+<!--/PART-->
+
+<!--PART:eyelash-r-->
+<path fill="none" stroke="#232C4E" stroke-width="11" stroke-linecap="round" d="M632,410 C618,382 558,378 532,404"/>
+<path fill="none" stroke="#232C4E" stroke-width="9" stroke-linecap="round" d="M630,408 C640,398 646,386 649,372"/>
+<path fill="#232C4E" d="M534,414 C524,406 516,398 510,390 C514,406 524,418 534,422 Z"/>
+<!--/PART-->
+
+<!--PART:eye close-l-->
+<path fill="none" stroke="#232C4E" stroke-width="8" stroke-linecap="round" d="M394,432 C416,410 462,410 484,432"/>
+<!--/PART-->
+
+<!--PART:eye close-r-->
+<path fill="none" stroke="#232C4E" stroke-width="8" stroke-linecap="round" d="M540,432 C562,410 608,410 630,432"/>
+<!--/PART-->
+
+<!--PART:eyebrow-l-->
+<path fill="none" stroke="#2E3E7A" stroke-width="9" stroke-linecap="round" d="M402,356 C422,344 456,344 474,354"/>
+<!--/PART-->
+
+<!--PART:eyebrow-r-->
+<path fill="none" stroke="#2E3E7A" stroke-width="9" stroke-linecap="round" d="M550,354 C568,344 602,344 622,356"/>
+<!--/PART-->
+
+<!--PART:mouth close-->
+<path fill="none" stroke="#C4727E" stroke-width="7" stroke-linecap="round" d="M496,524 C505,536 519,536 528,524"/>
+<!--/PART-->
+
+<!--PART:mouth open-->
+<path fill="#A34A56" d="M488,512 C500,502 524,502 536,512 C534,540 490,540 488,512 Z"/>
+<path fill="#FFFFFF" d="M492,510 C501,505 523,505 532,510 C526,516 498,516 492,510 Z"/>
+<ellipse cx="512" cy="532" rx="15" ry="9" fill="#E98E9A"/>
+<!--/PART-->
+
+<!--PART:front hair-->
+<path fill="#2E3E7A" d="M316,344 C330,206 402,152 512,152 C622,152 694,206 708,344
+C700,318 690,296 678,278
+C676,322 664,354 646,378
+C640,336 630,308 618,290
+C612,336 598,368 578,388
+C572,344 562,316 550,298
+C544,344 530,374 512,392
+C494,374 480,344 474,298
+C462,316 452,344 446,388
+C426,368 412,336 406,290
+C394,308 384,336 378,378
+C360,354 348,322 346,278
+C334,296 324,318 316,344 Z"/>
+<path fill="#46589C" opacity="0.5" d="M356,258 C392,204 448,178 512,176 C576,178 632,204 668,258 C620,216 566,196 512,196 C458,196 404,216 356,258 Z"/>
+<path fill="#46589C" opacity="0.28" d="M372,296 C398,250 442,224 486,214 C448,232 412,262 392,302 Z"/>
+<!--/PART-->
+
+<!--PART:front hair 2-->
+<path fill="#2E3E7A" d="M646,190 C640,148 660,120 692,112 C714,106 730,118 724,132 C716,120 704,116 692,122 C672,132 668,158 672,192 Z"/>
+<path fill="#2E3E7A" d="M306,336 C282,436 280,556 300,668 C330,686 352,668 356,626 C362,534 352,428 336,350 Z"/>
+<path fill="#2E3E7A" d="M718,336 C742,436 744,556 724,668 C694,686 672,668 668,626 C662,534 672,428 688,350 Z"/>
+<path fill="#46589C" opacity="0.4" d="M316,384 C300,474 302,566 314,640 C322,638 328,630 330,616 C324,536 322,446 332,382 Z"/>
+<path fill="#46589C" opacity="0.4" d="M708,384 C724,474 722,566 710,640 C702,638 696,630 694,616 C700,536 702,446 692,382 Z"/>
+<!--/PART-->
+
+<!--PART:ear-l-->
+<path fill="#4A6DAE" d="M330,442 C296,414 250,420 224,458 C216,486 244,512 288,506 C316,502 338,486 350,466 Z"/>
+<path fill="#6E92CE" d="M318,452 C292,436 262,440 244,462 C250,480 274,492 300,486 C316,480 328,468 334,458 Z"/>
+<path fill="none" stroke="#9DC2EC" stroke-width="5" opacity="0.65" d="M272,452 C288,452 304,458 316,468"/>
+<path fill="#3A5A96" opacity="0.5" d="M330,442 C352,452 358,470 350,466 Z"/>
+<!--/PART-->
+
+<!--PART:ear-r-->
+<path fill="#4A6DAE" d="M694,442 C728,414 774,420 800,458 C808,486 780,512 736,506 C708,502 686,486 674,466 Z"/>
+<path fill="#6E92CE" d="M706,452 C732,436 762,440 780,462 C774,480 750,492 724,486 C708,480 696,468 690,458 Z"/>
+<path fill="none" stroke="#9DC2EC" stroke-width="5" opacity="0.65" d="M752,452 C736,452 720,458 708,468"/>
+<path fill="#3A5A96" opacity="0.5" d="M694,442 C672,452 666,470 674,466 Z"/>
+<!--/PART-->
+
+<!--PART:headwear-->
+<path fill="#FFFFFF" d="M296,304 C312,198 398,150 512,150 C626,150 712,198 728,304 L712,312 C696,212 618,168 512,168 C406,168 328,212 312,312 Z"/>
+<circle cx="328" cy="276" r="23" fill="#FFFFFF"/><circle cx="328" cy="276" r="23" fill="#DFE7F4" opacity="0.45"/>
+<circle cx="356" cy="236" r="26" fill="#FFFFFF"/><circle cx="356" cy="236" r="26" fill="#DFE7F4" opacity="0.4"/>
+<circle cx="396" cy="208" r="28" fill="#FFFFFF"/><circle cx="396" cy="208" r="28" fill="#DFE7F4" opacity="0.32"/>
+<circle cx="444" cy="188" r="29" fill="#FFFFFF"/><circle cx="444" cy="188" r="29" fill="#DFE7F4" opacity="0.26"/>
+<circle cx="512" cy="180" r="29" fill="#FFFFFF"/>
+<circle cx="580" cy="188" r="29" fill="#FFFFFF"/><circle cx="580" cy="188" r="29" fill="#DFE7F4" opacity="0.26"/>
+<circle cx="628" cy="208" r="28" fill="#FFFFFF"/><circle cx="628" cy="208" r="28" fill="#DFE7F4" opacity="0.32"/>
+<circle cx="668" cy="236" r="26" fill="#FFFFFF"/><circle cx="668" cy="236" r="26" fill="#DFE7F4" opacity="0.4"/>
+<circle cx="696" cy="276" r="23" fill="#FFFFFF"/><circle cx="696" cy="276" r="23" fill="#DFE7F4" opacity="0.45"/>
+<circle cx="512" cy="180" r="13" fill="#6FB3E8" opacity="0.32"/>
+<path fill="#6FB3E8" d="M318,300 C300,318 288,344 286,372 C300,380 314,372 320,356 C326,340 324,316 318,300 Z"/>
+<path fill="#6FB3E8" d="M706,300 C724,318 736,344 738,372 C724,380 710,372 704,356 C698,340 700,316 706,300 Z"/>
+<path fill="#8FC8F0" opacity="0.6" d="M316,306 C306,322 300,340 300,356 C308,346 314,330 320,314 Z"/>
+<path fill="#8FC8F0" opacity="0.6" d="M708,306 C718,322 724,340 724,356 C716,346 710,330 704,314 Z"/>
+<!--/PART-->
+
+<!--PART:objects-->
+<ellipse cx="470" cy="104" rx="60" ry="38" fill="#6FA8DC"/>
+<ellipse cx="470" cy="116" rx="44" ry="22" fill="#EAF3FC"/>
+<path fill="#6FA8DC" d="M526,88 C546,72 568,70 580,80 C568,90 550,98 530,100 Z"/>
+<circle cx="444" cy="96" r="6.5" fill="#1B2B4B"/>
+<circle cx="442" cy="94" r="2.2" fill="#FFFFFF"/>
+<path fill="none" stroke="#8FC0E8" stroke-width="6" stroke-linecap="round" d="M436,68 C438,56 446,48 456,44"/>
+<path fill="none" stroke="#8FC0E8" stroke-width="6" stroke-linecap="round" d="M458,62 C462,52 470,46 480,44"/>
+<path fill="#8FB4E4" opacity="0.7" d="M430,100 C440,92 456,90 466,94 C456,102 440,106 430,100 Z"/>
+<!--/PART-->
+
+
+<!--
+  ── 替换成自己的立绘（可选）──────────────────────────────────────────
+  不做矢量重绘、想直接用现有立绘的话：
+    把每个 PART 里的图形换成 <image href="..."/> 并贴到同一坐标即可，
+    图层名与切分方式都不用改，build.mjs 照样出 PSD。
+  下面两个槽位分别对应项目现有的两张角色图：
+    dafeiyu.webp                        → 项目默认鲸鱼娘（站点根目录）
+    tools/day3制作/whale_girl_src/pose_*.png  → 41 张高清差分姿势
+  用法示例（把 imagePose 里的注释去掉、填上实际文件）：
+    <image href="../../../../dafeiyu.webp" x="0" y="0" width="1024" height="1024"/>
+  ⚠ 直接整张塞进去只能做「一张图 + 差分」，没有部件可动；
+    要做真正能动的模型，必须按上面 27 个部件分别切图。
+-->
+<g id="imagePose" style="display:none"></g>
+
+<defs>
+  <radialGradient id="irisGrad" cx="0.5" cy="0.3" r="0.8">
+    <stop offset="0%" stop-color="#9CC2F2"/>
+    <stop offset="52%" stop-color="#4E74C8"/>
+    <stop offset="100%" stop-color="#26386E"/>
+  </radialGradient>
+</defs>
+</svg>

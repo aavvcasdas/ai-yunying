@@ -1,0 +1,221 @@
+{
+  "size": 2048,
+  "parts": [
+    {
+      "name": "back hair",
+      "file": "parts/back_hair.png",
+      "left": 464,
+      "top": 236,
+      "w": 1120,
+      "h": 1276
+    },
+    {
+      "name": "tail",
+      "file": "parts/tail.png",
+      "left": 1432,
+      "top": 1644,
+      "w": 540,
+      "h": 164
+    },
+    {
+      "name": "neck",
+      "file": "parts/neck.png",
+      "left": 952,
+      "top": 1096,
+      "w": 144,
+      "h": 208
+    },
+    {
+      "name": "topwear",
+      "file": "parts/topwear.png",
+      "left": 528,
+      "top": 1216,
+      "w": 992,
+      "h": 832
+    },
+    {
+      "name": "handwear-l",
+      "file": "parts/handwear-l.png",
+      "left": 522,
+      "top": 1352,
+      "w": 182,
+      "h": 639
+    },
+    {
+      "name": "handwear-r",
+      "file": "parts/handwear-r.png",
+      "left": 1344,
+      "top": 1352,
+      "w": 182,
+      "h": 639
+    },
+    {
+      "name": "neckwear",
+      "file": "parts/neckwear.png",
+      "left": 896,
+      "top": 1228,
+      "w": 256,
+      "h": 180
+    },
+    {
+      "name": "face",
+      "file": "parts/face.png",
+      "left": 640,
+      "top": 392,
+      "w": 768,
+      "h": 824
+    },
+    {
+      "name": "facedetail",
+      "file": "parts/facedetail.png",
+      "left": 672,
+      "top": 942,
+      "w": 704,
+      "h": 76
+    },
+    {
+      "name": "eyewhite-l",
+      "file": "parts/eyewhite-l.png",
+      "left": 776,
+      "top": 752,
+      "w": 200,
+      "h": 224
+    },
+    {
+      "name": "eyewhite-r",
+      "file": "parts/eyewhite-r.png",
+      "left": 1072,
+      "top": 752,
+      "w": 200,
+      "h": 224
+    },
+    {
+      "name": "irides-l",
+      "file": "parts/irides-l.png",
+      "left": 798,
+      "top": 790,
+      "w": 156,
+      "h": 156
+    },
+    {
+      "name": "irides-r",
+      "file": "parts/irides-r.png",
+      "left": 1094,
+      "top": 790,
+      "w": 156,
+      "h": 156
+    },
+    {
+      "name": "eyelash-l",
+      "file": "parts/eyelash-l.png",
+      "left": 741,
+      "top": 735,
+      "w": 287,
+      "h": 109
+    },
+    {
+      "name": "eyelash-r",
+      "file": "parts/eyelash-r.png",
+      "left": 1020,
+      "top": 735,
+      "w": 287,
+      "h": 109
+    },
+    {
+      "name": "eye close-l",
+      "file": "parts/eye_close-l.png",
+      "left": 780,
+      "top": 823,
+      "w": 196,
+      "h": 49
+    },
+    {
+      "name": "eye close-r",
+      "file": "parts/eye_close-r.png",
+      "left": 1072,
+      "top": 823,
+      "w": 196,
+      "h": 49
+    },
+    {
+      "name": "eyebrow-l",
+      "file": "parts/eyebrow-l.png",
+      "left": 795,
+      "top": 684,
+      "w": 162,
+      "h": 37
+    },
+    {
+      "name": "eyebrow-r",
+      "file": "parts/eyebrow-r.png",
+      "left": 1091,
+      "top": 684,
+      "w": 162,
+      "h": 37
+    },
+    {
+      "name": "mouth close",
+      "file": "parts/mouth_close.png",
+      "left": 985,
+      "top": 1041,
+      "w": 78,
+      "h": 32
+    },
+    {
+      "name": "mouth open",
+      "file": "parts/mouth_open.png",
+      "left": 976,
+      "top": 1009,
+      "w": 96,
+      "h": 73
+    },
+    {
+      "name": "front hair",
+      "file": "parts/front_hair.png",
+      "left": 632,
+      "top": 304,
+      "w": 784,
+      "h": 480
+    },
+    {
+      "name": "front hair 2",
+      "file": "parts/front_hair_2.png",
+      "left": 572,
+      "top": 220,
+      "w": 904,
+      "h": 1130
+    },
+    {
+      "name": "ear-l",
+      "file": "parts/ear-l.png",
+      "left": 445,
+      "top": 849,
+      "w": 262,
+      "h": 165
+    },
+    {
+      "name": "ear-r",
+      "file": "parts/ear-r.png",
+      "left": 1341,
+      "top": 849,
+      "w": 262,
+      "h": 165
+    },
+    {
+      "name": "headwear",
+      "file": "parts/headwear.png",
+      "left": 572,
+      "top": 300,
+      "w": 904,
+      "h": 451
+    },
+    {
+      "name": "objects",
+      "file": "parts/objects.png",
+      "left": 820,
+      "top": 82,
+      "w": 340,
+      "h": 202
+    }
+  ]
+}

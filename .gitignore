@@ -41,3 +41,8 @@ Day3/成片/MV/hook_ab/*.mp4
 # 调研脚本缓存（可删，删后重建）
 tools/调研/.cache.json
 tools/调研/.repos.json
+
+# Live2D 素材生成器：依赖与中间产物
+tools/live2d/node_modules/
+tools/live2d/out/parts/
+tools/live2d/out/states/
