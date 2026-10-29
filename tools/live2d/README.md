@@ -2,7 +2,17 @@
 
 把**代码里画的矢量角色**变成 Live2D 可用素材。一条源文件 → 部件 PNG → 分层 PSD →（可选）`.moc3`。
 
-现在是**四个原创角色**，不是复刻任何现成模型：凯 Kai（赤潮机甲）、露米 Lumi（星鲸）、桃桃 Momo（甜梦草莓）、妮莉 Nelly（兔兔海军）。
+现在是**四个「鲸鱼娘」同族角色**：以项目现行形象 `dafeiyu.webp`（大肥鱼）与
+`FAYER-0610/dafeiyu-vtuber` 的 `whale-maid` 资源包为设计基准，抽出物种特征
+（鲸鳍耳 / 鲸尾 / 白蕾丝女仆发箍或水手帽 / 藏青女仆裙 + 白胸襟 + 小鲸徽记 / 玻璃球大眼）
+后自行绘制，不是复刻某个现成模型：
+
+| id | 角色 | 主题 | 特征 |
+|---|---|---|---|
+| `lumi` | 露米 Lumi | 星鲸 | 深蓝→海蓝长发、白蕾丝发箍 + 海蓝蝴蝶结、青蓝玻璃眼（手工调版） |
+| `kai` | 凯 Kai | 赤潮鲸 | 深蓝短发、红发带 + 红领结、锐利眼型（发带变体） |
+| `momo` | 桃桃 Momo | 甜梦鲸 | 淡紫→粉发梢、双马尾、琥珀眼、虎牙（发箍变体） |
+| `nelly` | 妮莉 Nelly | 冰海鲸 | 冰蓝→奶油发梢、白顶水手帽、雀斑 + 虎牙（水手帽变体） |
 
 ```bash
 cd tools/live2d
@@ -29,8 +39,9 @@ node server.mjs                    # http://localhost:8080/ ← 切角色、拖�
 
 ```
 tools/live2d/
-├── src/lib.mjs               ★ 部件库：face / eyeWhite / iris / lashes / mouth / bangs / sideLock / ear / tail …
-├── src/chars/<id>.mjs        角色定义（配色 + 逐层 SVG 片段），新增角色只加一个文件
+├── src/lib.mjs               ★ 部件库：脸/眼/睫毛/嘴/发/鳍耳/鲸尾/蕾丝/蝴蝶结/女仆裙/小鲸徽记
+├── src/girl.mjs             ★ 同族工厂 buildWhaleGirl(配置)：27 层模板，换配色与配饰即成新角色
+├── src/chars/<id>.mjs        角色配置（配色 + 刘海/发长/头饰/雀斑/虎牙等开关）
 ├── build.mjs                 SVG → 部件 PNG → 裁剪 → 分层 PSD + preview + manifest + chars.json
 ├── make-sheets.mjs           离线出状态拼图与 lineup（复用 web/rig.mjs）
 ├── server.mjs                静态服务器（预览页 + 素材 + PSD）
@@ -42,9 +53,13 @@ tools/live2d/
 
 ## 新增一个角色
 
-在 `src/chars/` 下建 `xxx.mjs`，用 `src/lib.mjs` 的部件函数逐层 `add("图层名", svg)`，
-导出一个 `meta`（id / name / theme / nameAscii / themeAscii / desc / palette）。
+在 `src/chars/` 下建 `xxx.mjs`，`import { buildWhaleGirl } from "../girl.mjs"`，
+写一份配色对象（hair / skin / iris / cloth / bow / fin …）和几个开关
+（`headwear: "lace" | "cap" | "ribbon"`、`bangs`、`sideBottom`、`freckles`、`fang`、`twintails`），
+`export const meta` + `export function render(){ return buildWhaleGirl(p) }`。
 `build.mjs` 自动发现该文件，跑 `node build.mjs --only xxx` 即可。
+
+要画得跟同族不像，才自己用 `lib.mjs` 逐层拼（`lumi.mjs` 就是手工版，眼睛和发型单独调过）。
 
 **图层名不能随便起** —— psd2live 靠图层名识别部件类型：
 
@@ -101,4 +116,5 @@ tools/live2d/
 按 `agent.md` 第 9 条，Live2D 只是**新增资产**，尚未定为本项目正式形象。
 
 > 历史说明：本目录第一版曾照着社区里的 DS 鲸鱼娘模型复刻过一套 27 层素材（`src/character.svg`），
-> 因授权链不清晰、且不属于原创，**已于 2026-10-29 整体删除**，改为现在的四个原创角色。
+> 因授权链不清晰，**已删除**；第二版做过四个与鲸鱼娘无关的原创角色（机甲少女/兔耳等），
+> 与项目形象不是一个物种，也已废弃。现在的四个角色统一在「鲸鱼娘」这一族里做变体。
