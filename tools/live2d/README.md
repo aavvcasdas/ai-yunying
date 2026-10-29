@@ -1,120 +1,95 @@
-# 原创角色 · Live2D 素材生成器
+# 大肥鱼 · Live2D 素材管线
 
-把**代码里画的矢量角色**变成 Live2D 可用素材。一条源文件 → 部件 PNG → 分层 PSD →（可选）`.moc3`。
-
-现在是**四个「鲸鱼娘」同族角色**：以项目现行形象 `dafeiyu.webp`（大肥鱼）与
-`FAYER-0610/dafeiyu-vtuber` 的 `whale-maid` 资源包为设计基准，抽出物种特征
-（鲸鳍耳 / 鲸尾 / 白蕾丝女仆发箍或水手帽 / 藏青女仆裙 + 白胸襟 + 小鲸徽记 / 玻璃球大眼）
-后自行绘制，不是复刻某个现成模型：
-
-| id | 角色 | 主题 | 特征 |
-|---|---|---|---|
-| `lumi` | 露米 Lumi | 星鲸 | 深蓝→海蓝长发、白蕾丝发箍 + 海蓝蝴蝶结、青蓝玻璃眼（手工调版） |
-| `kai` | 凯 Kai | 赤潮鲸 | 深蓝短发、红发带 + 红领结、锐利眼型（发带变体） |
-| `momo` | 桃桃 Momo | 甜梦鲸 | 淡紫→粉发梢、双马尾、琥珀眼、虎牙（发箍变体） |
-| `nelly` | 妮莉 Nelly | 冰海鲸 | 冰蓝→奶油发梢、白顶水手帽、雀斑 + 虎牙（水手帽变体） |
+把现成的分层素材包转成 **Live2D 能导入的分层 PSD**，并做参数化验证。
+不做重绘 —— 形象用项目自己的：大肥鱼（鲸鱼娘）。
 
 ```bash
 cd tools/live2d
-npm install                        # @resvg/resvg-js  ag-psd  sharp  @napi-rs/canvas
+npm install                       # @napi-rs/canvas  ag-psd  sharp
 
-node build.mjs                     # 全部角色：out/<id>/parts/*.png + <id>.psd + preview.png + manifest.json + chars.json
-node build.mjs --only lumi,nelly    # 只重建指定角色
-node make-sheets.mjs               # 每个角色 4 状态 sheet.png + 四角色 lineup.png
-node server.mjs                    # http://localhost:8080/ ← 切角色、拖滑块实时驱动
+node build-pack.mjs               # assets/whale-maid → out/dafeiyu/
+node server.mjs                   # http://localhost:8080/  ← 拖参数实时看
 ```
+
+## 素材来源
+
+`FAYER-0610/dafeiyu-vtuber` · `overlay/avatar/packs/whale-maid/`
+
+- **94 张 PNG + `rig.json`**，原生 1024×1536
+- 29 个部件，带 z 序 / 画布矩形 / 枢轴点 / 三层组（root→body→head）
+- 自带面部变形参数（视差、压缩、曲线）、头发物理（刚度/阻尼/最大摆角）、差分命名（眼 3 态、眉 6 种、嘴 11 种）
+
+> ⚠️ **授权：CC BY-NC-SA 4.0，仅限非商业直播。** 原型「溟月」@上善无形，设计 @ZipZipPipe。
+> 商用必须另行取得授权；`assets/whale-maid/ATTRIBUTION.md` 必须随素材一同保留。
 
 ## 产出物
 
 | 文件 | 说明 |
 |---|---|
-| `out/<id>/<id>.psd` | **分层 PSD，2048×2048，RGB/8bit**，图层名按 psd2live 语义规范（kai 27 层 / lumi 27 / momo 25 / nelly 26） |
-| `out/<id>/parts/*.png` | 每层一张（裁到 alpha 包围盒，`manifest.json` 记画布坐标） |
-| `out/<id>/preview.png` | 定妆图（2048） |
-| `out/<id>/sheet.png` | 4 状态验收图（idle / 转头闭眼 / 张嘴说话 / 半闭眼，2×2） |
-| `out/chars.json` | 角色索引：id、中英文名、主题、描述、配色、manifest 路径 |
-| `out/lineup.png` | 四角色定妆图并排（对外展示用） |
+| `out/dafeiyu/dafeiyu.psd` | **32 层 / 1024×1536 / RGB 8bit**，图层名按 psd2live 语义，无重名无蒙版，psd-tools 已校验 |
+| `out/dafeiyu/preview.png` | 中立姿态定妆图 |
+| `out/dafeiyu/sheet.png` | 4 状态验收图（idle / 转头眨眼 / 张嘴摆身 / 半闭眼害羞） |
+| `out/dafeiyu/manifest.json` | 每层的 PSD 图层名 + 画布矩形 |
 
 ## 文件结构
 
 ```
 tools/live2d/
-├── src/lib.mjs               ★ 部件库：脸/眼/睫毛/嘴/发/鳍耳/鲸尾/蕾丝/蝴蝶结/女仆裙/小鲸徽记
-├── src/girl.mjs             ★ 同族工厂 buildWhaleGirl(配置)：27 层模板，换配色与配饰即成新角色
-├── src/chars/<id>.mjs        角色配置（配色 + 刘海/发长/头饰/雀斑/虎牙等开关）
-├── build.mjs                 SVG → 部件 PNG → 裁剪 → 分层 PSD + preview + manifest + chars.json
-├── make-sheets.mjs           离线出状态拼图与 lineup（复用 web/rig.mjs）
-├── server.mjs                静态服务器（预览页 + 素材 + PSD）
+├── assets/whale-maid/       素材包原样（94 PNG + rig.json + ATTRIBUTION.md + LICENSE）
+├── src/pack.mjs             ★ 运行时：头部转动 / 面部视差 / 头发物理 / 眨眼 / 口型 / 表情
+│                              node 与浏览器共用同一份，避免两边不一样
+├── build-pack.mjs           PNG → 语义图层名 → 分层 PSD + preview + sheet + manifest
+├── server.mjs               静态服务器（页面 / 素材 / 生成的 PSD 都能下）
 └── web/
-    ├── index.html            预览页
-    ├── viewer.js             切角色 / 滑块 / 自动眨眼呼吸摆尾 / 说话口型 / 图层列表
-    └── rig.mjs               ★ 骨架逻辑，浏览器与 Node 共用同一份
+    ├── index.html           预览页
+    └── pack-viewer.js       交互（7 参数 + 7 表情 + 自动眨眼/呼吸/物理/口型/视线）
 ```
 
-## 新增一个角色
+## 图层名映射（psd2live 靠这个自动绑骨）
 
-在 `src/chars/` 下建 `xxx.mjs`，`import { buildWhaleGirl } from "../girl.mjs"`，
-写一份配色对象（hair / skin / iris / cloth / bow / fin …）和几个开关
-（`headwear: "lace" | "cap" | "ribbon"`、`bangs`、`sideBottom`、`freckles`、`fang`、`twintails`），
-`export const meta` + `export function render(){ return buildWhaleGirl(p) }`。
-`build.mjs` 自动发现该文件，跑 `node build.mjs --only xxx` 即可。
+| 原部件 | PSD 图层名 |
+|---|---|
+| `backHair` / `longHairLeft` / `longHairRight` | `back hair` / `back hair 2-l` / `back hair 2-r` |
+| `neck` / `body` | `neck` / `topwear` |
+| `face` / `blushLeft` `blushRight` | `face` / `facedetail-l` `facedetail-r` |
+| `chestBow` | `neckwear` |
+| `eyeWhiteL/R` / `irisL/R` / `highlightL/R` / `eyelidL/R` | `eyewhite-l` `-r` / `irides-l` `-r` / `irides-l 2` `-r 2` / `eyelash-l` `-r` |
+| `eyelidL-closed` / `eyelidR-closed` | `eye close-l` / `eye close-r` |
+| `mouth-N` / `mouth-A` | `mouth close` / `mouth open` |
+| `headdress` / `ribbonL` `ribbonR` | `headwear` / `headwear 2-l` `headwear 2-r` |
+| `sideHairL/R` | `side hair-l` / `side hair-r`（FRONT_HAIR + role `side`） |
+| `frontHair` / `ahoge` | `front hair` / `front hair 2` |
+| `browL/R` | `eyebrow-l` / `eyebrow-r` |
+| `whaleClip` / `tassel` | `objects` / `objects 2` |
 
-要画得跟同族不像，才自己用 `lib.mjs` 逐层拼（`lumi.mjs` 就是手工版，眼睛和发型单独调过）。
+## 还差的一步：`.moc3`
 
-**图层名不能随便起** —— psd2live 靠图层名识别部件类型：
+`.moc3` 是 Live2D 私有格式，只能由 Cubism Editor 或 psd2live 产出。沙箱里没有 JDK/Cubism，
+所以这一步要在本机跑：
 
-| 图层名 | 部件 | 要点 |
-|---|---|---|
-| `back hair` | 后发 | 最底层，做摇摆 |
-| `tail` | 尾巴 | 摆动轴心在右侧 |
-| `neck` | 脖子 | 跟头转 |
-| `topwear` / `bottomwear` | 躯干 / 下装 | |
-| `handwear-l` / `handwear-r` | 手臂 | 侧别用 `-l` / `-r` |
-| `neckwear` | 领子 / 领结 | 只留小圆领，别横跨脖子画浅色弧（会被读成围兜） |
-| `ear-l` / `ear-r` | 兽耳 / 鳍耳 | 必须独立层 |
-| `face` | 脸皮 | 只画轮廓与肤色 |
-| `facedetail` | 腮红 + 鼻子 | |
-| `eyewhite-l/r` | 眼白 | 画大，边缘靠睫毛盖 |
-| `irides-l/r` | 虹膜 | 画满整圆，靠眼白裁 |
-| `eyelash-l/r` | 上睫毛 | 闭眼时淡出 |
-| `eye close-l/r` | 闭眼线 | 睁眼时 alpha=0 |
-| `eyebrow-l/r` | 眉毛 | |
-| `mouth close` / `mouth open` | 闭嘴 / 张嘴 | 两张差分，靠 alpha 与纵向缩放切换 |
-| `front hair` | 刘海 | **最低点必须高于眼顶**，否则转头戳眼 |
-| `front hair 2` | 侧发 + 呆毛 | 宽度 ≤66，否则像悬浮板 |
-| `headwear` | 帽子 / 头带 | 帽檐底部不得高于眼顶 |
-| `objects` | 道具 | 最上层 |
+```bash
+git clone https://github.com/tsunehimatoi/psd2live && cd psd2live
+./gradlew -p ./psd2live run --args="--input <repo>/tools/live2d/out/dafeiyu/dafeiyu.psd --output ./out --atlas 2048 --mesh-spacing 32"
+```
 
-### 画图时踩过的坑（别再踩）
+或用 Cubism：`Ctrl+O` 导入 PSD → 眼/嘴设开合参数 → 头发加物理 → 导出 moc3。
+FREE 版限制（1 张 2048 贴图 / 100 ArtMesh / 30 参数 / 50 变形器）对 32 层的半身像完全够用。
 
-- 刘海最低点 > 眼顶（本项目 y≈376），`bangs()` 默认 `tipY 352`。
-- 兽耳 / 鳍耳**基部要贴头**，别飘在两侧。
-- 侧发用 `sideLock()`，宽 ≤66、x 取 358 / 666；颜色用亮一档的 `hairMid` 才有层次。
-- 帽子白边 / 帽檐底部不低于 y≈384，否则盖眼。
-- 发夹、草莓这类装饰**不得与脸部椭圆相交**。
-- 横跨脖子的浅色弧 = 围兜；横带（头带 + 护目条）要**收窄居中**，否则糊成一顶浴帽。
-- 中文标签在 PNG 里会变豆腐块（沙箱无中文字体），所以图内一律英文（`nameAscii` / `themeAscii`），中文只在网页里出现。
+拿到 moc3 后可以丢进 VTube Studio，或用 `pixi-live2d-display` 挂到网页/直播挂件上。
 
-## 换角色 / 接真立绘
+详见 [`Live2D导入_大肥鱼现成素材_2026-10-29.md`](../../00_运营总览/Live2D导入_大肥鱼现成素材_2026-10-29.md)。
 
-`build.mjs` 吃的是 SVG 字符串，不限定来源。想用真立绘，把某个 `add()` 的图形换成
-`<image href="你的图.png" .../>` 贴到同一坐标即可，图层名与切分方式不变。
+## 能做什么、不能做什么
 
-⚠️ 整张图塞进去只能做「一张图 + 差分」，没有部件就没有可动性。**要做能动的模型，必须按部件拆层。**
+- ✅ 出符合 Cubism 导入规范的分层 PSD（RGB 8bit / 每部件一层 / 层名唯一 / 无蒙版）
+- ✅ 图层名落在 psd2live 语义词表内，丢进去能自动绑骨并导出 moc3
+- ✅ 参数化预览 + 四状态验收图，先验证「层序、遮挡、眨眼口型、头摆」都对
+- ❌ 不能直接生成 moc3
+- ❌ 预览是 canvas 2D 近似，不是 Live2D 的变形器系统；真正的九轴变形要绑骨后才有
+- ❌ 素材包是半身像，没有手、腿、尾巴（原包就没有这些层）
 
-## 这套东西能做什么、不能做什么
+## 历史说明
 
-- ✅ 出**符合 Live2D 导入规范**的分层 PSD（Cubism Editor `Ctrl+O` 直接进）
-- ✅ 图层名落在 psd2live 语义词表内，丢进去能自动绑骨并导出 `.moc3`
-- ✅ 参数驱动的预览与离线状态图，用来验证「层切得够不够、层序对不对」
-- ❌ **不能直接生成 `.moc3`**：私有格式，必须 Cubism Editor 或 psd2live 导出
-- ❌ 不是正式美术资产：这版是矢量示意稿，用来打通管线；正式上镜要么重绘，要么按同样层切真立绘
-
-## 与项目现行素材的关系
-
-项目现行形象仍是 `tools/day3制作/whale_girl_src/`（41 张高清姿势 + 10 骨骨架 + 28 动作）。
-按 `agent.md` 第 9 条，Live2D 只是**新增资产**，尚未定为本项目正式形象。
-
-> 历史说明：本目录第一版曾照着社区里的 DS 鲸鱼娘模型复刻过一套 27 层素材（`src/character.svg`），
-> 因授权链不清晰，**已删除**；第二版做过四个与鲸鱼娘无关的原创角色（机甲少女/兔耳等），
-> 与项目形象不是一个物种，也已废弃。现在的四个角色统一在「鲸鱼娘」这一族里做变体。
+本目录先后做过两版「自己画」的尝试：先是照着社区 DS 鲸鱼娘模型复刻（授权不清，已删），
+后是四个与鲸鱼娘无关的原创角色（物种不对，已删，可在 commit `91a3352` 找回）。
+现在只保留「用项目自己的现成素材做 Live2D」这一条路。

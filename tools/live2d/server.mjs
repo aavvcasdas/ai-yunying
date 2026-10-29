@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /* 静态服务器
-   /                → web/index.html（角色切换 + 参数驱动预览）
-   /chars.json      → out/chars.json
-   /<id>/preview.png / <id>/sheet.png / <id>/*.psd / <id>/manifest.json / <id>/parts/*.png
-   /lineup.png      → 四角色定妆图
+   /                     → web/index.html（大肥鱼参数化预览）
+   /assets/whale-maid/…  → 素材包原图（94 PNG + rig.json）
+   /src/pack.mjs         → 渲染逻辑（node 与浏览器共用）
+   /dafeiyu/*.png|*.psd  → 生成的定妆图 / 状态图 / 分层 PSD
 */
 import http from "node:http";
 import fs from "node:fs";
@@ -12,6 +12,8 @@ import path from "node:path";
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const WEB = path.join(HERE, "web");
 const OUT = path.join(HERE, "out");
+const ASSETS = path.join(HERE, "assets");
+const SRC = path.join(HERE, "src");
 const PORT = Number(process.env.PORT || 8080);
 
 const MIME = {
@@ -34,9 +36,10 @@ http.createServer((req, res) => {
   const url = decodeURIComponent((req.url || "/").split("?")[0]);
   let rel = url === "/" ? "/index.html" : url;
 
-  for (const root of [WEB, OUT]) {
+  for (const root of [WEB, OUT, HERE]) {
     const file = path.normalize(path.join(root, rel));
     if (!file.startsWith(root)) continue;            // 防目录穿越
+    if (file.includes(`${path.sep}node_modules${path.sep}`)) continue;
     if (fs.existsSync(file) && fs.statSync(file).isFile()) {
       return send(res, 200, fs.readFileSync(file), MIME[path.extname(file)] || "application/octet-stream");
     }
