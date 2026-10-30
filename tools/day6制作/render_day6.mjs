@@ -1660,8 +1660,37 @@ await loadMvFrames();
 await loadClaude();
 console.log(`角色：${CHAR_MODE === 'sprite' ? 'Day3 高清立绘（whale_girl_src）' : CHAR_MODE + ' 老路径'}；字幕：Day2 加更版；时长 ${DURATION.toFixed(2)}s`);
 
+// Covers share the exact character and prop drawing code with the video.
+function renderDay6Covers(){
+ const dir=path.resolve(__dirname,'../../Day6/封面');fs.mkdirSync(dir,{recursive:true});
+ for(const [name,w,h] of [['3比4',1080,1440],['4比3',1440,1080]]){
+  const canvas=createCanvas(w,h),g=canvas.getContext('2d');const vertical=h>w;
+  const grad=g.createLinearGradient(0,0,w,h);grad.addColorStop(0,'#08182D');grad.addColorStop(1,'#244B65');g.fillStyle=grad;g.fillRect(0,0,w,h);
+  g.save();g.globalAlpha=.12;for(let i=0;i<12;i++){g.strokeStyle='#6FDCD7';g.lineWidth=2;g.beginPath();g.arc(w*.65,h*.6,100+i*70,0,Math.PI*2);g.stroke();}g.restore();
+  // Layout separately for both aspects: no cropping a landscape cover into portrait.
+  const scale=w/1280;g.save();g.scale(scale,scale);
+  const hh=h/scale;
+  const floor=vertical?hh*.76:hh*.83;
+  reseedBoil(20.8);
+  glow(g,800,floor-150,310,'#65E2DC',.22);
+  actor6(g,vertical?350:365,floor,vertical?60:43,20.8,'shock');
+  actor6(g,vertical?950:940,floor-8,vertical?48:39,20.8,'point',true,.06);
+  panel6(g,vertical?520:580,floor-65,vertical?650:570,28,'#685344','#B69472',7);
+  laptop6(g,vertical?860:880,floor-65,vertical?.9:.85,20.8,true);
+  limb6(g,vertical?900:920,floor-185,vertical?815:840,floor-70);
+  bowl6(g,vertical?330:370,floor+90,vertical?1.35:1.1,.9,20.8);
+  g.restore();
+  const title=(text,y,size,color)=>{g.save();g.font=`900 ${size}px NotoSansSC`;g.textAlign='center';g.lineJoin='round';g.strokeStyle='#07182D';g.lineWidth=size*.15;g.strokeText(text,w/2,y);g.fillStyle=color;g.fillText(text,w/2,y);g.restore();};
+  title('老大给起的',h*.13,vertical?85:78,'#F7F5E9');
+  title('叫笨鲸',h*.245,vertical?144:126,'#FFE098');
+  panel6(g,w*.22,h*.285,w*.56,h*.052,'#13364D','#65CCCF',16);
+  title('本鲸惹事了诶',h*.322,vertical?40:35,'#D2FAF2');
+  title('它改代码 · 本鲸收尾',h*.95,vertical?43:45,'#F4EAD0');
+  const f=path.join(dir,`Day6封面_${name}.png`);fs.writeFileSync(f,canvas.toBuffer('image/png'));console.log('cover',f);
+ }
+}
 const timesArg = argOf('--times');
-if (timesArg) {
+if (ARGV.includes('--covers')) { renderDay6Covers(); } else if (timesArg) {
   const dir = path.resolve(__dirname, 'day6_stills');
   fs.mkdirSync(dir, { recursive: true });
   const tag = argOf('--tag') || 'chk';
