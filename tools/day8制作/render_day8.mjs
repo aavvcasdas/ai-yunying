@@ -1377,7 +1377,8 @@ function phone8(g,key,t,local,{x=840,y=365,h=510,tag='',bossPose=null,options=nu
  g.save();g.beginPath();g.roundRect(px,py,w,h,18);g.clip();
  const im=gif8(key,local*fast);g.drawImage(im,px,py,w,h);
  // Uploaded captures contain HUDs. Replace those regions, not the source files.
- const head=h*130/960,footY=py+h*720/960;
+ const sourceHeight=GIFMETA[key].size[1];
+ const head=h*(130/sourceHeight),footY=py+h*(720/sourceHeight);
  panel6(g,px,py,w,head,'#102D43','#102D43',0);text6(g,'笨鱼的直播间',x,py+head*.65,18,'#D7F4F4');
  panel6(g,px,footY,w,py+h-footY,'#102D43','#102D43',0);
  if(options){options.forEach((s,i)=>{panel6(g,px+15+i*(w/2-7),footY+22,w/2-23,44,i?'#31465D':'#255B61','#7DB9C1',8);text6(g,s,px+15+i*(w/2-7)+(w/2-23)/2,footY+51,17);});}
