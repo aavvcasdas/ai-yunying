@@ -46,3 +46,7 @@ node tools/day8制作/render_day8.mjs \
 字幕使用逐字ASR与10ms RMS发声段。英文coding/bug按所在实测段整体保留；未识别汉字采用邻字插值。不是每个字符都有独立可靠识别。3处句首跨句修正依据写在 voice_alignment.json。最后一句说完+0.2秒结束，无片尾卡。
 
 解码PNG缓存位于仓库外 `../day8-gif-cache/`，不纳入Git。验收及最终逐句抽帧汇总放在本目录。
+
+## 发布封面
+
+`node tools/day8制作/make_day8_cover.mjs`：使用正片同款角色与上传GIF首帧，独立排版输出3:4和4:3；不调用生图，不改成片。发布物料见 `Day8/Day8发布物料.md`。
