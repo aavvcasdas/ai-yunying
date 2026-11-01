@@ -1,6 +1,6 @@
 {
   "写码": {
-    "source": "写码.gif",
+    "source": "Day8/素材/GIF/写码.gif",
     "size": [
       540,
       960
@@ -74,7 +74,7 @@
     "duration_ms": 4000
   },
   "写码_合成": {
-    "source": "写码_合成.gif",
+    "source": "Day8/素材/GIF/写码_合成.gif",
     "size": [
       540,
       960
@@ -148,7 +148,7 @@
     "duration_ms": 4000
   },
   "投票_合成": {
-    "source": "投票_合成.gif",
+    "source": "Day8/素材/GIF/投票_合成.gif",
     "size": [
       540,
       960
@@ -222,7 +222,7 @@
     "duration_ms": 4000
   },
   "摸鱼": {
-    "source": "摸鱼.gif",
+    "source": "Day8/素材/GIF/摸鱼.gif",
     "size": [
       540,
       960
@@ -296,7 +296,7 @@
     "duration_ms": 4000
   },
   "摸鱼_合成": {
-    "source": "摸鱼_合成.gif",
+    "source": "Day8/素材/GIF/摸鱼_合成.gif",
     "size": [
       540,
       960
@@ -370,7 +370,7 @@
     "duration_ms": 4000
   },
   "放假票_合成": {
-    "source": "放假票_合成.gif",
+    "source": "Day8/素材/GIF/放假票_合成.gif",
     "size": [
       540,
       960
@@ -444,7 +444,7 @@
     "duration_ms": 4000
   },
   "结算_合成": {
-    "source": "结算_合成.gif",
+    "source": "Day8/素材/GIF/结算_合成.gif",
     "size": [
       540,
       960
@@ -518,7 +518,7 @@
     "duration_ms": 4000
   },
   "老大_hips_left": {
-    "source": "老大_hips_left.gif",
+    "source": "Day8/素材/GIF/老大_hips_left.gif",
     "size": [
       420,
       465
@@ -600,7 +600,7 @@
     "duration_ms": 1260
   },
   "老大_hips_right": {
-    "source": "老大_hips_right.gif",
+    "source": "Day8/素材/GIF/老大_hips_right.gif",
     "size": [
       420,
       465
@@ -682,7 +682,7 @@
     "duration_ms": 1260
   },
   "老大_point_left": {
-    "source": "老大_point_left.gif",
+    "source": "Day8/素材/GIF/老大_point_left.gif",
     "size": [
       420,
       465
@@ -764,7 +764,7 @@
     "duration_ms": 1260
   },
   "老大_point_right": {
-    "source": "老大_point_right.gif",
+    "source": "Day8/素材/GIF/老大_point_right.gif",
     "size": [
       420,
       465
@@ -846,7 +846,7 @@
     "duration_ms": 1260
   },
   "被抓_合成": {
-    "source": "被抓_合成.gif",
+    "source": "Day8/素材/GIF/被抓_合成.gif",
     "size": [
       540,
       960
@@ -920,7 +920,7 @@
     "duration_ms": 4000
   },
   "装忙_合成": {
-    "source": "装忙_合成.gif",
+    "source": "Day8/素材/GIF/装忙_合成.gif",
     "size": [
       540,
       960

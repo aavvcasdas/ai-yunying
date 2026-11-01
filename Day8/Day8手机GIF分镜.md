@@ -38,7 +38,7 @@
 
 ```bash
 python3 tools/day8制作/prepare_day8.py
-node tools/day8制作/render_day8.mjs --cues tools/day8制作/sample_cues.json --subs tools/day8制作/sample_subtitles.json --out Day8/成片/Day8_手机GIF_无配音样片.mp4
+node tools/day8制作/render_day8.mjs --cues tools/day8制作/样片归档/sample_cues.json --subs tools/day8制作/样片归档/sample_subtitles.json --out Day8/成片/历史样片/Day8_手机GIF_无配音样片.mp4
 ```
 
 GIF 解码缓存位于仓库外的 `../day8-gif-cache/`，不把解码帧批量纳入Git。

@@ -1,4 +1,4 @@
-// Day8 无配音手机GIF样片。时间轴为临时排布，不是音频实测。
+// Day8 渲染：样片使用measured=false；成片必须传入新的实测时间轴和音源。
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -203,7 +203,7 @@ const argOf = (flag) => {
 };
 const CUES_JSON = argOf('--cues');
 const AUDIO_WAV = argOf('--audio');
-if(AUDIO_WAV) throw new Error('本文件仅用于无配音样片；终版须重新对齐音频。');
+if(AUDIO_WAV && (!CUES_JSON || JSON.parse(fs.readFileSync(CUES_JSON,'utf8')).measured!==true)) throw new Error('成片必须使用实测音频时间轴');
 const SOFT = ARGV.includes('--soft');            // 关掉清晰化（出对比帧用）
 // 电视里那条 MV 的声音：'auto' = 现场合成一条「很劣质、慢放、很小声」的伴奏占位；
 // 传路径 = 用你自己的音轨（如 朋友的酒.mp3）；不传 = 静音。
@@ -1425,7 +1425,7 @@ function mealTask8(g,t,lt,q,line){
  day3RiceBowl(g,bx,by,3.5,done>.22?.95:.18,t);
  day3RiceBowl(g,970,468,2.1,.55,t);
  if(line===32){const z=clamp((done-.05)*2),sx=lerp(520,bx,z),sy=lerp(320,by-35,z)-Math.sin(z*Math.PI)*42;
-  limb6(g,sx-40,sy-20,sx+5,sy+3,'#A67C4E',5);
+  g.save();g.strokeStyle='#9B704A';g.lineWidth=1.8;g.lineCap='round';for(let k=0;k<2;k++){g.beginPath();g.moveTo(sx-16,sy-8+k*4);g.lineTo(sx+10,sy+k*4);g.stroke();}g.restore();
   if(z<.95)paint(g,ellPts(sx,sy,26,18,18),{wash:'#F8FAFC',ink:PAL.ink,sw:1.2});
  }
  text6(g,'大米饭',640,170,43,'#F3E7BB');
@@ -1474,24 +1474,24 @@ function day8Scene(g,t,lt,p,n){
  // Use the user's animated phone capture as the primary action insert.
  phone8(g,key,t,t,{tag,bossPose:bp,options:opts,fast});
  if(n===1&&line===5)bubble8(g,'我看看。',485,225);
- if(n===3&&line>=12){limb6(g,420,425,505,455);}
- if(n===7){const z=line===25?easeOut(q):line===26?1:0;day3RiceBowl(g,lerp(480,555,z),490,2.5,line===26?.05:.9,t);limb6(g,410,430,lerp(455,535,z),475);}
- if(n===10&&line>=38){limb6(g,490,410,650,345);}
- if(n===12){limb6(g,460,400,655,480);}
+ if(n===3&&line>=12){}
+ if(n===7){const z=line===25?easeOut(q):line===26?1:0;day3RiceBowl(g,lerp(480,555,z),490,2.5,line===26?.05:.9,t);}
+ if(n===10&&line>=38){}
+ if(n===12){}
  if(n===15&&line>=66){bubble8(g,'坐好，监工。',365,230);}
 
- if(n===2&&line===7){sheet6(g,500,375,-.1);text6(g,'命令老大',500,370,18,'#31536B');limb6(g,390,430,475,380);}
+ if(n===2&&line===7){sheet6(g,500,375,-.1);text6(g,'命令老大',500,370,18,'#31536B');}
  if(n===3){if(line>=12){bowl6(g,450,500,.7,line===13?.25:.85,t);} }
  if(n===4){if(line===14)actor6(g,520,565,17,t,'point',true);if(line===16)stool(g,330-45*q,555,1.1);}
  if(n===5&&line===17){panel6(g,580,185,420,145,'#E8F0F4','#81A1B0',12);text6(g,'人机校验',790,235,30,'#2D5366');text6(g,'未通过',790,289,32,'#BB5B6C');}
- if(n===5&&line===18){bowl6(g,540,480,.65,.85,t);limb6(g,400,420,510,460);}
+ if(n===5&&line===18){bowl6(g,540,480,.65,.85,t);}
  if(n===6&&line>=21||n===14||n===15&&line<=65){boss(g,520,510,65,t);laptop6(g,520,510,.48,t,false);}
  
  
  if(n===9&&line<=35)text6(g,'摸鱼',540,270,32,'#BEE7D9');
  if(n===10&&line>=39){bowl6(g,500,485,.75,.8-q*.2,t);}
  if(n===11&&line===42)text6(g,'coding',510,260,35,'#9BE3D9');
- if(n===13&&line>=58){bowl6(g,470+q*25,485,.6,.5,t);limb6(g,410,405,560,385);}
+ if(n===13&&line>=58){bowl6(g,470+q*25,485,.6,.5,t);}
  if(n===15&&line>=66){stool(g,330,555,1.1);}
  g.restore();
 }
@@ -1708,7 +1708,7 @@ async function renderVideo(outFile) {
   } else {
     audioArgs = ['-an'];
   }
-  console.log(`Day8 silent sample: ${total} 帧 / ${DURATION.toFixed(2)}s / ${OUT_W}×${OUT_H} / ${'无配音临时排布'} / 字幕=${SUB_SCREENS ? `样片屏（${SUB_SCREENS.length}）` : '字级兜底'} / ${SOFT ? '关清晰化' : '像素清晰化'}`);
+  console.log(`Day8: ${total} 帧 / ${DURATION.toFixed(2)}s / ${OUT_W}×${OUT_H} / ${VOICE_CUES?.measured ? '实测音频对齐' : '无配音临时排布'} / 字幕=${SUB_SCREENS ? `分句屏（${SUB_SCREENS.length}）` : '字级兜底'} / ${SOFT ? '关清晰化' : '像素清晰化'}`);
   const ff = spawn(ffmpeg, [
     '-y', '-f', 'rawvideo', '-vcodec', 'rawvideo', '-pix_fmt', 'rgba',
     '-s', `${OUT_W}x${OUT_H}`, '-r', String(FPS), '-i', '-',
@@ -1754,6 +1754,7 @@ console.log(`角色：${CHAR_MODE === 'sprite' ? 'Day3 高清立绘（whale_girl
 function testDay8Stability(){
  let checked=0;
  for(let i=0;i<CUES.length-1;i++){
+  if(CUES[i+1].start-CUES[i].end<=.001)continue;
   const mid=(CUES[i].end+CUES[i+1].start)/2;
   if(activeLine8(mid)!==i+1)throw Error('Gap jumps at line '+(i+1));checked++;
  }
