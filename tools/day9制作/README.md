@@ -70,3 +70,15 @@ python3 tools/day9制作/verify_motion_v2.py
 ## 背景实验回退与分镜研究
 
 用户要求回退背景改动，已撤销背景试样与 v3/v4，恢复 `258380b` 的动作版 v2 基线。动作专项15项重新通过。本轮只研究分镜，不改配音/字幕/素材与海底环境。逐镜建议见 `参考资料/项目调研/voxel-mv_分镜构造与Day9逐镜借鉴_2026-11-03.md`（仓库根目录起）。
+
+## 四段分镜试剪
+
+独立脚本 `render_day9_storyboard_trial.mjs`，不修改 v2 渲染器。使用原背景与已有动作，选取 C01/C05/C09/C16 原速音频片段拼接；时间映射见 `分镜试剪_时间轴.json`，不是新的ASR估时。
+
+```bash
+node tools/day9制作/render_day9_storyboard_trial.mjs --voice Day9/配音/鲸鱼看视频_克隆配音_最终版.wav --alignment tools/day9制作/voice_alignment.json --subtitle-file tools/day9制作/subtitle_timing.json
+# 追加 --test / --stills 可检查或抽帧
+python3 tools/day9制作/verify_storyboard_trial.py
+```
+
+核验脚本依赖 numpy、ffmpeg、ffprobe（临时环境路径同既有媒体验收工具）。输出 `Day9/成片/Day9_四镜分镜试剪.mp4`；剪接后字幕为 `分镜试剪字幕.srt`，核验为 `分镜试剪_媒体核验.json`。`分镜试剪抽帧/` 可重建、不入库。详细边界见 `分镜试剪_验收记录.md`。
