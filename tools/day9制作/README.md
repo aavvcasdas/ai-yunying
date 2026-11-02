@@ -82,3 +82,7 @@ python3 tools/day9制作/verify_storyboard_trial.py
 ```
 
 核验脚本依赖 numpy、ffmpeg、ffprobe（临时环境路径同既有媒体验收工具）。输出 `Day9/成片/Day9_四镜分镜试剪.mp4`；剪接后字幕为 `分镜试剪字幕.srt`，核验为 `分镜试剪_媒体核验.json`。`分镜试剪抽帧/` 可重建、不入库。详细边界见 `分镜试剪_验收记录.md`。
+
+## 全片分镜试做版
+
+独立渲染器`render_day9_storyboard_full.mjs`，核验`verify_storyboard_full.py`；[逐镜及验收](全片分镜试做_验收记录.md)。未覆盖v2及四镜试剪。
