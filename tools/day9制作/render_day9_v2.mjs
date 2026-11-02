@@ -52,7 +52,7 @@ function steam(g,x,y,t){for(let i=0;i<3;i++){g.save();g.globalAlpha=.24;g.beginP
 function keyboard(g,x,y,t,typing=true){box(g,x-68,y-14,136,34,'#34495E','#9CB4BF',6);for(let j=0;j<3;j++)for(let k=0;k<10;k++)box(g,x-58+k*12,y-8+j*8,8,5,typing&&(k+j+Math.floor(t*9))%11===0?'#9BE5D6':'#102737','#486272',1);}
 function satDish(g,x,y,s,t){g.save();g.translate(x,y);g.scale(s,s);line(g,0,15,-18,76,'#7E9EA9',9);line(g,-45,78,35,78,'#91B3BB',9);g.save();g.rotate(-.23);g.beginPath();g.ellipse(0,0,80,34,0,0,Math.PI);g.closePath();g.fillStyle='#AACDD7';g.fill();g.strokeStyle='#426A81';g.lineWidth=4;g.stroke();oval(g,0,0,80,16,'#CBE4E8','#6D96AB');line(g,0,-8,25,-67,'#5A889D',5);oval(g,25,-67,7,7,'#F2D28C');g.restore();g.restore();}
 let scenePainters={},paintingTV=false;
-export function configureScenePainters(painters={}){scenePainters={...painters};setMotionPalette({labelColor:painters.labelColor||(painters.room?'#4E6472':'#C8DBE1')});}
+export function configureScenePainters(painters={}){scenePainters={...painters};setMotionPalette({labelColor:painters.room?'#4E6472':'#C8DBE1'});}
 function station(g,t,outside=false){
  if(scenePainters.station){scenePainters.station(g,t,outside);return;}
  const gr=g.createLinearGradient(0,0,0,360);gr.addColorStop(0,'#457C9D');gr.addColorStop(1,'#B9DAE0');g.fillStyle=gr;g.fillRect(0,0,640,360);
@@ -121,12 +121,12 @@ function tv(g,t,mode='work',progress=.5){
  line(g,x+w*.44,y+h+17,x+w*.56,y+h+17,'#627F88',4);
  box(g,x-8,y+h+43,w+16,68,'#605A52','#A5997D',8);for(let i=0;i<2;i++){box(g,x+16+i*321,y+h+52,304,48,'#494F4F','#8B9C95',5);line(g,x+144+i*321,y+h+76,x+187+i*321,y+h+76,'#BEBBA2',4);}
 }
-function roomV2(g,work=false,time=0){
- if(scenePainters.room)scenePainters.room(g,{work,time});else bg(g,0);
+function roomV2(g,work=false){
+ if(scenePainters.room)scenePainters.room(g,{work});else bg(g,0);
  // Functional set dressing: a repair board and desk lighting, not random accessories.
- if(work){g.save();if(scenePainters.boardOffset)g.translate(...scenePainters.boardOffset);box(g,31,160,185,145,'#304856','#778E94',8);txt(g,'待修',124,192,23,'#E4DAC1');
+ if(work){box(g,31,160,185,145,'#304856','#778E94',8);txt(g,'待修',124,192,23,'#E4DAC1');
   box(g,48,210,150,34,'#E6D8B5','#ADA789',2);txt(g,'接话没接上',123,234,17,'#425869');
-  box(g,48,254,150,32,'#C3D7CE','#91A9A4',2);txt(g,'先别乱改',123,277,17,'#425869');g.restore();}
+  box(g,48,254,150,32,'#C3D7CE','#91A9A4',2);txt(g,'先别乱改',123,277,17,'#425869');}
 }
 function monitor(g,x,y,t,failed=false){
  box(g,x-72,y-106,144,106,'#283F52','#93ACB6',9);box(g,x-62,y-95,124,81,'#0C2031',failed?'#DB8992':'#72A7AD',5);
@@ -146,7 +146,7 @@ function frame(g,t){
  reseedBoil(0);g.setTransform(S,0,0,S,0,0);g.clearRect(0,0,W,H);
  let ci=0;for(let i=0;i<cues.length;i++){if(t>=cues[i].start)ci=i;else break;}
  const c=cues[ci],n=ci+1,sh=spans.find(s=>n>=s.from&&n<=s.to),lt=t-sh.start,p=clamp((t-sh.start)/(sh.end-sh.start)),q=clamp((t-c.start)/(c.end-c.start));
- roomV2(g,n<=22,t);
+ roomV2(g,n<=22);
  const len=sh.end-sh.start;
  if(n<=3){
   human(g,658,450,0);monitor(g,543,467,t,true);monitor(g,1097,472,t,false);
@@ -232,22 +232,19 @@ function frame(g,t){
   else act(g,'proud',449,582,33,t,c.start,c.end-c.start);
   if(n===49)tag(g,'本鲸在监工！',364,192,190);
  }
- txt(g,'非官方同人 · AI生成 · 剧情演绎',1058,34,15,scenePainters.creditColor||(scenePainters.room?'#536777':'#B6CFD2'));
+ txt(g,'非官方同人 · AI生成 · 剧情演绎',1058,34,15,scenePainters.room?'#536777':'#B6CFD2');
  const hit=subs.find(s=>t>=s.start&&t<s.end);if(hit)sub.draw(g,{lines:sub.wrap(hit.text),speaker:'本鲸',vis:1,W,H});
 }
 
 await loadMotionAssets({createCanvas,loadImage});
 const visualStyle=arg('--visual-style')||'classic';
-if(!['classic','miniature','undersea'].includes(visualStyle))throw Error('Unknown visual style: '+visualStyle);
-const version={classic:'v2',miniature:'v3',undersea:'v4'}[visualStyle];
-if(visualStyle==='miniature'||visualStyle==='undersea'){
+if(!['classic','miniature'].includes(visualStyle))throw Error('Unknown visual style: '+visualStyle);
+const version=visualStyle==='miniature'?'v3':'v2';
+if(visualStyle==='miniature'){
  const {paintMiniatureRoom,paintMiniatureStation,paintMiniatureTable}=await import('./visual_elements_v3.mjs');
- if(visualStyle==='undersea'){
-  const {paintUnderseaRoom}=await import('./undersea_elements_v4.mjs');
-  configureScenePainters({room:paintUnderseaRoom,station:paintMiniatureStation,table:paintMiniatureTable,labelColor:'#C8DBE1',creditColor:'#B6CFD2',boardOffset:[750,-70]});
- }else configureScenePainters({room:paintMiniatureRoom,station:paintMiniatureStation,table:paintMiniatureTable});
+ configureScenePainters({room:paintMiniatureRoom,station:paintMiniatureStation,table:paintMiniatureTable});
 }
-const out=path.resolve(arg('--out')||path.join(ROOT,'Day9/成片',visualStyle==='undersea'?(voice?'Day9_笨鱼看同类_海底场景增强版_v4.mp4':'Day9_笨鱼看同类_海底场景增强版_v4_无声.mp4'):visualStyle==='miniature'?(voice?'Day9_笨鱼看同类_场景增强版_v3.mp4':'Day9_笨鱼看同类_场景增强版_v3_无声.mp4'):(voice?'Day9_笨鱼看同类_动作改进版_v2.mp4':'Day9_笨鱼看同类_动作改进版_v2_无声.mp4')));
+const out=path.resolve(arg('--out')||path.join(ROOT,'Day9/成片',visualStyle==='miniature'?(voice?'Day9_笨鱼看同类_场景增强版_v3.mp4':'Day9_笨鱼看同类_场景增强版_v3_无声.mp4'):(voice?'Day9_笨鱼看同类_动作改进版_v2.mp4':'Day9_笨鱼看同类_动作改进版_v2_无声.mp4')));
 const previewId=arg('--preview-shot');
 if(previewId&&!arg('--out'))throw Error('Preview requires a separate --out path');
 const previewSpan=previewId?spans.find(s=>s.id===previewId):null;

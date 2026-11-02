@@ -84,15 +84,3 @@ python3 tools/day9制作/verify_motion_v2.py --version v3
 ```
 
 输出 `Day9/成片/Day9_笨鱼看同类_场景增强版_v3.mp4`。结果见 `v3验收记录.md`、`v3媒体核验.json`、`v3回归检查.json` 与编码后逐句总览。浅色背景上的文字改为深色，暗色工作牌/自动回复面板仍保留浅色字。
-
-## 海底背景修正版 v4（当前采用）
-
-用户纠正：主场景仍为原海底环境，不能因参考布景而改成陆上房间。新增 `undersea_elements_v4.mjs`，直接调用原房间背景，保留舷窗、深蓝墙面、灯串、家具和地毯，仅补桌架厚度、接触阴影与舷窗内海水细节。电视内科考摘要继续保留。
-
-```bash
-node tools/day9制作/render_day9_v2.mjs --visual-style undersea --voice Day9/配音/鲸鱼看视频_克隆配音_最终版.wav --alignment tools/day9制作/voice_alignment.json --subtitle-file tools/day9制作/subtitle_timing.json
-node --test tools/day9制作/undersea_v4.test.mjs
-python3 tools/day9制作/verify_motion_v2.py --version v4
-```
-
-输出 `Day9/成片/Day9_笨鱼看同类_海底场景增强版_v4.mp4`。18项专项测试通过（动作15项、海底场景3项）；验收见 `v4验收记录.md`、`v4媒体核验.json` 和编码后逐句总览。v3为历史方向，不作为当前推荐成片。
