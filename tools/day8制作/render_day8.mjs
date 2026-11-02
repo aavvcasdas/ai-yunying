@@ -1743,6 +1743,11 @@ async function renderVideo(outFile) {
   console.log(`✓ ${outFile}（${(fs.statSync(outFile).size / 1e6).toFixed(2)} MB）`);
 }
 
+// Shared scene assets for later episodes; importing does not render Day8.
+export {createCanvas, loadImage, loadSpritePoses, WGF, bg, boss, panel6, text6,
+  laptop6, sheet6, day3RiceBowl, stool, wallet, coin, reseedBoil, drawPoseSprite,
+  resolveFfmpeg};
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 await loadSpritePoses();
 await loadDay8Gifs();
 await loadDsh();
@@ -1785,4 +1790,6 @@ if (ARGV.includes('--test-stability')) {testDay8Stability();} else if (timesArg)
 else {
   const i = ARGV.indexOf('--out');
   await renderVideo(i >= 0 ? ARGV[i + 1] : 'day5_sample.mp4');
+}
+
 }

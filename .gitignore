@@ -47,3 +47,6 @@ tools/day4制作/assets/mv_pip/
 
 # Day5 配音源（用户上传在 main 分支，16MB）：本分支按需 `git show origin/main:day5.wav > day5.wav` 取，不重复入库
 day5.wav
+
+# Day9 可重建抽帧缓存
+tools/day9制作/抽帧/

@@ -1,0 +1,29 @@
+# Day9 样片制作
+
+- `render_day9.mjs`：主渲染器，沿用 Day8 房间与 Day3 主演素材；无配音输出1920×1080/30fps。
+- `样片回归检查.json`：字幕逐字/重叠、16镜画面变化与27时点电视边框固定检查。运行 `node tools/day9制作/render_day9.mjs --test`。
+- `媒体核验.json` / `验收记录.md`：全片解码和抽查记录。
+- `sample_timing.json`：**measured=false**，49行台词的样片临时节奏与分镜；无音源、无ASR，不得用作最终字幕。
+- `逐句总览_*.jpg`：所有49行的中点抽查图；发现纸张遮脸后已缩小并移至腰侧。
+- `抽帧/`：可重建缓存，不入库。
+
+## 环境与命令
+
+Node.js；`@napi-rs/canvas` 和 `@ffmpeg-installer/ffmpeg`（支持临时安装在 `/tmp/node_render/node_modules`），项目字体在 `video-fx/assets/fonts`。
+
+```bash
+mkdir -p /tmp/node_render
+(cd /tmp/node_render && npm install @napi-rs/canvas @ffmpeg-installer/ffmpeg)
+node tools/day9制作/render_day9.mjs --stills --all-lines
+node tools/day9制作/render_day9.mjs
+```
+
+输出 `Day9/成片/Day9_笨鱼看同类_无配音样片.mp4`。不添加静音假音轨，不用TV占位音乐。
+
+## 素材与版权边界
+
+观影叙事来自根目录用户上传总结。总结中的 `~/.dsh/.../source.mp4` 是另一台机器的缓存路径，本工作区没有这些原片；电视采用代码绘制的示意场景和本项目角色素材，并持续标注“非原片”。不因标注来源就宣称可任意搬运原作。
+
+## 正式版待办
+
+收到用户确认的连续配音后，先保存原文件名及哈希，再做词级ASR与RMS修边。字幕、cue、所有镜头边界都重新实测；跑开场门禁、逐句抽帧和全片媒体核验后再交付有声成片。
