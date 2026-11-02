@@ -27,3 +27,16 @@ node tools/day9制作/render_day9.mjs
 ## 正式版待办
 
 收到用户确认的连续配音后，先保存原文件名及哈希，再做词级ASR与RMS修边。字幕、cue、所有镜头边界都重新实测；跑开场门禁、逐句抽帧和全片媒体核验后再交付有声成片。
+
+## 有声终版（最新）
+
+音源：`Day9/配音/鲸鱼看视频_克隆配音_最终版.wav`。生产时间轴：`voice_alignment.json`、`subtitle_timing.json`，两者为实测，保留真实source/hash。
+
+```bash
+# 已有ASR缓存时可复现修边与字幕
+python3 tools/day9制作/finalize_alignment.py
+node tools/day9制作/render_day9.mjs --voice Day9/配音/鲸鱼看视频_克隆配音_最终版.wav --alignment tools/day9制作/voice_alignment.json --subtitle-file tools/day9制作/subtitle_timing.json
+# 同一组参数后追加 --test 或 --stills --all-lines 可回归/抽帧
+```
+
+有声输出独立命名`Day9_笨鱼看同类_配音对齐版.mp4`，不覆盖无声样片。渲染前校验音频SHA256；错用音源会拒绝。验收见`有声验收记录.md`及`有声媒体核验.json`。原始ASR可用`tools/day5制作/asr_align_day5.py`重建，参数`--voice`/`--lines Day9/Day9配音台词.txt`/`--cache tools/day9制作/asr_tokens.json`/`--out tools/day9制作/asr_alignment_raw.json`。

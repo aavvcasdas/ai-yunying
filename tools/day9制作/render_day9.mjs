@@ -1,4 +1,4 @@
-// Day9 SILENT storyboard sample. No timings here claim audio measurement.
+// Day9: silent sample or measured voiced output; never mix estimated timing with audio.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -10,10 +10,15 @@ import {createDay2Subtitle} from '../字幕/day2_style_sub.mjs';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const HERE=path.dirname(fileURLToPath(import.meta.url));
 const argv=process.argv.slice(2),arg=(s)=>argv.includes(s)?argv[argv.indexOf(s)+1]:null;
-if(argv.includes('--audio'))throw Error('无声样片不接受音频；更换音源后须另做ASR及RMS实测');
+const voice=arg('--voice'),alignment=arg('--alignment'),subtitleFile=arg('--subtitle-file');
+const measured=alignment?JSON.parse(fs.readFileSync(alignment,'utf8')):null;
+if(voice){
+ if(measured?.measured!==true||!subtitleFile)throw Error('有声版必须提供实测cue与字幕');
+ if(createHash('sha256').update(fs.readFileSync(voice)).digest('hex')!==measured.source_sha256)throw Error('音源SHA256与实测时间轴不一致');
+}
 const lines=fs.readFileSync(path.join(ROOT,'Day9/Day9配音台词.txt'),'utf8').trim().split(/\n+/);
 let clock=0;
-const cues=lines.map((text,i)=>{const duration=Math.max(.8,[...text.replace(/[^\p{L}\p{N}]/gu,'')].length/4.3);const c={line:i+1,text,start:+clock.toFixed(3),end:+(clock+duration).toFixed(3)};clock+=duration+.18;return c;});
+const cues=measured?measured.cues.map((c,i)=>{if(c.text!==lines[i])throw Error('时间轴文本不匹配');return {...c,line:i+1};}):lines.map((text,i)=>{const duration=Math.max(.8,[...text.replace(/[^\p{L}\p{N}]/gu,'')].length/4.3);const c={line:i+1,text,start:+clock.toFixed(3),end:+(clock+duration).toFixed(3)};clock+=duration+.18;return c;});
 const duration=cues.at(-1).end+.2,FPS=30,S=1.5,W=1280,H=720;
 const clamp=(x)=>Math.min(1,Math.max(0,x)),mix=(a,b,p)=>a+(b-a)*p,smooth=(x)=>{x=clamp(x);return x*x*(3-2*x);};
 const spans=[
@@ -34,8 +39,8 @@ const spans=[
  [42,45,'看同类打工','电视继续科考站打工，笨鱼搬凳坐好，本鲸持纸来回验收'],
  [46,49,'监工没挪窝','本鲸推监工凳靠近电视，被剧情吸引；末句转身叉腰嘴硬']
 ].map(([from,to,title,action],i)=>({id:`C${String(i+1).padStart(2,'0')}`,from,to,title,action,start:cues[from-1].start,end:cues[to-1].end}));
-const subs=cues.flatMap(c=>{const parts=c.text.match(/[^，。！？；：]+[，。！？；：]?/g)||[c.text];let n=0,total=parts.join('').length;return parts.map(text=>{const st=c.start+(c.end-c.start)*n/total;n+=text.length;return {line:c.line,text,start:st,end:c.start+(c.end-c.start)*n/total};});});
-fs.writeFileSync(path.join(HERE,'sample_timing.json'),JSON.stringify({measured:false,purpose:'silent_storyboard_only',source:'Day9/Day9配音台词.txt',rate_estimate:4.3,duration,cues,subtitles:subs,shots:spans},null,2));
+const subs=measured?JSON.parse(fs.readFileSync(subtitleFile,'utf8')).screens:cues.flatMap(c=>{const parts=c.text.match(/[^，。！？；：]+[，。！？；：]?/g)||[c.text];let n=0,total=parts.join('').length;return parts.map(text=>{const st=c.start+(c.end-c.start)*n/total;n+=text.length;return {line:c.line,text,start:st,end:c.start+(c.end-c.start)*n/total};});});
+if(!measured)fs.writeFileSync(path.join(HERE,'sample_timing.json'),JSON.stringify({measured:false,purpose:'silent_storyboard_only',source:'Day9/Day9配音台词.txt',rate_estimate:4.3,duration,cues,subtitles:subs,shots:spans},null,2));
 const sub=createDay2Subtitle({fontOf:(s,w)=>`${w} ${s}px NotoSansSC`,measureCtx:createCanvas(1,1).getContext('2d')});
 function box(g,x,y,w,h,fill='#17364D',stroke='#7AA9BA',r=10){panel6(g,x,y,w,h,fill,stroke,r);}
 function txt(g,s,x,y,size=23,color='#E8F4F2'){text6(g,s,x,y,size,color);}
@@ -151,7 +156,7 @@ function frame(g,t){
  if(hit)sub.draw(g,{lines:sub.wrap(hit.text),speaker:'本鲸',vis:1,W,H});
 }
 await loadSpritePoses();
-const out=path.resolve(arg('--out')||path.join(ROOT,'Day9/成片/Day9_笨鱼看同类_无配音样片.mp4'));
+const out=path.resolve(arg('--out')||path.join(ROOT,'Day9/成片',voice?'Day9_笨鱼看同类_配音对齐版.mp4':'Day9_笨鱼看同类_无配音样片.mp4'));
 const canvas=createCanvas(W*S,H*S),g=canvas.getContext('2d');
 if(argv.includes('--test')){
  const digest=data=>createHash('sha256').update(data).digest('hex');
@@ -162,17 +167,17 @@ if(argv.includes('--test')){
   frame(g,mix(shot.start,shot.end,p));hashes.push(digest(canvas.data()));
   if(shot.from>=27){const h=digest(g.getImageData(Math.round(1222*S),Math.round(125*S),2,Math.round(325*S)).data);if(border&&border!==h)throw Error('电视右边框发生抖动');border=h;tvChecks++;}
  }if(new Set(hashes).size!==3)throw Error('镜头无变化 '+shot.id);animated++;}
- const report={measured:false,lines:lines.length,subtitle_screens:subs.length,subtitle_exact:true,no_overlap:true,animated_shots: animated,tv_border_samples:tvChecks,tv_border_fixed:true,duration,frame_count:Math.ceil(duration*FPS)};
- fs.writeFileSync(path.join(HERE,'样片回归检查.json'),JSON.stringify(report,null,2));console.log(report);
+ const report={measured:!!measured,lines:lines.length,subtitle_screens:subs.length,subtitle_exact:true,no_overlap:true,animated_shots: animated,tv_border_samples:tvChecks,tv_border_fixed:true,duration,frame_count:Math.round(duration*FPS)};
+ fs.writeFileSync(path.join(HERE,measured?'有声回归检查.json':'样片回归检查.json'),JSON.stringify(report,null,2));console.log(report);
 }else if(argv.includes('--stills')){
- const dir=path.join(HERE,'抽帧');fs.mkdirSync(dir,{recursive:true});
+ const dir=path.join(HERE,measured?'有声抽帧':'抽帧');fs.mkdirSync(dir,{recursive:true});
  const marks=argv.includes('--all-lines')?cues.map(c=>({...c,id:`L${String(c.line).padStart(2,'0')}`})):spans;
  for(const sh of marks){const time=(sh.start+sh.end)/2;frame(g,time);fs.writeFileSync(path.join(dir,`${sh.id}.jpg`),canvas.toBuffer('image/jpeg'));}console.log('stills',marks.length);
 }else{
  fs.mkdirSync(path.dirname(out),{recursive:true});
- const ff=spawn(resolveFfmpeg(),['-y','-f','rawvideo','-pix_fmt','rgba','-s',`${W*S}x${H*S}`,'-r',String(FPS),'-i','-','-an','-c:v','libx264','-preset','veryfast','-tune','animation','-crf','20','-pix_fmt','yuv420p','-movflags','+faststart',out],{stdio:['pipe','ignore','pipe']});
+ const ff=spawn(resolveFfmpeg(),['-y','-f','rawvideo','-pix_fmt','rgba','-s',`${W*S}x${H*S}`,'-r',String(FPS),'-i','-',...(voice?['-i',path.resolve(voice),'-map','0:v:0','-map','1:a:0','-c:a','aac','-b:a','192k','-af','apad','-t',String(duration)]:['-an']),'-c:v','libx264','-preset','veryfast','-tune','animation','-crf','20','-pix_fmt','yuv420p','-movflags','+faststart',out],{stdio:['pipe','ignore','pipe']});
  let err='';ff.stderr.on('data',d=>err+=d);ff.on('error',e=>{throw e;});const done=new Promise((resolve,reject)=>ff.on('close',c=>c===0?resolve():reject(Error(err.slice(-2000)))));
- const total=Math.ceil(duration*FPS);console.log(`Day9 silent, measured=false, ${total} frames, ${duration}s`);
+ const total=Math.round(duration*FPS);console.log(`Day9 ${voice?'voiced':'silent'}, measured=${!!measured}, ${total} frames, ${duration}s`);
  for(let f=0;f<total;f++){frame(g,f/FPS);const raw=canvas.data();if(!ff.stdin.write(Buffer.from(raw.buffer,raw.byteOffset,raw.byteLength)))await new Promise(r=>ff.stdin.once('drain',r));if(f%180===0)console.log(`${f}/${total}`);}
  ff.stdin.end();await done;console.log('DONE',out,fs.statSync(out).size);
 }
