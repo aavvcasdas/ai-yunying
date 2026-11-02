@@ -44,3 +44,25 @@ node tools/day9制作/render_day9.mjs --voice Day9/配音/鲸鱼看视频_克隆
 ## 发布封面
 
 运行 `node tools/day9制作/make_day9_cover.mjs`。用本项目角色/道具及最终成片的电视镜头做代码排版，输出3:4与4:3，不调用生图。台词和发布口径见`Day9/Day9发布物料.md`。
+
+## 整体动作改进版 v2
+
+独立渲染器 `render_day9_v2.mjs` 与动作模块 `motion_v2.mjs`，不覆盖原版代码、音源、实测时间轴、字幕及成片。仅使用现有 Day3 角色图和项目已有蒙皮器；没有搬入外部桌宠角色、光流或 Electron。
+
+- 实际位移驱动步态，缓入缓出，停下后不继续滑步。
+- 有限动作分准备、执行、收回；按绝对时间重建，重复绘制不重启动作。
+- 写码使用现有专用姿势，手部交替按键、内置桌面固定。脸部像素刚性保留，不补眼皮、不盖肤色横条。
+- 交总结、带包离场、观影反应及电视内小场景重新编排；凳子不再跟着行走人物漂移。
+
+```bash
+node --test tools/day9制作/motion_v2.test.mjs
+node tools/day9制作/render_day9_v2.mjs --voice Day9/配音/鲸鱼看视频_克隆配音_最终版.wav --alignment tools/day9制作/voice_alignment.json --subtitle-file tools/day9制作/subtitle_timing.json
+# 同一组音频/时间轴参数可追加 --test 或 --stills --all-lines
+# 检查单镜必须另指定 --out，避免短片误覆盖整片：
+# ... --preview-shot C05 --out /home/user/Day9_动作检查_查岗.mp4
+python3 tools/day9制作/verify_motion_v2.py
+```
+
+媒体验收脚本需 numpy、ffmpeg、ffprobe，可用环境变量 `FFMPEG` / `FFPROBE` 指定二进制。运行时依赖可装在仓库外。
+
+输出 `Day9/成片/Day9_笨鱼看同类_动作改进版_v2.mp4`。验收见 `v2验收记录.md`、`v2媒体核验.json`、`v2回归检查.json` 和 `v2动作专项测试.txt`；总览直接取自最终编码 MP4。`v2抽帧/` 是可重建缓存，不入库。
