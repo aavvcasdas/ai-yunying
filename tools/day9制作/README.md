@@ -40,3 +40,7 @@ node tools/day9制作/render_day9.mjs --voice Day9/配音/鲸鱼看视频_克隆
 ```
 
 有声输出独立命名`Day9_笨鱼看同类_配音对齐版.mp4`，不覆盖无声样片。渲染前校验音频SHA256；错用音源会拒绝。验收见`有声验收记录.md`及`有声媒体核验.json`。原始ASR可用`tools/day5制作/asr_align_day5.py`重建，参数`--voice`/`--lines Day9/Day9配音台词.txt`/`--cache tools/day9制作/asr_tokens.json`/`--out tools/day9制作/asr_alignment_raw.json`。
+
+## 发布封面
+
+运行 `node tools/day9制作/make_day9_cover.mjs`。用本项目角色/道具及最终成片的电视镜头做代码排版，输出3:4与4:3，不调用生图。台词和发布口径见`Day9/Day9发布物料.md`。
