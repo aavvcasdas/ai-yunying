@@ -44,7 +44,7 @@ const subs=measured?JSON.parse(fs.readFileSync(subtitleFile,'utf8')).screens:cue
 if(!measured)fs.writeFileSync(path.join(HERE,'v2_sample_timing.json'),JSON.stringify({measured:false,purpose:'silent_storyboard_only',source:'Day9/Day9配音台词.txt',rate_estimate:4.3,duration,cues,subtitles:subs,shots:spans},null,2));
 const sub=createDay2Subtitle({fontOf:(s,w)=>`${w} ${s}px NotoSansSC`,measureCtx:createCanvas(1,1).getContext('2d')});
 function box(g,x,y,w,h,fill='#17364D',stroke='#7AA9BA',r=10){panel6(g,x,y,w,h,fill,stroke,r);}
-function txt(g,s,x,y,size=23,color='#E8F4F2'){if(scenePainters.station&&paintingTV&&['#E8F4F2','#F5DFAD','#F7E5BA'].includes(color))color='#415865';text6(g,s,x,y,size,color);}
+function txt(g,s,x,y,size=23,color='#E8F4F2'){if(scenePainters.station&&paintingTV&&['#F5DFAD','#F7E5BA','#D9EBE4'].includes(color))color='#415865';text6(g,s,x,y,size,color);}
 function oval(g,x,y,rx,ry,fill,stroke=null){g.beginPath();g.ellipse(x,y,rx,ry,0,0,Math.PI*2);g.fillStyle=fill;g.fill();if(stroke){g.strokeStyle=stroke;g.lineWidth=2;g.stroke();}}
 function line(g,x,y,xx,yy,color='#A8C3D2',width=3){g.beginPath();g.moveTo(x,y);g.lineTo(xx,yy);g.strokeStyle=color;g.lineWidth=width;g.lineCap='round';g.stroke();}
 function tag(g,s,x,y,w=160){box(g,x-w/2,y-26,w,40,'#E9F2E7','#7DA9AC',12);txt(g,s,x,y+2,20,'#294A56');}
@@ -98,7 +98,7 @@ function inside(g,t,mode,progress){
   box(g,288,61,305,224,'#183B51','#91C2CB',10);txt(g,'自动回复',440,94,24);
   for(let i=0;i<3;i++){if(q<i*.12)continue;const yy=126+i*43;box(g,309,yy,252,32,'#D7E8DF','#7FA7AB',8);txt(g,'有饭吗？',435,yy+23,18,'#385865');}
   if(q>.55){box(g,345,145,198,69,'#A65B69','#FFD7BB',10);txt(g,'屏蔽',444,190,33,'#FFF0DD');}
-  txt(g,'别在评论区刷屏',435,321,23);
+  txt(g,'别在评论区刷屏',435,321,23,scenePainters.station?'#415865':'#E8F4F2');
  }else{
   const working=mode==='work';
   if(working){
@@ -237,7 +237,14 @@ function frame(g,t){
 }
 
 await loadMotionAssets({createCanvas,loadImage});
-const out=path.resolve(arg('--out')||path.join(ROOT,'Day9/成片',voice?'Day9_笨鱼看同类_动作改进版_v2.mp4':'Day9_笨鱼看同类_动作改进版_v2_无声.mp4'));
+const visualStyle=arg('--visual-style')||'classic';
+if(!['classic','miniature'].includes(visualStyle))throw Error('Unknown visual style: '+visualStyle);
+const version=visualStyle==='miniature'?'v3':'v2';
+if(visualStyle==='miniature'){
+ const {paintMiniatureRoom,paintMiniatureStation,paintMiniatureTable}=await import('./visual_elements_v3.mjs');
+ configureScenePainters({room:paintMiniatureRoom,station:paintMiniatureStation,table:paintMiniatureTable});
+}
+const out=path.resolve(arg('--out')||path.join(ROOT,'Day9/成片',visualStyle==='miniature'?(voice?'Day9_笨鱼看同类_场景增强版_v3.mp4':'Day9_笨鱼看同类_场景增强版_v3_无声.mp4'):(voice?'Day9_笨鱼看同类_动作改进版_v2.mp4':'Day9_笨鱼看同类_动作改进版_v2_无声.mp4')));
 const previewId=arg('--preview-shot');
 if(previewId&&!arg('--out'))throw Error('Preview requires a separate --out path');
 const previewSpan=previewId?spans.find(s=>s.id===previewId):null;
@@ -256,16 +263,16 @@ if(argv.includes('--test')){
   if(shot.from>=27){const h=digest(g.getImageData(Math.round(1222*S),Math.round(125*S),2,Math.round(325*S)).data);if(border&&border!==h)throw Error('电视右边框发生抖动');border=h;tvChecks++;}
  }if(new Set(hashes).size!==3)throw Error('镜头无变化 '+shot.id);animated++;}
  const report={measured:!!measured,lines:lines.length,subtitle_screens:subs.length,subtitle_exact:true,no_overlap:true,animated_shots: animated,tv_border_samples:tvChecks,tv_border_fixed:true,duration,frame_count:Math.round(duration*FPS)};
- fs.writeFileSync(path.join(HERE,'v2回归检查.json'),JSON.stringify(report,null,2));console.log(report);
+ fs.writeFileSync(path.join(HERE,`${version}回归检查.json`),JSON.stringify(report,null,2));console.log(report);
 }else if(argv.includes('--stills')){
- const dir=path.join(HERE,'v2抽帧');fs.mkdirSync(dir,{recursive:true});
+ const dir=path.join(HERE,`${version}抽帧`);fs.mkdirSync(dir,{recursive:true});
  const marks=argv.includes('--all-lines')?cues.map(c=>({...c,id:`L${String(c.line).padStart(2,'0')}`})):spans;
  for(const sh of marks){const time=(sh.start+sh.end)/2;frame(g,time);fs.writeFileSync(path.join(dir,`${sh.id}.jpg`),canvas.toBuffer('image/jpeg'));}console.log('stills',marks.length);
 }else{
  fs.mkdirSync(path.dirname(out),{recursive:true});
  const ff=spawn(resolveFfmpeg(),['-y','-f','rawvideo','-pix_fmt','rgba','-s',`${W*S}x${H*S}`,'-r',String(FPS),'-i','-',...(voice?['-ss',String(clipStart),'-i',path.resolve(voice),'-map','0:v:0','-map','1:a:0','-c:a','aac','-b:a','192k','-af','apad','-t',String(renderDuration)]:['-an']),'-c:v','libx264','-preset','veryfast','-tune','animation','-crf','20','-pix_fmt','yuv420p','-movflags','+faststart',out],{stdio:['pipe','ignore','pipe']});
  let err='';ff.stderr.on('data',d=>err+=d);ff.on('error',e=>{throw e;});const done=new Promise((resolve,reject)=>ff.on('close',c=>c===0?resolve():reject(Error(err.slice(-2000)))));
- const total=Math.round(renderDuration*FPS);console.log(`Day9 v2 ${voice?'voiced':'silent'}, measured=${!!measured}, ${total} frames, ${renderDuration}s`);
+ const total=Math.round(renderDuration*FPS);console.log(`Day9 ${version} ${voice?'voiced':'silent'}, measured=${!!measured}, ${total} frames, ${renderDuration}s`);
  for(let f=0;f<total;f++){frame(g,clipStart+f/FPS);const raw=canvas.data();if(!ff.stdin.write(Buffer.from(raw.buffer,raw.byteOffset,raw.byteLength)))await new Promise(r=>ff.stdin.once('drain',r));if(f%180===0)console.log(`${f}/${total}`);}
  ff.stdin.end();await done;console.log('DONE',out,fs.statSync(out).size,cacheStats());
 }

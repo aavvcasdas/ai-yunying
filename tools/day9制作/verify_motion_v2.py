@@ -1,6 +1,7 @@
 """Full decode, media metadata, zero-offset source-audio correlation and encoded cue stills.
 Requires numpy, ffmpeg and ffprobe (CLI paths can be set with environment variables).
 """
+import argparse
 import hashlib
 import json
 import os
@@ -20,7 +21,10 @@ def binary(name, fallback):
 
 ff = binary('ffmpeg', '/tmp/node_render/node_modules/@ffmpeg-installer/linux-x64/ffmpeg')
 probe = binary('ffprobe', '/tmp/node_render/node_modules/@ffprobe-installer/linux-x64/ffprobe')
-video = ROOT / 'Day9/成片/Day9_笨鱼看同类_动作改进版_v2.mp4'
+parser = argparse.ArgumentParser()
+parser.add_argument('--version', choices=['v2', 'v3'], default='v2')
+version = parser.parse_args().version
+video = ROOT / ('Day9/成片/Day9_笨鱼看同类_场景增强版_v3.mp4' if version == 'v3' else 'Day9/成片/Day9_笨鱼看同类_动作改进版_v2.mp4')
 voice = ROOT / 'Day9/配音/鲸鱼看视频_克隆配音_最终版.wav'
 meta = json.loads(subprocess.check_output([probe, '-v', 'error', '-show_streams', '-show_format', '-of', 'json', str(video)]))
 v = next(s for s in meta['streams'] if s['codec_type'] == 'video')
@@ -43,6 +47,7 @@ assert v['width'] == 1920 and v['height'] == 1080 and v['r_frame_rate'] == '30/1
 assert int(v['nb_frames']) == 3343
 # Verify that no preserved deliverable, voice, subtitle, timing, drawing or original renderer was edited.
 subprocess.run(['git', 'diff', '--exit-code', '--', 'Day9/配音', 'Day9/字幕', 'Day9/Day9配音台词.txt',
+                'Day9/成片/Day9_笨鱼看同类_动作改进版_v2.mp4',
                 'Day9/成片/Day9_笨鱼看同类_配音对齐版.mp4', 'Day9/成片/Day9_笨鱼看同类_无配音样片.mp4',
                 'tools/day9制作/render_day9.mjs', 'tools/day9制作/voice_alignment.json',
                 'tools/day9制作/subtitle_timing.json', 'tools/day3制作/whale_girl_src'], check=True, cwd=ROOT)
@@ -55,10 +60,10 @@ rep = dict(file=str(video.relative_to(ROOT)), bytes=video.stat().st_size,
            pcm_zero_offset_correlation=corr, full_decode_exit_code=decode.returncode,
            measured=True, lines=49, subtitle_screens=64, unit_tests_passed=15,
            old_renderer_and_deliverables_preserved=True)
-(HERE / 'v2媒体核验.json').write_text(json.dumps(rep, ensure_ascii=False, indent=2) + '\n')
+(HERE / f'{version}媒体核验.json').write_text(json.dumps(rep, ensure_ascii=False, indent=2) + '\n')
 print(json.dumps(rep, ensure_ascii=False, indent=2))
 cues = alignment['cues']
-d = HERE / 'v2抽帧/编码抽查'
+d = HERE / f'{version}抽帧/编码抽查'
 d.mkdir(parents=True, exist_ok=True)
 indices = [round((c['start'] + c['end']) / 2 * 30) for c in cues]
 selection = '+'.join(f'eq(n\\,{i})' for i in indices)

@@ -72,3 +72,15 @@ python3 tools/day9制作/verify_motion_v2.py
 运行 `node tools/day9制作/make_visual_studies.mjs`，默认使用已核验的指定配音/cue/字幕。`visual_elements_v3.mjs` 为独立实现的 Canvas 2.5D 布景，不含外部项目代码或素材，也不是真实3D/景深引擎。
 
 为制作试样，v2 渲染器新增可选 `configureScenePainters()` 与帧绘制导出，直接运行 v2 时默认不启用。48时点旧版/新接口默认输出逐像素哈希一致，动作测试15项继续通过。试样记录见 `画面试样清单.json` / `画面试样回归检查.json`。
+
+## 场景增强版 v3 完整有声成片
+
+在现有渲染器追加 `--visual-style miniature` 即可启用新房间、科考站和桌面布景；默认 `classic` 继续输出 v2。新版文件、抽帧、回归报告独立命名，不覆盖 v2。
+
+```bash
+node tools/day9制作/render_day9_v2.mjs --visual-style miniature --voice Day9/配音/鲸鱼看视频_克隆配音_最终版.wav --alignment tools/day9制作/voice_alignment.json --subtitle-file tools/day9制作/subtitle_timing.json
+# 同参数追加 --test / --stills --all-lines 可检查新版
+python3 tools/day9制作/verify_motion_v2.py --version v3
+```
+
+输出 `Day9/成片/Day9_笨鱼看同类_场景增强版_v3.mp4`。结果见 `v3验收记录.md`、`v3媒体核验.json`、`v3回归检查.json` 与编码后逐句总览。浅色背景上的文字改为深色，暗色工作牌/自动回复面板仍保留浅色字。
