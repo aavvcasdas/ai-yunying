@@ -66,9 +66,3 @@ python3 tools/day9制作/verify_motion_v2.py
 媒体验收脚本需 numpy、ffmpeg、ffprobe，可用环境变量 `FFMPEG` / `FFPROBE` 指定二进制。运行时依赖可装在仓库外。
 
 输出 `Day9/成片/Day9_笨鱼看同类_动作改进版_v2.mp4`。验收见 `v2验收记录.md`、`v2媒体核验.json`、`v2回归检查.json` 和 `v2动作专项测试.txt`；总览直接取自最终编码 MP4。`v2抽帧/` 是可重建缓存，不入库。
-
-## 场景画面试样（非新版成片）
-
-运行 `node tools/day9制作/make_visual_studies.mjs`，默认使用已核验的指定配音/cue/字幕。`visual_elements_v3.mjs` 为独立实现的 Canvas 2.5D 布景，不含外部项目代码或素材，也不是真实3D/景深引擎。
-
-为制作试样，v2 渲染器新增可选 `configureScenePainters()` 与帧绘制导出，直接运行 v2 时默认不启用。48时点旧版/新接口默认输出逐像素哈希一致，动作测试15项继续通过。试样记录见 `画面试样清单.json` / `画面试样回归检查.json`。

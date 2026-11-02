@@ -33,8 +33,6 @@ export function travel(from,to,time,start,duration=2.0){
  return {x:from+distance,q,p,distance,speed:(q<=0||q>=1)?0:(to-from)*6*q*(1-q)/duration,moving:q>0&&q<1};
 }
 let createCanvas,loadImage;
-let labelColor='#C8DBE1';
-export function setMotionPalette(palette={}){labelColor=palette.labelColor||'#C8DBE1';}
 const rigs=new Map(),cache=new Map();
 export async function loadMotionAssets(api){
  ({createCanvas,loadImage}=api);
@@ -100,7 +98,7 @@ export function drawAction(g,{action='idle',x,y,u=30,time=0,start=0,duration=2.4
   g.save();g.translate((400-cx)*sc,(578-(rig.bbox.y+rig.bbox.h))*sc);g.fillStyle='#5B533F';g.font=`800 ${Math.max(9,height*.027)}px NotoSansSC`;g.textAlign='center';g.fillText('总结',0,0);g.restore();
  }
  g.restore();
- if(label){g.save();g.font='800 17px NotoSansSC';g.textAlign='center';g.fillStyle=labelColor;g.fillText(label,x,y-height-13);g.restore();}
+ if(label){g.save();g.font='800 17px NotoSansSC';g.textAlign='center';g.fillStyle='#C8DBE1';g.fillText(label,x,y-height-13);g.restore();}
  return {...state,pose,x,y,walking};
 }
 export function cacheStats(){return {rigs:rigs.size,frames:cache.size};}

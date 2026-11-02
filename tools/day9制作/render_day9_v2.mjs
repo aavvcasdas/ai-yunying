@@ -6,7 +6,7 @@ import {spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {createCanvas,loadImage,bg,boss,panel6,text6,
  day3RiceBowl,stool,wallet,coin,reseedBoil,resolveFfmpeg} from '../day8制作/render_day8.mjs';
-import {loadMotionAssets,drawAction,travel,cacheStats,setMotionPalette} from './motion_v2.mjs';
+import {loadMotionAssets,drawAction,travel,cacheStats} from './motion_v2.mjs';
 import {createDay2Subtitle} from '../字幕/day2_style_sub.mjs';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const HERE=path.dirname(fileURLToPath(import.meta.url));
@@ -44,17 +44,14 @@ const subs=measured?JSON.parse(fs.readFileSync(subtitleFile,'utf8')).screens:cue
 if(!measured)fs.writeFileSync(path.join(HERE,'v2_sample_timing.json'),JSON.stringify({measured:false,purpose:'silent_storyboard_only',source:'Day9/Day9配音台词.txt',rate_estimate:4.3,duration,cues,subtitles:subs,shots:spans},null,2));
 const sub=createDay2Subtitle({fontOf:(s,w)=>`${w} ${s}px NotoSansSC`,measureCtx:createCanvas(1,1).getContext('2d')});
 function box(g,x,y,w,h,fill='#17364D',stroke='#7AA9BA',r=10){panel6(g,x,y,w,h,fill,stroke,r);}
-function txt(g,s,x,y,size=23,color='#E8F4F2'){if(scenePainters.station&&paintingTV&&['#E8F4F2','#F5DFAD','#F7E5BA'].includes(color))color='#415865';text6(g,s,x,y,size,color);}
+function txt(g,s,x,y,size=23,color='#E8F4F2'){text6(g,s,x,y,size,color);}
 function oval(g,x,y,rx,ry,fill,stroke=null){g.beginPath();g.ellipse(x,y,rx,ry,0,0,Math.PI*2);g.fillStyle=fill;g.fill();if(stroke){g.strokeStyle=stroke;g.lineWidth=2;g.stroke();}}
 function line(g,x,y,xx,yy,color='#A8C3D2',width=3){g.beginPath();g.moveTo(x,y);g.lineTo(xx,yy);g.strokeStyle=color;g.lineWidth=width;g.lineCap='round';g.stroke();}
 function tag(g,s,x,y,w=160){box(g,x-w/2,y-26,w,40,'#E9F2E7','#7DA9AC',12);txt(g,s,x,y+2,20,'#294A56');}
 function steam(g,x,y,t){for(let i=0;i<3;i++){g.save();g.globalAlpha=.24;g.beginPath();for(let k=0;k<15;k++){const yy=y-k*4-((t*20+i*17)%22);const xx=x+i*12-12+Math.sin(t*1.3+k*.5+i)*5;k?g.lineTo(xx,yy):g.moveTo(xx,yy);}g.strokeStyle='#D0E5E8';g.lineWidth=4;g.stroke();g.restore();}}
 function keyboard(g,x,y,t,typing=true){box(g,x-68,y-14,136,34,'#34495E','#9CB4BF',6);for(let j=0;j<3;j++)for(let k=0;k<10;k++)box(g,x-58+k*12,y-8+j*8,8,5,typing&&(k+j+Math.floor(t*9))%11===0?'#9BE5D6':'#102737','#486272',1);}
 function satDish(g,x,y,s,t){g.save();g.translate(x,y);g.scale(s,s);line(g,0,15,-18,76,'#7E9EA9',9);line(g,-45,78,35,78,'#91B3BB',9);g.save();g.rotate(-.23);g.beginPath();g.ellipse(0,0,80,34,0,0,Math.PI);g.closePath();g.fillStyle='#AACDD7';g.fill();g.strokeStyle='#426A81';g.lineWidth=4;g.stroke();oval(g,0,0,80,16,'#CBE4E8','#6D96AB');line(g,0,-8,25,-67,'#5A889D',5);oval(g,25,-67,7,7,'#F2D28C');g.restore();g.restore();}
-let scenePainters={},paintingTV=false;
-export function configureScenePainters(painters={}){scenePainters={...painters};setMotionPalette({labelColor:painters.room?'#4E6472':'#C8DBE1'});}
 function station(g,t,outside=false){
- if(scenePainters.station){scenePainters.station(g,t,outside);return;}
  const gr=g.createLinearGradient(0,0,0,360);gr.addColorStop(0,'#457C9D');gr.addColorStop(1,'#B9DAE0');g.fillStyle=gr;g.fillRect(0,0,640,360);
  for(let i=0;i<4;i++){g.beginPath();g.moveTo(i*200-60,220);g.lineTo(i*200+70,55+i%2*34);g.lineTo(i*200+220,230);g.closePath();g.fillStyle=i%2?'#B6D4DB':'#E4F1ED';g.fill();}
  g.fillStyle='#DDECEB';g.fillRect(0,224,640,136);
@@ -68,7 +65,7 @@ function station(g,t,outside=false){
  line(g,350,0,350,30,'#A7B9AB',3);oval(g,350,43,39,16,'#EDD49B');
  box(g,37,270,195,20,'#655B4E','#B1A18A',3);line(g,52,292,46,343,'#706553',8);line(g,218,292,223,343,'#706553',8);
 }
-function stageTable(g){if(scenePainters.table){scenePainters.table(g);return;}box(g,280,274,310,18,'#A1815C','#CEB58D',5);line(g,301,292,291,350,'#847252',9);line(g,563,292,572,350,'#847252',9);}
+function stageTable(g){box(g,280,274,310,18,'#A1815C','#CEB58D',5);line(g,301,292,291,350,'#847252',9);line(g,563,292,572,350,'#847252',9);}
 function act(g,action,x,y,u,t,start,len,extra={}){
  return drawAction(g,{action,x,y,u,time:t,start,duration:Math.max(.3,len),...extra});
 }
@@ -116,13 +113,13 @@ function inside(g,t,mode,progress){
 function tv(g,t,mode='work',progress=.5){
  const x=552,y=108,w=658,h=370;
  g.save();g.shadowColor='#07121FCC';g.shadowBlur=14;box(g,x-14,y-14,w+28,h+40,'#1D2934','#91ABB3',15);g.restore();
- g.save();g.beginPath();g.roundRect(x,y,w,h,9);g.clip();g.translate(x,y);g.scale(w/640,h/360);paintingTV=true;try{inside(g,t,mode,progress);}finally{paintingTV=false;g.restore();}
+ g.save();g.beginPath();g.roundRect(x,y,w,h,9);g.clip();g.translate(x,y);g.scale(w/640,h/360);inside(g,t,mode,progress);g.restore();
  box(g,x,y,w,30,'#123347','#426779',0);txt(g,'冬冰作品观影摘要 · 场景示意（非原片）',x+w/2,y+22,17,'#E1ECE6');
  line(g,x+w*.44,y+h+17,x+w*.56,y+h+17,'#627F88',4);
  box(g,x-8,y+h+43,w+16,68,'#605A52','#A5997D',8);for(let i=0;i<2;i++){box(g,x+16+i*321,y+h+52,304,48,'#494F4F','#8B9C95',5);line(g,x+144+i*321,y+h+76,x+187+i*321,y+h+76,'#BEBBA2',4);}
 }
 function roomV2(g,work=false){
- if(scenePainters.room)scenePainters.room(g,{work});else bg(g,0);
+ bg(g,0);
  // Functional set dressing: a repair board and desk lighting, not random accessories.
  if(work){box(g,31,160,185,145,'#304856','#778E94',8);txt(g,'待修',124,192,23,'#E4DAC1');
   box(g,48,210,150,34,'#E6D8B5','#ADA789',2);txt(g,'接话没接上',123,234,17,'#425869');
@@ -232,7 +229,7 @@ function frame(g,t){
   else act(g,'proud',449,582,33,t,c.start,c.end-c.start);
   if(n===49)tag(g,'本鲸在监工！',364,192,190);
  }
- txt(g,'非官方同人 · AI生成 · 剧情演绎',1058,34,15,scenePainters.room?'#536777':'#B6CFD2');
+ txt(g,'非官方同人 · AI生成 · 剧情演绎',1058,34,15,'#B6CFD2');
  const hit=subs.find(s=>t>=s.start&&t<s.end);if(hit)sub.draw(g,{lines:sub.wrap(hit.text),speaker:'本鲸',vis:1,W,H});
 }
 
@@ -243,8 +240,6 @@ if(previewId&&!arg('--out'))throw Error('Preview requires a separate --out path'
 const previewSpan=previewId?spans.find(s=>s.id===previewId):null;
 if(previewId&&!previewSpan)throw Error('Unknown preview shot: '+previewId);
 const clipStart=previewSpan?.start||0,renderDuration=previewSpan?previewSpan.end-previewSpan.start:duration;
-export {frame as drawDay9Frame};
-if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
 const canvas=createCanvas(W*S,H*S),g=canvas.getContext('2d');
 if(argv.includes('--test')){
  const digest=data=>createHash('sha256').update(data).digest('hex');
@@ -268,6 +263,4 @@ if(argv.includes('--test')){
  const total=Math.round(renderDuration*FPS);console.log(`Day9 v2 ${voice?'voiced':'silent'}, measured=${!!measured}, ${total} frames, ${renderDuration}s`);
  for(let f=0;f<total;f++){frame(g,clipStart+f/FPS);const raw=canvas.data();if(!ff.stdin.write(Buffer.from(raw.buffer,raw.byteOffset,raw.byteLength)))await new Promise(r=>ff.stdin.once('drain',r));if(f%180===0)console.log(`${f}/${total}`);}
  ff.stdin.end();await done;console.log('DONE',out,fs.statSync(out).size,cacheStats());
-}
-
 }
