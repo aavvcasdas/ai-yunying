@@ -8,6 +8,10 @@ export const CALIBRATION={
  idle:{headTop:[425,12],mouth:[438,477],handR:[697,686],handL:[218,685]},
  point:{headTop:[425,12],mouth:[438,477],handR:[710,387],fingerR:[727,337],handL:[311,678]},
  shock:{headTop:[454,6],mouth:[440,487],handR:[710,688],handL:[225,680]},
+ confident_hips:{headTop:[425,12],mouth:[438,477],handR:[535,690],handL:[309,677]},
+ think:{headTop:[425,12],mouth:[438,477],handR:[450,628],handL:[345,628],pageCenter:[400,600]},
+ eat:{headTop:[425,12],mouth:[421,484],handR:[463,610],handL:[335,610]},
+ playful_fists:{headTop:[425,12],mouth:[435,477],handR:[530,590],handL:[300,590]},
  fatfish_working:{headTop:[425,12],mouth:[438,477],handR:[482,686],handL:[331,681],deskFront:[468,748]}
 };
 const rigs=new Map(),cache=new Map();let makeCanvas;
@@ -21,7 +25,10 @@ export async function loadContactActors({createCanvas,loadImage}){
    const [x,y]=rig.verts[i];let w=0;
    if(name==='point'&&x>570&&y>285&&y<600)w=Math.min(1,(x-570)/80)*Math.min(1,(600-y)/50);
    if(name==='idle'&&x>580&&y>580&&y<760)w=Math.max(0,1-((x-684)/125)**4)*Math.min(1,(y-580)/45)*Math.min(1,(760-y)/35);
+   if(name==='playful_fists'&&x>460&&x<650&&y>520&&y<700)w=Math.min(1,(700-y)/50);
    w=Math.max(0,Math.min(1,w));rig.weights[i]=w?[[armIndex,w],[0,1-w]]:[[0,1]];
+   if(name==='shock'&&x>700&&y>680){const tw=Math.min(1,(x-700)/100)*Math.min(1,(y-680)/100);rig.weights[i]=[[BONE_ORDER.indexOf('tail'),tw],[0,1-tw]];}
+   if(name!=='fatfish_working'&&y>890&&x>230&&x<620){const lw=Math.min(1,(y-890)/50),leg=BONE_ORDER.indexOf(x<430?'legL':'legR');rig.weights[i]=[[leg,lw],[0,1-lw]];}
   }
   rigs.set(name,rig);
  }
@@ -53,7 +60,7 @@ export function drawContactActor(ctx,actor){
  const rig=rigs.get(actor.pose);if(!rig)throw Error('Unknown pose');const h=10.4*(actor.u??38),s=h/rig.h,cx=rig.bbox.x+rig.bbox.w/2;
  ctx.save();ctx.translate(actor.x,actor.y);ctx.scale((actor.flip?-1:1)*(1+(actor.squash??0)*.035),1-(actor.squash??0)*.035);ctx.rotate(actor.lean??0);
  const key=actor.pose+'/'+JSON.stringify(actor.anim||{});let image=cache.get(key);
- if(!image){image=makeCanvas(768,768);drawRigged(image.getContext('2d'),rig,384-cx*600/rig.h,720,1,{spriteH:600,shadow:false,anim:actor.anim||{}});cache.set(key,image);}
+ if(!image){image=makeCanvas(768,768);drawRigged(image.getContext('2d'),rig,384-cx*600/rig.h,720,1,{spriteH:600,shadow:false,anim:actor.anim||{}});cache.set(key,image);if(cache.size>64)cache.delete(cache.keys().next().value);}
  ctx.drawImage(image,-384*h/600,-720*h/600,768*h/600,768*h/600);ctx.restore();return actorAnchors(actor);
 }
 export function anchorSourceInfo(){return Object.fromEntries([...rigs].map(([name,r])=>[name,{size:[r.w,r.h],bbox:r.bbox,landmarks:CALIBRATION[name]}]));}
