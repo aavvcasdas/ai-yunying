@@ -162,3 +162,8 @@
 ### Day9 有声终版已完成
 
 [指定音频配音成片](Day9/成片/Day9_笨鱼看同类_配音对齐版.mp4) · [字幕及导航](Day9/README.md)。已重做实测对齐，不沿用无声样片估时。
+
+## 统一制作门禁
+
+制作使用 `python3 tools/gate.py --day N --stage script|audio|pre-render|final`。
+[配置、依赖与检查边界](tools/验收/README.md)；`final`累计检查全部阶段，任一失败不得宣称验收通过。

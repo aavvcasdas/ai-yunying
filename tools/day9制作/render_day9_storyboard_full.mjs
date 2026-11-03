@@ -6,11 +6,14 @@ import {spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {createCanvas,loadImage,bg,boss,panel6,text6,
  day3RiceBowl,stool,wallet,coin,reseedBoil,resolveFfmpeg} from '../day8制作/render_day8.mjs';
-import {loadMotionAssets,drawAction,travel,cacheStats} from './motion_v2.mjs';
+import {loadMotionAssets,drawAction as rawDrawAction,travel,cacheStats} from './motion_v2.mjs';
 import {createDay2Subtitle} from '../字幕/day2_style_sub.mjs';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const HERE=path.dirname(fileURLToPath(import.meta.url));
 const argv=process.argv.slice(2),arg=(s)=>argv.includes(s)?argv[argv.indexOf(s)+1]:null;
+import {createMotionGate} from './motion_gate.mjs';
+const motionGate=createMotionGate(createCanvas,rawDrawAction,argv.includes('--test'));
+const drawAction=(g,opts)=>motionGate.draw(g,opts);
 const voice=arg('--voice'),alignment=arg('--alignment'),subtitleFile=arg('--subtitle-file');
 const measured=alignment?JSON.parse(fs.readFileSync(alignment,'utf8')):null;
 if(voice){
@@ -18,6 +21,7 @@ if(voice){
  if(createHash('sha256').update(fs.readFileSync(voice)).digest('hex')!==measured.source_sha256)throw Error('音源SHA256与实测时间轴不一致');
 }
 const lines=fs.readFileSync(path.join(ROOT,'Day9/Day9配音台词.txt'),'utf8').trim().split(/\n+/);
+if(measured&&measured.cues.length!==lines.length)throw Error('cue数量与定稿不一致');
 let clock=0;
 const cues=measured?measured.cues.map((c,i)=>{if(c.text!==lines[i])throw Error('时间轴文本不匹配');return {...c,line:i+1};}):lines.map((text,i)=>{const duration=Math.max(.8,[...text.replace(/[^\p{L}\p{N}]/gu,'')].length/4.3);const c={line:i+1,text,start:+clock.toFixed(3),end:+(clock+duration).toFixed(3)};clock+=duration+.18;return c;});
 const duration=cues.at(-1).end+.2,FPS=30,S=1.5,W=1280,H=720;
@@ -131,7 +135,8 @@ function monitor(g,x,y,t,failed=false){
  if(failed)txt(g,'×',x,y-24,29,'#EA969E');
  line(g,x,y,x,y+24,'#718C97',8);line(g,x-39,y+25,x+39,y+25,'#718C97',6);
 }
-function human(g,x,y,t,{walking=false,bag=false}={}){
+function human(g,x,y,t,opts={}){motionGate.extra(ctx=>humanRaw(ctx,x,y,t,opts));return humanRaw(g,x,y,t,opts);}
+function humanRaw(g,x,y,t,{walking=false,bag=false}={}){
  const step=walking?Math.sin(t*7.4):0;
  line(g,x-17,y-12,x-28-step*10,y+73,'#080E1C',18);line(g,x+17,y-12,x+28+step*10,y+73,'#080E1C',18);
  boss(g,x,y-52,75,0);
@@ -144,9 +149,10 @@ const event=(line,text='')=>subs.find(s=>s.line===line&&s.text.includes(text))?.
 const shots=spans;
 const totalFrames=Math.round(duration*FPS);
 const edits=[{id:'FULL',sourceStart:0,sourceEnd:totalFrames/FPS,outputStartFrame:0,outputEndFrame:totalFrames,frames:totalFrames}];
-function editAt(frame){const time=frame/FPS;let sh=shots[0];for(const next of shots)if(time>=next.start)sh=next;return {edit:{id:sh.id},time};}
+function editAt(frame){const time=frame/FPS;let sh=shots[0];for(const next of shots)if(time>=next.start)sh=next;return {edit:{id:sh.id,sourceStart:0,sourceEnd:totalFrames/FPS},time};}
 function camera(g,z,cx,cy){g.translate(W/2,H/2);g.scale(z,z);g.translate(-cx,-cy);}
 function frame(g,t,shotId){
+ motionGate.begin();
  reseedBoil(0);g.setTransform(S,0,0,S,0,0);g.clearRect(0,0,W,H);
  const sh=shots.find(s=>s.id===shotId);if(!sh)throw Error('Unknown trial shot '+shotId);
  let ci=sh.from-1;for(let i=sh.from-1;i<sh.to;i++)if(t>=cues[i].start)ci=i;
@@ -287,7 +293,7 @@ if(argv.includes('--test')){
  let checks=0,tvBorder=null;
  const digest=b=>createHash('sha256').update(b).digest('hex');
  for(const sh of shots){const hashes=[];for(const p of [.1,.4,.7,.95]){
-  frame(g,mix(sh.start,sh.end,p),sh.id);hashes.push(digest(canvas.data()));
+  frame(g,mix(sh.start,sh.end,p),sh.id);hashes.push(motionGate.hash());
   if(['C09','C16'].includes(sh.id)){
    const h=digest(g.getImageData(Math.round(1222*S),Math.round(125*S),2,Math.round(325*S)).data);
    if(tvBorder&&h!==tvBorder)throw Error('Television border moved');tvBorder=h;
@@ -295,7 +301,7 @@ if(argv.includes('--test')){
  }if(new Set(hashes).size<3)throw Error('Trial has no changing action '+sh.id);}
  if(subs.map(s=>s.text).join('')!==lines.join(''))throw Error('Source captions changed');
  for(let f=0;f<totalFrames;f++){const {edit,time}=editAt(f);if(time<edit.sourceStart||time>=edit.sourceEnd+1e-6)throw Error('Bad edit mapping');}
- const result={sampled_frames:checks,shots:shots.length,source_subtitle_exact:true,tv_border_fixed:true,frames:totalFrames,duration:totalFrames/FPS};
+ const result={sampled_frames:checks,shots:shots.length,source_subtitle_exact:true,tv_border_fixed:true,motion_check:'isolated_actor_lower_body_pixels_not_semantic_proof',frames:totalFrames,duration:totalFrames/FPS};
  fs.writeFileSync(path.join(HERE,'全片分镜试做_回归检查.json'),JSON.stringify(result,null,2)+'\n');console.log(result);
 }else if(argv.includes('--stills')){
  const dir=path.join(HERE,'全片分镜试做抽帧');fs.mkdirSync(dir,{recursive:true});

@@ -50,3 +50,13 @@ test('all walk poses use the same opaque foot baseline',()=>{
  assert.ok(bottoms.every(y=>Math.abs(y-470)<=2));
 });
 test('invalid clip is rejected, not silently changed into idle',()=>assert.throws(()=>sampleClip('not-registered',1),/Unknown action/));
+
+test('motion gate ignores subtitle/background/head-only changes but sees hands',async()=>{
+ const {createMotionGate}=await import('./motion_gate.mjs');
+ const c=canvasAPI.createCanvas(1280,720),g=c.getContext('2d');
+ const gate=createMotionGate(canvasAPI.createCanvas,(ctx,{y})=>{ctx.fillStyle='red';ctx.fillRect(50,y,20,20);},true);
+ gate.begin();gate.draw(g,{y:100});const a=gate.hash();
+ g.fillStyle='cyan';g.fillRect(0,0,1280,720); // background/subtitle entirely changes
+ gate.begin();gate.draw(g,{y:120});assert.equal(gate.hash(),a); // head-only change not counted
+ gate.begin();gate.draw(g,{y:480});assert.notEqual(gate.hash(),a);
+});

@@ -22,31 +22,23 @@
   3. 结尾没有「下一个承诺」（下一集/明天/关注/评论区征集/投票 之类）。
 
 注意：事件位置是**半自动**判的。--event-cue 手动指定永远优先；
-没指定时只按黑名单粗筛，输出里会标「自动」，结论要人再确认一遍。
+没指定时按黑名单与事件信号启发式粗筛，输出里会标「自动」，结论要人再确认一遍。
 """
 import argparse
+import math
 import json
 import re
 import sys
+from pathlib import Path
 
 # 招呼 / 前情 / 结算类开场词：这些句子对**没看过前几集的人**是零信息
-OPENER_BLACKLIST = [
-    '大家好', '哈喽', '本鱼回来了', '本鲸回来了', '又见面',
-    '先统计', '先复盘', '复盘', '结算', '汇报', '上一集', '昨天那集',
-    '更新一下', '说个事', '今天给大家', '先说一下',
-]
-# 承诺 / 追更信号：结尾出现这些，观众才有理由看下一集
-PROMISE_WORDS = [
-    '明天', '下一集', '下期', '关注', '评论区', '留言', '投票', '点菜',
-    '帮我选', '你们说', '听你们的', '接着', '未完',
-]
-# 事件感：出现这些才像「发生了一件事」，而不是「交代一下现状」
-EVENT_HINTS = ['没', '不', '被', '抢', '摔', '翻车', '错', '忘', '扣', '超', '炸',
-               '迟到', '失败', '成功', '发现', '结果', '居然', '竟然', '才']
+from rules_config import OPENER_BLACKLIST, PROMISE_WORDS, EVENT_SIGNALS
 
 
 def load_json(path):
-    d = json.load(open(path, encoding='utf-8'))
+    d = json.loads(Path(path).read_text(encoding='utf-8'))
+    if d.get('measured') is not True:
+        raise ValueError('只接受 measured=true 实测轴（缺字段也拒绝）')
     cues = d.get('cues') or []
     out = []
     for i, c in enumerate(cues):
@@ -63,13 +55,19 @@ def load_json(path):
         'word_level': d.get('word_level'),
         'duration': d.get('source_duration_seconds'),
     }
+    previous = 0.0
+    import math
+    for c in out:
+        if not (math.isfinite(c['start']) and math.isfinite(c['end']) and 0 <= c['start'] < c['end'] and c['start'] >= previous):
+            raise ValueError('cue 时间无效或重叠')
+        previous = c['end']
     return out, meta
 
 
 def load_md(path):
     """读验收表里的逐 cue 表：| L01 | 2.430–8.580 | 0.000–6.150 | 6.150 | ... | 台词 |"""
     cues = []
-    for line in open(path, encoding='utf-8'):
+    for line in Path(path).read_text(encoding='utf-8').splitlines():
         if not line.strip().startswith('|'):
             continue
         cells = [c.strip() for c in line.strip().strip('|').split('|')]
@@ -90,10 +88,11 @@ def first_event(cues, declared=None):
         for i, c in enumerate(cues):
             if c['id'] == declared:
                 return c, i, '手动指定'
+        raise ValueError(f'找不到 --event-cue {declared}；可选：{[c["id"] for c in cues]}')
     for i, c in enumerate(cues):
-        if not any(w in c['text'] for w in OPENER_BLACKLIST):
-            return c, i, '自动（黑名单粗筛）'
-    return cues[-1], len(cues) - 1, '自动（兜底）'
+        if not any(w in c['text'] for w in OPENER_BLACKLIST) and any(w in c['text'] for w in EVENT_SIGNALS):
+            return c, i, '自动启发式（须人工确认，不证明事件真的发生）'
+    return None, -1, '未找到事件信号'
 
 
 def main():
@@ -105,6 +104,8 @@ def main():
     ap.add_argument('--window', type=float, default=20.0, help='展开前多少秒（默认 20）')
     ap.add_argument('--event-limit', type=float, default=5.0, help='事件落地容忍上限（默认 5s）')
     a = ap.parse_args()
+    if not (math.isfinite(a.window) and math.isfinite(a.event_limit) and a.window>0 and a.event_limit>0):
+        ap.error("window/event-limit须为有限正数")
 
     cues, meta = (load_json(a.json) if a.json else load_md(a.md))
     if not cues:
@@ -122,27 +123,28 @@ def main():
         tag = ''
         if any(w in c['text'] for w in OPENER_BLACKLIST):
             tag = '  ← 招呼/前情'
-        if c['id'] == ev['id']:
+        if ev and c['id'] == ev['id']:
             tag += '  ← 事件（%s）' % how
         print(f'  {c["id"]}  {c["start"]:6.3f}–{c["end"]:6.3f}  {c["text"]}{tag}')
     print()
 
     first5 = ''.join(c['text'] for c in cues if c['start'] < 5.0)
     chars5 = len(re.sub(r'[^\u4e00-\u9fff]', '', first5))
-    hits = sorted({w for w in OPENER_BLACKLIST for c in cues[:2] if w in c['text']})
-    tail = cues[-1]['text']
-    promise = [w for w in PROMISE_WORDS if w in tail or w in cues[-2]['text']]
+    hits = sorted({w for w in OPENER_BLACKLIST for c in cues if c['start'] < 5 and w in c['text']})
+    tail = ' '.join(c['text'] for i,c in enumerate(cues) if i >= len(cues)-3 or c['end'] > cues[-1]['end']-8)
+    promise = [w for w in PROMISE_WORDS if w in tail]
 
     print('结论：')
-    print(f'  事件落地：{ev["start"]:.3f}s（{ev["id"]}，{how}）  上限 {a.event_limit:g}s →',
-          '通过' if ev['start'] <= a.event_limit else '不通过')
+    print(f'  事件落地：{ev["start"]:.3f}s ({how})' if ev else '  未检出事件；不通过')
     print(f'  前 5 秒字数：{chars5} 字（{chars5/5:.1f} 字/秒），前两句黑名单命中：{hits or "无"}')
     print(f'  结尾承诺句：{"、".join(promise) if promise else "没有"}')
     if meta.get('duration'):
         print(f'  全长：{meta["duration"]}s')
 
     bad = []
-    if ev['start'] > a.event_limit:
+    if ev is None:
+        bad.append('未找到明确事件信号，需人工声明并核对事件cue')
+    elif ev['start'] > a.event_limit:
         bad.append(f'事件在 {ev["start"]:.1f}s 才出现（> {a.event_limit:g}s）')
     if hits:
         bad.append(f'前两句是招呼/前情：{hits}')
@@ -159,4 +161,7 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except (ValueError, OSError, KeyError) as e:
+        sys.exit(f'不合格：{e}')

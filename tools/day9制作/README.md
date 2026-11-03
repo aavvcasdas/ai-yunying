@@ -86,3 +86,7 @@ python3 tools/day9制作/verify_storyboard_trial.py
 ## 全片分镜试做版
 
 独立渲染器`render_day9_storyboard_full.mjs`，核验`verify_storyboard_full.py`；[逐镜及验收](全片分镜试做_验收记录.md)。未覆盖v2及四镜试剪。
+
+## 统一门禁修复
+
+[使用方法](../验收/README.md) / [本次实测及历史失败](../验收/门禁修复实测_2026-11-03.md)。`gate_config.json`指向当前全片试做版；`final`累计结果为**未通过文案新规则**，不能因媒体终验单项通过就宣称可发。未重渲、未修改历史配音或台词。

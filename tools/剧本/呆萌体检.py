@@ -5,10 +5,10 @@
 用户 2026-10-27 定：台词要**超级呆萌**、节奏快、废话少，开头必须一眼留住人。
 这个脚本不看主观感受，只量四件可复核的事：
 
-  1. 第一句：≤ 15 字、不带从句、要有呆萌语气词或反问/悬念（**黑话不算失分，2026-10-28 起**）；
+  1. 第一句：≤ 12 字、不带分句、要有呆萌语气词或反问/悬念（**黑话不算失分，2026-10-28 起**）；
   2. 句子长度：每句 ≤ 15 字为主，> 18 字的句子超标就报警（就是「废话」）；
   3. 呆萌密度：语气词/口癖出现次数（诶、呜、呀、呢、哦、啦、嘛、嘿嘿、我了雷、行吧…）；
-  4. 节奏：总字数 ÷ 语速（默认 4.3 字/秒）≈ 成片秒数，70 秒 ≈ 300 字。
+  4. 节奏：总字数 ÷ 语速（默认 3.35 字/秒）≈ 成片秒数，60 秒 ≈ 201 字（含气口参考，不重复加停顿）。
 
 再加两条硬黑名单：
   · 解释腔/AI 味（「社区里都算过」「首先」「综上」「值得注意的是」…）；
@@ -20,7 +20,7 @@
   python3 tools/剧本/呆萌体检.py --txt /tmp/taici.txt
 
 门禁（退出码 1 = 不合格，必须改稿）：
-  · 第一句 > 15 字 / 第一句无任何呆萌信号；
+  · 第一句 > 12 字 / 第一句无任何呆萌信号；
   · 长句（> 18 字）占比 > 12%；
   · 呆萌词覆盖率 < 30% 的句子；
   · 命中解释腔黑名单；
@@ -32,8 +32,10 @@
 规则正文见 `agent.md` 第 16 条与 `00_运营总览/鲸鱼娘人设skill/references/cute_fast_script.md`。
 """
 import argparse
+import math
 import re
 import sys
+from pathlib import Path
 
 # 呆萌信号：语气词 + 口癖 + 反问/悬念 + 反差
 CUTE_WORDS = [
@@ -63,17 +65,9 @@ PLACEHOLDER_PATTERNS = [
 ]
 # 过审黑名单（2026-10-28 用户：这种剧情过不了抖音，擦屁股/拉屎这类一律不要）
 # 出现即不合格：不是风格问题，是审核风险。
-BAN_WORDS = [
-    '擦屁股', '屁股', '屎', '拉屎', '撒尿', '尿', '粪便', '排泄', '屁',
-]
+from rules_config import (BAN_WORDS, OPENER_BLACKLIST as FIRST_BAN,
+                          DEFAULT_RATE, DEFAULT_SECONDS, text_redlines, tail_promises)
 
-# 第一句禁止：招呼 / 前情 / 复盘（这些对没看过前几集的人是零信息）
-# 2026-10-28 用户拍板「删除 skill，很克制，需要黑话」：
-#   Day / token / Claude / 大肥鱼 / 账本 / 播放 / 跳出率 从黑名单移除——自家黑话是资产，不再判失败。
-FIRST_BAN = [
-    '大家好', '哈喽', '本鱼回来了', '本鲸回来了', '先统计', '先复盘',
-    '复盘', '结算', '汇报', '上一集', '昨天那集', '更新一下',
-]
 
 
 def load_text(md=None, txt=None):
@@ -85,14 +79,18 @@ def load_text(md=None, txt=None):
     ③ 任意代码块。并在输出里说明取的是哪一块，避免再默默量错文件。
     """
     if txt:
-        return open(txt, encoding='utf-8').read(), f'纯文本 {txt}'
-    s = open(md, encoding='utf-8').read()
+        return Path(txt).read_text(encoding='utf-8'), f'纯文本 {txt}'
+    s = Path(md).read_text(encoding='utf-8')
     heads = list(re.finditer(r'^#{2,4}[^\n]*(?:口播|台词)[^\n]*$', s, re.M))
     for h in heads:
         tail = s[h.end():]
+        next_h = re.search(r'^#{1,4}\s', tail, re.M)
+        tail = tail[:next_h.start()] if next_h else tail
         m = re.search(r'```(?:text|txt)?\n(.*?)\n```', tail, re.S)
         if m:
             return m.group(1), f'「{h.group(0).lstrip("# ").strip()}」小节'
+    if heads:
+        sys.exit('口播/台词小节中没有明确代码块；拒绝跨章节兜底')
     m = re.search(r'```text\n(.*?)\n```', s, re.S)
     if m:
         return m.group(1), '第一个 ```text 块（没找到含「口播/台词」的小节，请人工确认）'
@@ -133,16 +131,18 @@ def main():
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument('--md', help='含 ```text 口播稿的 md 文件')
     g.add_argument('--txt', help='纯台词 txt 文件')
-    ap.add_argument('--seconds', type=float, default=70.0, help='预计成片秒数（默认 70）')
-    ap.add_argument('--rate', type=float, default=4.3, help='语速 字/秒（默认 4.3，呆萌快节奏）')
+    ap.add_argument('--seconds', type=float, default=DEFAULT_SECONDS, help='预计成片秒数（默认 60）')
+    ap.add_argument('--rate', type=float, default=DEFAULT_RATE, help='语速 字/秒（默认 3.35，同声线含气口规划参考）')
     a = ap.parse_args()
+    if not (math.isfinite(a.rate) and math.isfinite(a.seconds) and a.rate > 0 and a.seconds > 0):
+        ap.error("rate/seconds 必须为正数")
 
     raw, block_src = load_text(a.md, a.txt)
     lines = split_lines(raw)
     if not lines:
         sys.exit('没有读到台词')
 
-    total = sum(han_len(x) for x in lines)
+    total = sum(len(re.sub(r'[^\w]', '', x)) for x in lines)  # 字母按字符仅作估时，读法须另确认
     lens = [han_len(x) for x in lines]
     long_lines = [(i + 1, l, x) for i, (l, x) in enumerate(zip(lens, lines)) if l > 18]
     first = lines[0]
@@ -187,13 +187,19 @@ def main():
         print(f'  ⚠ 占位符 L{i}：{x}  ← {hit}')
     print()
 
-    bad = []
-    if first_len > 15:
-        bad.append(f'第一句 {first_len} 字 > 15 字，太长，不呆萌')
+    bad = text_redlines(lines)
+    if not tail_promises(lines):
+        bad.append("末尾三句没有承诺/互动信号，请人工确认唯一CTA已落地")
+    if first_len > 12:
+        bad.append(f'第一句 {first_len} 字 > 12 字，太长，不呆萌')
+    if re.search(r"[，,；;]", first):
+        bad.append("首句含分句，改成完整短话")
     if not first_cute:
         bad.append('第一句没有呆萌信号（语气词/反问/反差），留不住人')
     if first_ban:
         bad.append(f'第一句有招呼/前情/内部黑话：{first_ban}')
+    if max(lens)>25:
+        bad.append('单句超过25字硬上限')
     if len(long_lines) / len(lines) > 0.12:
         bad.append(f'>18 字长句占 {len(long_lines)/len(lines)*100:.0f}%（>12%），废话太多')
     if fillers:

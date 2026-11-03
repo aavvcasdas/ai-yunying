@@ -7,8 +7,11 @@ import numpy as np
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HERE = pathlib.Path(__file__).resolve().parent
-FF = '/tmp/node_render/node_modules/@ffmpeg-installer/linux-x64/ffmpeg'
-PROBE = '/tmp/node_render/node_modules/@ffprobe-installer/linux-x64/ffprobe'
+import sys
+sys.path.insert(0,str(ROOT/'tools/验收'))
+from media_common import binary
+FF = binary('ffmpeg')
+PROBE = binary('ffprobe')
 video = ROOT / 'Day9/成片/Day9_四镜分镜试剪.mp4'
 voice = ROOT / 'Day9/配音/鲸鱼看视频_克隆配音_最终版.wav'
 edit = json.loads((HERE / '分镜试剪_时间轴.json').read_text())
@@ -16,7 +19,7 @@ meta = json.loads(subprocess.check_output([PROBE, '-v', 'error', '-show_streams'
 v = next(s for s in meta['streams'] if s['codec_type'] == 'video')
 a = next(s for s in meta['streams'] if s['codec_type'] == 'audio')
 assert v['width'] == 1920 and v['height'] == 1080 and v['r_frame_rate'] == '30/1'
-assert int(v['nb_frames']) == edit['frames'] == 838
+assert int(v['nb_frames']) == edit['frames']
 assert hashlib.sha256(voice.read_bytes()).hexdigest() == edit['source_sha256']
 segments = edit['edits']
 # Independently decode the original WAV and apply ONLY the documented source cuts.

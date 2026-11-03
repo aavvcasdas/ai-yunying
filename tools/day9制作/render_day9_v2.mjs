@@ -6,11 +6,14 @@ import {spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {createCanvas,loadImage,bg,boss,panel6,text6,
  day3RiceBowl,stool,wallet,coin,reseedBoil,resolveFfmpeg} from '../day8制作/render_day8.mjs';
-import {loadMotionAssets,drawAction,travel,cacheStats} from './motion_v2.mjs';
+import {loadMotionAssets,drawAction as rawDrawAction,travel,cacheStats} from './motion_v2.mjs';
 import {createDay2Subtitle} from '../字幕/day2_style_sub.mjs';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const HERE=path.dirname(fileURLToPath(import.meta.url));
 const argv=process.argv.slice(2),arg=(s)=>argv.includes(s)?argv[argv.indexOf(s)+1]:null;
+import {createMotionGate} from './motion_gate.mjs';
+const motionGate=createMotionGate(createCanvas,rawDrawAction,argv.includes('--test'));
+const drawAction=(g,opts)=>motionGate.draw(g,opts);
 const voice=arg('--voice'),alignment=arg('--alignment'),subtitleFile=arg('--subtitle-file');
 const measured=alignment?JSON.parse(fs.readFileSync(alignment,'utf8')):null;
 if(voice){
@@ -18,6 +21,7 @@ if(voice){
  if(createHash('sha256').update(fs.readFileSync(voice)).digest('hex')!==measured.source_sha256)throw Error('音源SHA256与实测时间轴不一致');
 }
 const lines=fs.readFileSync(path.join(ROOT,'Day9/Day9配音台词.txt'),'utf8').trim().split(/\n+/);
+if(measured&&measured.cues.length!==lines.length)throw Error('cue数量与定稿不一致');
 let clock=0;
 const cues=measured?measured.cues.map((c,i)=>{if(c.text!==lines[i])throw Error('时间轴文本不匹配');return {...c,line:i+1};}):lines.map((text,i)=>{const duration=Math.max(.8,[...text.replace(/[^\p{L}\p{N}]/gu,'')].length/4.3);const c={line:i+1,text,start:+clock.toFixed(3),end:+(clock+duration).toFixed(3)};clock+=duration+.18;return c;});
 const duration=cues.at(-1).end+.2,FPS=30,S=1.5,W=1280,H=720;
@@ -131,7 +135,8 @@ function monitor(g,x,y,t,failed=false){
  if(failed)txt(g,'×',x,y-24,29,'#EA969E');
  line(g,x,y,x,y+24,'#718C97',8);line(g,x-39,y+25,x+39,y+25,'#718C97',6);
 }
-function human(g,x,y,t,{walking=false,bag=false}={}){
+function human(g,x,y,t,opts={}){motionGate.extra(ctx=>humanRaw(ctx,x,y,t,opts));return humanRaw(g,x,y,t,opts);}
+function humanRaw(g,x,y,t,{walking=false,bag=false}={}){
  const step=walking?Math.sin(t*7.4):0;
  line(g,x-17,y-12,x-28-step*10,y+73,'#080E1C',18);line(g,x+17,y-12,x+28+step*10,y+73,'#080E1C',18);
  boss(g,x,y-52,75,0);
@@ -140,6 +145,7 @@ function human(g,x,y,t,{walking=false,bag=false}={}){
 function sheetAt(g,x,y,w=45,h=62,angle=0){g.save();g.translate(x,y);g.rotate(angle);box(g,-w/2,-h/2,w,h,'#EFE8D6','#B0B9A9',3);txt(g,'总结',0,-h*.12,Math.max(10,w*.22),'#4B6164');for(let i=0;i<3;i++)line(g,-w*.28,h*.05+i*8,w*.28,h*.05+i*8,'#849D99',1.4);g.restore();}
 function tableLamp(g,x,y){line(g,x,y,x-12,y-55,'#B4AF96',5);line(g,x-12,y-55,x+12,y-82,'#B4AF96',5);g.beginPath();g.moveTo(x-10,y-79);g.lineTo(x+31,y-84);g.lineTo(x+39,y-61);g.lineTo(x-15,y-56);g.closePath();g.fillStyle='#D7C797';g.fill();oval(g,x,y+3,29,6,'#A7AA91');}
 function frame(g,t){
+ motionGate.begin();
  reseedBoil(0);g.setTransform(S,0,0,S,0,0);g.clearRect(0,0,W,H);
  let ci=0;for(let i=0;i<cues.length;i++){if(t>=cues[i].start)ci=i;else break;}
  const c=cues[ci],n=ci+1,sh=spans.find(s=>n>=s.from&&n<=s.to),lt=t-sh.start,p=clamp((t-sh.start)/(sh.end-sh.start)),q=clamp((t-c.start)/(c.end-c.start));
@@ -247,10 +253,10 @@ if(argv.includes('--test')){
  for(let i=0;i<subs.length-1;i++)if(subs[i].end>subs[i+1].start+1e-5)throw Error('字幕重叠');
  let animated=0,border=null,tvChecks=0;
  for(const shot of spans){let hashes=[];for(const p of [.15,.5,.85]){
-  frame(g,mix(shot.start,shot.end,p));hashes.push(digest(canvas.data()));
+  frame(g,mix(shot.start,shot.end,p));hashes.push(motionGate.hash());
   if(shot.from>=27){const h=digest(g.getImageData(Math.round(1222*S),Math.round(125*S),2,Math.round(325*S)).data);if(border&&border!==h)throw Error('电视右边框发生抖动');border=h;tvChecks++;}
  }if(new Set(hashes).size!==3)throw Error('镜头无变化 '+shot.id);animated++;}
- const report={measured:!!measured,lines:lines.length,subtitle_screens:subs.length,subtitle_exact:true,no_overlap:true,animated_shots: animated,tv_border_samples:tvChecks,tv_border_fixed:true,duration,frame_count:Math.round(duration*FPS)};
+ const report={measured:!!measured,lines:lines.length,subtitle_screens:subs.length,subtitle_exact:true,no_overlap:true,animated_shots: animated,motion_check:'isolated_actor_lower_body_pixels_not_semantic_proof',tv_border_samples:tvChecks,tv_border_fixed:true,duration,frame_count:Math.round(duration*FPS)};
  fs.writeFileSync(path.join(HERE,'v2回归检查.json'),JSON.stringify(report,null,2));console.log(report);
 }else if(argv.includes('--stills')){
  const dir=path.join(HERE,'v2抽帧');fs.mkdirSync(dir,{recursive:true});
