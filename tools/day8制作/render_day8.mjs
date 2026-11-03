@@ -602,10 +602,12 @@ function room(ctx, t, o = {}) {
   paint(ctx, ellPts(640, 630, 244, 40, 24), { wash: '#4A3868', washOp: 150, ink: null });
   // 绿植
   paint(ctx, rrPts(1176, 476, 52, 54, 8, 1), { wash: '#B45309', ink: PAL.ink, sw: 1.2 });
+  if (o.animatePlants) reseedBoil(t);
   for (let i = 0; i < 5; i++) {
-    const a = -Math.PI / 2 + (i - 2) * 0.32;
+    const a = -Math.PI / 2 + (i - 2) * 0.32 + (o.animatePlants ? Math.sin(t * 1.15 + i) * 0.055 : 0);
     inkLine(ctx, [[1202, 480], [1202 + Math.cos(a) * 60, 480 + Math.sin(a) * 74]], 4.5, i % 2 ? PAL.sap : '#4D8B5C', 'ink', 0.35);
   }
+  if (o.animatePlants) reseedBoil(0);
 }
 
 function pill(ctx, x, y, w, h, fill = 'rgba(11,29,58,0.92)', stroke = '#48C8FF') {

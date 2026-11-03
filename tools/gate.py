@@ -30,6 +30,7 @@ def build_paths(day,config):
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--day',type=int,required=True)
     ap.add_argument('--stage',choices=STAGES,required=True);ap.add_argument('--config',type=Path)
+    ap.add_argument('--report',type=Path,help='单独保存本次门禁报告，避免覆盖另一版本')
     args=ap.parse_args()
     if args.day<1: ap.error('day必须正整数')
     config=args.config or ROOT/f'tools/day{args.day}制作/gate_config.json'
@@ -75,8 +76,8 @@ def main():
         except (ValueError,OSError,KeyError,subprocess.CalledProcessError) as e:
             report['checks'].append(dict(name=stage,exit_code=1,error=str(e)));print(f'[{stage}] 失败：{e}');ok=False
     report['passed']=ok
-    out=ROOT/f'tools/day{args.day}制作/gate_{args.stage}_report.json';out.parent.mkdir(parents=True,exist_ok=True);out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
-    print(f'门禁{"通过" if ok else "未通过"}；报告：{out.relative_to(ROOT)}')
+    out=(ROOT/args.report).resolve() if args.report else ROOT/f'tools/day{args.day}制作/gate_{args.stage}_report.json';out.parent.mkdir(parents=True,exist_ok=True);out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+    print(f'门禁{"通过" if ok else "未通过"}；报告：{out}')
     return 0 if ok else 1
 
 if __name__=='__main__':

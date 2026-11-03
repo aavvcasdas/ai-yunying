@@ -90,3 +90,8 @@ python3 tools/day9制作/verify_storyboard_trial.py
 ## 统一门禁修复
 
 [使用方法](../验收/README.md) / [本次实测及历史失败](../验收/门禁修复实测_2026-11-03.md)。`gate_config.json`指向当前全片试做版；`final`累计结果为**未通过文案新规则**，不能因媒体终验单项通过就宣称可发。未重渲、未修改历史配音或台词。
+
+## 海底联动三镜预览
+
+新渲染器`render_day9_sea_stage.mjs`，复用`../场景/sea_stage.mjs`，独立剪辑验证`verify_sea_preview.py`。
+[核对与验收](海底联动预览_核对与验收.md) / [六张对比](海底联动预览_前后对比.jpg)。本次`pre-render`用`gate_sea_preview_config.json`和独立`--report`，不替换全片配置，不将26秒试样当整集。
