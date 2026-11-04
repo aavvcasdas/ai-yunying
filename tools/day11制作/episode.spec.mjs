@@ -17,7 +17,7 @@ export default {
   opener: {
     badge: '它懂这滋味',
     headlinePrefix: '笨鱼陨落过，',
-    headlineHighlight: '它来帮老大！',
+    headlineHighlight: '它来帮老大。',
     stampText: '一条条扒！',
     stampWord: { line: 2, char: '帮' },
     stampAt: [640, 500],
@@ -27,7 +27,7 @@ export default {
       { propId: 'folded_page', x: 640, y: 500, scale: 1, state: { title: '岗位总结', sub: '一条条扒' } },
     ],
   },
-  verticalTitle: ['笨鱼陨落过，', '它来帮老大！'],
+  verticalTitle: ['笨鱼陨落过，', '它来帮老大。'],
   shots: [
     {
       id: 'C01', fromLine: 1, toLine: 4, mood: 'work_cool',
@@ -47,7 +47,7 @@ export default {
       companionProps: [{ propId: 'empty_bowl', x: 700, y: 540, scale: 1 }],
     },
     {
-      id: 'C03', fromLine: 8, toLine: 14, mood: 'panic_alert',
+      id: 'C03', fromLine: 8, toLine: 13, mood: 'panic_alert',
       actors: [
         { pose: 'point', x: 450, y: 600, u: 38 },
         { pose: 'think', x: 850, y: 600, u: 38 },
@@ -58,7 +58,7 @@ export default {
       ],
     },
     {
-      id: 'C04', fromLine: 15, toLine: 20, mood: 'work_cool',
+      id: 'C04', fromLine: 14, toLine: 20, mood: 'work_cool',
       actors: [
         { pose: 'think', x: 450, y: 600, u: 38 },
         { pose: 'fatfish_working', x: 850, y: 600, u: 36 },
@@ -69,7 +69,7 @@ export default {
       ],
     },
     {
-      id: 'C05', fromLine: 21, toLine: 27, mood: 'warm_meal',
+      id: 'C05', fromLine: 21, toLine: 28, mood: 'warm_meal',
       actors: [
         { pose: 'confident_hips', x: 470, y: 600, u: 38 },
         { pose: 'point', x: 820, y: 600, u: 38 },
