@@ -1,19 +1,21 @@
 {
-  "stage": "script_draft",
+  "stage": "revised_script_draft",
   "ready_for_user_review": true,
   "user_approved": false,
+  "supersedes": "Rejected first draft, archived under Day11/历史",
   "source_text": "Day11/Day11配音台词.txt",
-  "source_sha256": "4718cce59552ec723631b2e8ec459d59494931dff8927d17e2f652aa6dbb49c2",
+  "source_sha256": "8a34386e48c91b734f05efedf2191a0a28acd7f0fdc11dff0d269ce6dc69dd36",
   "text_md_txt_match": true,
-  "lines": 24,
-  "characters": 186,
+  "lines": 25,
+  "characters": 219,
   "planning_rate": 3.35,
-  "planning_seconds": 55.52238805970149,
+  "planning_seconds": 65.3731343283582,
   "measured": false,
   "text_redlines": [],
   "cute_check_exit": 0,
+  "rejected_jokes_absent": true,
   "audio_available": false,
   "opening_audio_gate": "blocked_no_measured_voice",
   "render_status": "not_started",
-  "source_boundary": "New employment premise is possibly unemployed, not a confirmed dismissal. All new resume and job-selection interactions are fictional proposed staging, not real recruiting actions."
+  "source_boundary": "Public search and reports are real research. Boss employment remains uncertain; no real recruitment account access, verified personalized vacancy shortlist, resume processing, application or interview outcome is claimed."
 }
