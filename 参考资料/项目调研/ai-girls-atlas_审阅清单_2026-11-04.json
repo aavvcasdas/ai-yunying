@@ -1,0 +1,128 @@
+{
+  "repository": "HABAI182/ai-girls-atlas",
+  "commit": "21fa0746ab6cdee2f19c0c99828f87e063b13565",
+  "reviewed_on": "2026-11-04",
+  "method": "GitHub API file retrieval at pinned commit; text/data review only; no external media downloaded, original video watched, source code executed, or third-party design adopted",
+  "files": [
+    {
+      "path": "LICENSE.md",
+      "sha256": "1980bd9557e06553af3b62aafd5590afe6ff0a55ac166d84d2d1e9ba5fc9e778",
+      "bytes": 2046,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/LICENSE.md"
+    },
+    {
+      "path": "README.md",
+      "sha256": "e111fe3883d32194bde4e808834c6e28d523d6f966ae6529ef1ac220b2f92909",
+      "bytes": 4358,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/README.md"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "sha256": "305c785b1f4f7e06ff85e1cca3820b121a1115f1002e6e0d123e9d9f3b2cfba4",
+      "bytes": 67535,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/THIRD_PARTY_NOTICES.md"
+    },
+    {
+      "path": "characters/claude/README.md",
+      "sha256": "f1e033f76e8d7657b431b609131b9cdb2d1264e764a3b4bc73e0f9d5ba3a7efa",
+      "bytes": 8547,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/characters/claude/README.md"
+    },
+    {
+      "path": "characters/deepseek/README.md",
+      "sha256": "601e8016441f9fd69f4d9fa99b691a24ddbd508e3dba8dd7108612c3047220db",
+      "bytes": 18771,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/characters/deepseek/README.md"
+    },
+    {
+      "path": "data/actions-props.json",
+      "sha256": "3ee92be524268e61f729cc26f6fe76516a6257561f43369b2e5dfe88460f0c34",
+      "bytes": 16358,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/data/actions-props.json"
+    },
+    {
+      "path": "data/community-impressions.json",
+      "sha256": "74244fac27f69f33f4cb2bdd115472288f10812a1956fca3f25cf1a6ec67747e",
+      "bytes": 42733,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/data/community-impressions.json"
+    },
+    {
+      "path": "data/personas.json",
+      "sha256": "bf96ff0ac0e6f82c8ccf5349b18d44399034b20c3a467d009ece692875b65add",
+      "bytes": 108454,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/data/personas.json"
+    },
+    {
+      "path": "data/production-kits.json",
+      "sha256": "8772697f2c02a2596d39302f39673e4c67f6e0ab9bf1d9fc380cccbbdba3a02b",
+      "bytes": 66780,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/data/production-kits.json"
+    },
+    {
+      "path": "data/reference-guides.json",
+      "sha256": "4aa93a2a0d6f355c73e74a02447bfa606d99789680559660ad553d3f21acfa49",
+      "bytes": 1461,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/data/reference-guides.json"
+    },
+    {
+      "path": "data/relationships.json",
+      "sha256": "56821f324fc1174a0043c56177a2331a061a6a522db6634cea1543a670384a56",
+      "bytes": 14497,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/data/relationships.json"
+    },
+    {
+      "path": "data/wardrobe-scenes.json",
+      "sha256": "2b93fa3c7535b8fa7d7295ff6f593e21a72d8773e31055cbe035ea3c8b830dae",
+      "bytes": 3496,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/data/wardrobe-scenes.json"
+    },
+    {
+      "path": "docs/02-character-system.md",
+      "sha256": "4769681d49135d8d453305527b2d0f7909499328f7c8152e33254f04ca74d73f",
+      "bytes": 7130,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/docs/02-character-system.md"
+    },
+    {
+      "path": "docs/05-creation-playbook.md",
+      "sha256": "1562b2fbb02261a87ec2f8b060bb99d553446cc982617ba4c8ab11f83b0fb9d1",
+      "bytes": 6546,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/docs/05-creation-playbook.md"
+    },
+    {
+      "path": "docs/06-rights-and-provenance.md",
+      "sha256": "24a5f8d04bea841cea15bc036ad4a99aeffcfb47747776b3c42ef21b7610724d",
+      "bytes": 5211,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/docs/06-rights-and-provenance.md"
+    },
+    {
+      "path": "encyclopedia/performances/deepseek.md",
+      "sha256": "f5e11fb7cbb3b14c23cd4380878cf48f3e5c2f9b82276c0f7320f8ad84649d4c",
+      "bytes": 3725,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/encyclopedia/performances/deepseek.md"
+    },
+    {
+      "path": "encyclopedia/performances/same-situation.md",
+      "sha256": "1cadee51d03dcec222198898849cffc0998363cebfdb239c875a0fa90511cf0f",
+      "bytes": 4483,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/encyclopedia/performances/same-situation.md"
+    },
+    {
+      "path": "encyclopedia/personas/README.md",
+      "sha256": "d0d4e24c8ae8b7e081eb4b75264a08e9b4bbdaa985f6a2795fb22779c5305857",
+      "bytes": 9481,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/encyclopedia/personas/README.md"
+    },
+    {
+      "path": "encyclopedia/personas/deepseek.md",
+      "sha256": "db1e67135e951a413f267a08562529bff05acdbfa23bc22336b5621af1ccc349",
+      "bytes": 3675,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/encyclopedia/personas/deepseek.md"
+    },
+    {
+      "path": "encyclopedia/personas/dialogue-comparison.md",
+      "sha256": "36531575dff8dc089e8bbb8c7ac022299f1b3f4bea776435715720ea98354fbf",
+      "bytes": 15550,
+      "url": "https://github.com/HABAI182/ai-girls-atlas/blob/21fa0746ab6cdee2f19c0c99828f87e063b13565/encyclopedia/personas/dialogue-comparison.md"
+    }
+  ]
+}
