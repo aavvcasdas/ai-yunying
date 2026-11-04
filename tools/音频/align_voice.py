@@ -98,9 +98,12 @@ def build_cues(lines, words, mono, sr):
     sm = difflib.SequenceMatcher(a=[c for c, _ in asr_chars], b=script_chars, autojunk=False)
     char_word = [None] * len(script_chars)
     for tag, i1, i2, j1, j2 in sm.get_opcodes():
-        if tag == 'equal':
-            for k in range(i2 - i1):
-                char_word[j1 + k] = asr_chars[i1 + k][1]
+        # 听错的字也要落到当时那一截声音上，不能整段丢给上一词。
+        if tag in ('equal', 'replace') and i2 > i1 and j2 > j1:
+            span_i, span_j = i2 - i1, j2 - j1
+            for k in range(span_j):
+                src = i1 + min(span_i - 1, k * span_i // span_j)
+                char_word[j1 + k] = asr_chars[src][1]
     # 未匹配字按邻近词插值归属
     last = 0
     for i, v in enumerate(char_word):
@@ -161,7 +164,12 @@ def build_screens(cues):
                 screens.append({'line': cue['index'], 'text': chunk,
                                 'start': round(st, 3), 'speech_end': round(en, 3), 'end': round(en, 3)})
     for a, b in zip(screens, screens[1:]):
-        a['end'] = b['start']
+        # 尾挂最多 0.24s，不把气口整段挂进下一句，否则门禁判「字幕尾挂超过 0.3s」。
+        a['end'] = min(b['start'], round(a['speech_end'] + 0.24, 3))
+        if a['end'] <= a['start']:
+            a['end'] = round(a['start'] + 0.05, 3)
+    if screens:
+        screens[-1]['end'] = round(screens[-1]['speech_end'] + 0.24, 3)
     return screens
 
 

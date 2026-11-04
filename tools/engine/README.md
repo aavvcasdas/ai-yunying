@@ -12,7 +12,9 @@ Day0–Day10 历史单集与旧渲染器全部冻结、不受影响。
 | `prop_registry.mjs` | 跨集道具注册表：汇总 `cue_props_engine` 通用道具 + Day10 米缸/对照板原型 + 立牌/通知板/名牌/折页/空碗；每件声明 `extent.bottom` 供越界校验 |
 | `opener_director.mjs` | 黄金前 3 秒导演：三拍运镜（1.42→1.30→1.15→1.21）、双人反差硬校验、头顶外侧身份铭牌、双色追光、顶部钩子横幅（0–2.8s）、词点落章印章 |
 | `scene_compositor.mjs` | 严格五层合成：L0 远景海底房 → L1 追光/后景承重 → L2 校准角色 → L3 前景交互（≤600）→ L4 屏幕 HUD（横幅/角标/字幕） |
-| `schema_validator.mjs` | spec 强校验：未校准姿态、同姿/双 idle 罚站、姿态变化晚于 1.10s、道具下沿越界、横幅阿拉伯数字、主交互缺配套物，渲染前直接抛错 |
+| `crowd_and_density.mjs` | 开场第 0 帧同屏上限（静态道具 ≤1、铭牌 ≥0.55s、戳章不与首帧道具叠）+ 每镜词点接触与姿态/步态校验 |
+| `interaction_stage.mjs` | 引擎层词点接触：争抢、展开、敲碗、石沉落桌、划线、交接；`drop_bonk`/`slap_deflect` 仍交给共享模块 |
+| `schema_validator.mjs` | spec 强校验：未校准姿态、同姿/双 idle 罚站、姿态变化晚于 1.10s、道具下沿越界、横幅阿拉伯数字、主交互缺配套物、开场超员、整镜无词点互动，渲染前直接抛错 |
 | `render_episode.mjs` | 1920×1080@30 生产渲染器。只接受 `measured=true` 且 SHA256 匹配的实测轴；`TITLE_LEN=0`；末句后 0.24s 结束；CLI 兼容 gate.py |
 | `export_vertical.mjs` | 一源双端竖屏导出：同一场景状态在 1080×1920（9:16）/1080×1440（3:4）原生重排（顶部双行大标题 + 相机×1.38 主舞台 + 安全区放大字幕），禁止对横屏成片像素裁剪 |
 | `engine.test.mjs` | 引擎单元测试（`node --test tools/engine/engine.test.mjs`） |
@@ -53,8 +55,11 @@ export default {
 姿态只能用已校准 8 种：`idle / point / shock / confident_hips / think / eat / playful_fists / fatfish_working`；
 开场 actorA/actorB 不得同姿、不得双 `idle`，且须声明 0.65–1.10s 内的一次姿态变化。
 每镜有 `interactions` 时必须至少一件 `companionProps`（反应特写可写 `allowNoCompanion: true`）；
+同时每镜必须有词点锁定接触（`wordLine` + 单字 `wordChar`）以及姿态变化或 `walk` 步态，禁止整镜站桩。
 所有前景道具下沿必须 ≤600（逻辑坐标），横幅文案禁止阿拉伯数字。
-可用道具与动词以 `prop_registry.mjs` / `schema_validator.mjs` 为准（动词：drop_bonk / slap_deflect / tug_grab / knock_bowl / unroll_scroll）。
+开场第 0 帧：双人 + 顶部横幅之外，静态道具最多 1 件；`rolePlates` 默认 0.85s 入场（`platesAt` 不得 <0.55）；配套物用 `fromLine` 或 `enterAt>=0.9` 错开；戳章词在第 1 行时不得再放第 0 帧道具。
+可用道具与动词以 `prop_registry.mjs` / `schema_validator.mjs` 为准。
+共享模块动词：drop_bonk / slap_deflect。引擎层动词：tug_grab / knock_bowl / unroll_scroll / sink_drop / mark_strike / handoff（后三类及带 `at` 的展开/敲碗不改 `cue_props_engine.mjs`）。
 
 ## Day11+ 标准命令流（一集全流程）
 

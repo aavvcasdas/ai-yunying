@@ -10,11 +10,12 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createCanvas, loadImage, resolveFfmpeg, W, H, FPS, mix, smooth, seg } from './room_base.mjs';
 import { validateSpec, resolveWordTime } from './schema_validator.mjs';
-import { openerCamera, drawRolePlates, drawStamp, OPENER_END } from './opener_director.mjs';
+import { openerCamera, drawRolePlates, drawStamp, OPENER_END, PLATES_DEFAULT_AT } from './opener_director.mjs';
+import { drawShotInteractions, BODY_VERBS } from './interaction_stage.mjs';
 import { composeScene, drawComplianceCorner, drawHudBanner } from './scene_compositor.mjs';
-import { getProp, assertForegroundWithinStage, PROP_REGISTRY } from './prop_registry.mjs';
+import { getProp, assertForegroundWithinStage } from './prop_registry.mjs';
 import { loadContactActors, actorAnchors, drawContactActor } from '../互动元素/actor_contacts.mjs';
-import { renderCueInteraction, burst, CORE } from '../互动元素/cue_props_engine.mjs';
+import { CORE } from '../互动元素/cue_props_engine.mjs';
 import { createDay2Subtitle } from '../字幕/day2_style_sub.mjs';
 
 const { reseedBoil } = CORE;
@@ -57,37 +58,54 @@ export function buildEvents(spec, shots, cues) {
       const line = it.wordLine ?? it.line ?? shot.fromLine;
       const { time } = resolveWordTime(cues, line, it.wordChar || cues[line - 1].text[0]);
       const startLine = it.startLine ?? line;
+      const contactFrame = Math.round(time * FPS);
+      let startFrame = Math.round(cues[Math.max(0, startLine - 1)].start * FPS);
+      let endFrame = Math.round(shot.end * FPS) - 1;
+      if (startFrame > contactFrame) startFrame = Math.max(0, contactFrame - 6);
+      if (endFrame <= contactFrame) endFrame = contactFrame + 8;
       events.push({
         ...it, shotId: shot.id, measured: true, audio_sha256: 'alignment',
         word_id: `L${String(line).padStart(2, '0')}:${it.wordChar || ''}`,
-        startFrame: Math.round(cues[startLine - 1].start * FPS),
-        contactFrame: Math.round(time * FPS),
-        endFrame: Math.round(shot.end * FPS) - 1,
-        params: { scale: it.scale ?? 1, land: it.land, text: it.text },
+        startFrame, contactFrame, endFrame,
+        params: {
+          scale: it.scale ?? 1, land: it.land, at: it.at, text: it.text,
+          slot: it.slot, span: it.span, toActor: it.toActor, title: it.title, sub: it.sub,
+        },
       });
     }
   }
   return events;
 }
 
-function resolveActor(plan, t, line) {
+export function resolveActor(plan, t, line, cues = []) {
   let pose = plan.pose || 'idle';
   for (const p of plan.poses || []) {
     if ((p.line != null && line >= p.line) || (p.at != null && t >= p.at)) pose = p.pose;
   }
   for (const p of plan.poseChanges || []) if (t >= p.at) pose = p.pose;
-  let x = plan.x; let anim = plan.anim || {};
+  let x = plan.x; let anim = { ...(plan.anim || {}) };
   if (plan.walk) {
-    const { from, to, start = 0, duration = 1 } = plan.walk;
+    const start = plan.walk.start != null
+      ? plan.walk.start
+      : (plan.walk.startLine ? (cues[plan.walk.startLine - 1]?.start ?? 0) : 0);
+    const duration = plan.walk.duration ?? 1;
     const p = smooth((t - start) / duration);
-    x = mix(from, to, p);
-    anim = gaitAnim(t, start, duration);
+    x = mix(plan.walk.from, plan.walk.to, p);
+    if (t >= start && t <= start + duration) anim = { ...anim, ...gaitAnim(t, start, duration) };
   }
   return { pose, x, y: plan.y, u: plan.u ?? 38, flip: !!plan.flip, lean: plan.lean ?? 0, anim };
 }
 
+function holdFrame(frame, events, shotId) {
+  for (const ev of events) {
+    if (ev.shotId !== shotId) continue;
+    if (frame >= ev.contactFrame && frame < ev.contactFrame + 2) return ev.contactFrame;
+  }
+  return frame;
+}
+
 export async function createEpisodeRenderer({ spec, alignment, subdata }) {
-  validateSpec(spec, { cueCount: alignment.cues.length });
+  validateSpec(spec, { cueCount: alignment.cues.length, cues: alignment.cues });
   const cues = alignment.cues;
   const shots = buildShots(spec, cues);
   const events = buildEvents(spec, shots, cues);
@@ -103,8 +121,29 @@ export async function createEpisodeRenderer({ spec, alignment, subdata }) {
   const shotAt = (t) => shots.find((s, i) => t >= s.start && t < (shots[i + 1]?.start ?? duration + 0.01)) || shots[0];
 
   function actorsFor(shot, t, line) {
-    const plans = shot === shots[0] ? [spec.opener.actorA, spec.opener.actorB] : (shot.actors || shot.actorsPlan);
-    return plans.map((p) => resolveActor(p, t, line));
+    const inOpener = shot === shots[0] && t < Math.min(shot.end, OPENER_END);
+    const plans = inOpener
+      ? [spec.opener.actorA, spec.opener.actorB]
+      : (shot.actors || shot.actorsPlan || [spec.opener.actorA, spec.opener.actorB]);
+    return plans.map((p) => resolveActor(p, t, line, cues));
+  }
+
+  function cameraFor(shot, t, isOpener) {
+    if (isOpener) return openerCamera(t, { stampTime: stamp?.time, end: Math.min(shot.end, OPENER_END) });
+    const base = { z: 1.08, cx: 640, cy: 378, ...(shot.camera || {}) };
+    const pushes = shot.pushes || (shot.push ? [shot.push] : []);
+    let cam = base;
+    for (const push of pushes) {
+      const start = push.line ? cues[push.line - 1].start : (push.at ?? shot.start);
+      if (t < start) continue;
+      const p = smooth((t - start) / (push.duration || 0.4));
+      cam = {
+        z: mix(cam.z, push.z ?? cam.z + 0.12, p),
+        cx: mix(cam.cx, push.cx ?? cam.cx, p),
+        cy: mix(cam.cy, push.cy ?? cam.cy, p),
+      };
+    }
+    return cam;
   }
 
   function drawProp(ctx, ref, t, pop = 1) {
@@ -119,23 +158,28 @@ export async function createEpisodeRenderer({ spec, alignment, subdata }) {
 
   /** 只画相机空间 L0-L3（供横屏母版与竖屏重排共用同一场景状态）。 */
   function renderScene(ctx, rawTime, { zoomMul = 1 } = {}) {
-    const frame = Math.round(rawTime * FPS);
-    const t = rawTime;
-    const shot = shotAt(t);
-    const line = lineAt(t);
+    const rawFrame = Math.round(rawTime * FPS);
+    const shot = shotAt(rawTime);
+    const frame = holdFrame(rawFrame, events, shot.id);
+    const t = frame / FPS;
+    const line = lineAt(rawTime);
     const actors = actorsFor(shot, t, line);
     const anchors = actors.map((a) => { try { return actorAnchors(a); } catch { return null; } });
-    const isOpener = shot === shots[0] && t < Math.min(shot.end, OPENER_END);
-    const cam = isOpener
-      ? openerCamera(t, { stampTime: stamp?.time, end: Math.min(shot.end, OPENER_END) })
-      : (shot.camera || { z: 1.06, cx: 640, cy: 375 });
+    const isOpener = shot === shots[0] && rawTime < Math.min(shot.end, OPENER_END);
+    const cam = cameraFor(shot, rawTime, isOpener);
     const camZ = { ...cam, z: cam.z * zoomMul };
+    const driven = new Set(events.filter((e) => e.shotId === shot.id && BODY_VERBS.has(e.verb)).map((e) => e.propId));
     reseedBoil(0);
     composeScene(ctx, {
       t, cam: camZ, mood: shot.mood || 'work_cool', focusX: actors[0]?.x ?? 640,
       layers: {
         back: (g) => {
-          for (const ref of (shot.companionProps || []).filter((p) => p.behind)) drawProp(g, ref, t);
+          for (const ref of (shot.companionProps || []).filter((p) => p.behind)) {
+            if (driven.has(ref.propId)) continue;
+            const from = Number.isFinite(ref.enterAt) ? ref.enterAt : (ref.fromLine ? cues[ref.fromLine - 1].start : shot.start);
+            if (rawTime < from) continue;
+            drawProp(g, ref, t, ref.carry ? 1 : 0.85 + 0.15 * smooth((rawTime - from) / 0.25));
+          }
         },
         actors: (g) => { for (const a of actors) drawContactActor(g, a); },
         foreground: (g) => {
@@ -145,26 +189,24 @@ export async function createEpisodeRenderer({ spec, alignment, subdata }) {
               const an = anchors[i];
               return an?.headTop ? { text, x: an.headTop[0], y: an.headTop[1], dir: i === 0 ? -1 : 1 } : null;
             }).filter(Boolean);
-            drawRolePlates(g, plates, t);
+            drawRolePlates(g, plates, rawTime, spec.opener.platesAt ?? PLATES_DEFAULT_AT);
           }
-          if (isOpener) for (const ref of spec.opener.foregroundProps || []) drawProp(g, ref, t);
+          if (isOpener) {
+            (spec.opener.foregroundProps || []).forEach((ref, i) => {
+              const at = ref.enterAt ?? (i === 0 ? 0 : 0.9 + i * 0.45);
+              if (rawTime < at) return;
+              drawProp(g, ref, t, 0.85 + 0.15 * smooth((rawTime - at) / 0.25));
+            });
+          }
           for (const ref of (shot.companionProps || []).filter((p) => !p.behind)) {
-            const from = ref.fromLine ? cues[ref.fromLine - 1].start : shot.start;
-            if (t < from) continue;
-            drawProp(g, ref, t, 0.85 + 0.15 * smooth((t - from) / 0.25));
+            if (driven.has(ref.propId)) continue;
+            const from = Number.isFinite(ref.enterAt) ? ref.enterAt : (ref.fromLine ? cues[ref.fromLine - 1].start : shot.start);
+            if (rawTime < from) continue;
+            const pop = ref.carry ? 1 : 0.85 + 0.15 * smooth((rawTime - from) / 0.25);
+            drawProp(g, ref, t, pop);
           }
-          for (const ev of events.filter((e) => e.shotId === shot.id)) {
-            if (['drop_bonk', 'slap_deflect', 'unroll_scroll'].includes(ev.verb)) {
-              const ai = ev.actor ?? (ev.verb === 'slap_deflect' ? 1 : 0);
-              if (anchors[ai]) renderCueInteraction(g, frame, ev, { contact: anchors[ai], current: anchors[ai] }, PROP_REGISTRY);
-            } else if (ev.at) {
-              if (frame >= ev.startFrame && frame <= ev.endFrame) {
-                drawProp(g, { propId: ev.propId, x: ev.at[0], y: ev.at[1], scale: ev.scale ?? 1, state: { text: ev.text } }, t);
-                if (frame >= ev.contactFrame) burst(g, ev.at[0], ev.at[1] - 20, (frame - ev.contactFrame) / FPS);
-              }
-            }
-          }
-          if (isOpener && stamp) drawStamp(g, t, stamp.time, stamp.text, stamp.at[0], stamp.at[1]);
+          drawShotInteractions(g, { frame, t, shot, events, actors, anchors });
+          if (isOpener && stamp) drawStamp(g, rawTime, stamp.time, stamp.text, stamp.at[0], stamp.at[1]);
         },
       },
     });

@@ -14,7 +14,7 @@ function goodSpec() {
     day: 11, title: '测试集', speaker: '本鲸',
     opener: {
       badge: '先看这里', headlinePrefix: '新来的学徒，', headlineHighlight: '把师父架空啦？',
-      stampText: '就这样！', stampWord: { line: 1, char: '诶' }, stampAt: [640, 520],
+      stampText: '就这样！', stampWord: { line: 2, char: '快' }, stampAt: [640, 520],
       actorA: structuredClone(A), actorB: structuredClone(B),
       rolePlates: ['本鲸 · 当事人', '笨鱼 · 对手戏'],
       foregroundProps: [{ propId: 'name_plate', x: 640, y: 520, scale: 1 }],
@@ -22,7 +22,7 @@ function goodSpec() {
     shots: [{
       id: 'C01', fromLine: 1, toLine: 2, mood: 'work_cool', actors: [structuredClone(A), structuredClone(B)],
       interactions: [{ verb: 'drop_bonk', propId: 'sesame_flatbread', wordLine: 1, wordChar: '诶', land: [565, 550], scale: 0.7 }],
-      companionProps: [{ propId: 'empty_bowl', x: 760, y: 540, scale: 1 }],
+      companionProps: [{ propId: 'empty_bowl', x: 760, y: 540, scale: 1, enterAt: 1.4 }],
     }],
   };
 }
@@ -72,6 +72,22 @@ test('合法 spec 通过；缺配套物/越界道具/数字横幅被拒', () => 
   const idleShot = goodSpec();
   idleShot.shots[0].actors = [{ pose: 'idle', x: 400, y: 600 }, { pose: 'idle', x: 800, y: 600 }];
   assert.throws(() => validateSpec(idleShot, { cueCount: 2 }), /静立|同姿|罚站/);
+  const crowd = goodSpec();
+  crowd.opener.foregroundProps.push({ propId: 'empty_bowl', x: 400, y: 470, scale: 1 });
+  assert.throws(() => validateSpec(crowd, { cueCount: 2 }), /第 0 帧|同屏|道具/);
+  const stacked = goodSpec();
+  stacked.shots[0].companionProps = [{ propId: 'empty_bowl', x: 760, y: 540, scale: 1 }];
+  assert.throws(() => validateSpec(stacked, { cueCount: 2 }), /同屏|分时|配套/);
+  const earlyPlates = goodSpec();
+  earlyPlates.opener.platesAt = 0.1;
+  assert.throws(() => validateSpec(earlyPlates, { cueCount: 2 }), /铭牌/);
+  const noMove = goodSpec();
+  noMove.shots[0].actors = [{ pose: 'point', x: 400, y: 600 }, { pose: 'shock', x: 800, y: 600 }];
+  assert.throws(() => validateSpec(noMove, { cueCount: 2 }), /站桩|姿态/);
+  const noHit = goodSpec();
+  noHit.shots[0].interactions = [];
+  noHit.shots[0].allowNoCompanion = true;
+  assert.throws(() => validateSpec(noHit, { cueCount: 2 }), /词点互动/);
 });
 
 test('前景道具下沿断言 y<=600', () => {

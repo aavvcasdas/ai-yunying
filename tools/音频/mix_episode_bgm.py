@@ -135,6 +135,11 @@ def duck_and_mix(duration, voice, extra_events):
     dry = fit(voice, n)
     raw = generate_bgm(n / SR)
     stem_mono = synthesize_sfx(raw.copy(), extra_events)
+    # duration*SR 的 int/round 会差 1 个采样，对齐后再做掩码。
+    if len(stem_mono) < n:
+        stem_mono = np.pad(stem_mono, (0, n - len(stem_mono)))
+    elif len(stem_mono) > n:
+        stem_mono = stem_mono[:n]
     hop = 960
     mono = dry.mean(axis=1)
     count = math.ceil(n / hop)

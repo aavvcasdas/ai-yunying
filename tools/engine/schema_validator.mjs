@@ -3,9 +3,13 @@
 import { CALIBRATION } from '../互动元素/actor_contacts.mjs';
 import { PROP_REGISTRY, propBottom } from './prop_registry.mjs';
 import { validateOpenerActors } from './opener_director.mjs';
+import { assertOpenerUncrowded, assertShotDensity } from './crowd_and_density.mjs';
 
 export const CALIBRATED_POSES = Object.freeze(Object.keys(CALIBRATION));
-const VERBS = new Set(['drop_bonk', 'slap_deflect', 'tug_grab', 'knock_bowl', 'unroll_scroll']);
+export { assertOpenerUncrowded, assertShotDensity, frame0StaticProps } from './crowd_and_density.mjs';
+// 引擎层动词（sink_drop/mark_strike/handoff）不进入共享 cue_props_engine，避免改历史导出。
+const VERBS = new Set(['drop_bonk', 'slap_deflect', 'tug_grab', 'knock_bowl', 'unroll_scroll', 'sink_drop', 'mark_strike', 'handoff']);
+const NEEDS_AT = new Set(['tug_grab', 'knock_bowl', 'mark_strike', 'handoff', 'unroll_scroll']);
 const ARABIC = /\d/;
 
 function checkHookText(label, s) {
@@ -40,7 +44,8 @@ function validatePropRef(ref, where) {
  * @param {object} spec episode.spec 内容
  * @param {object} [opts] { cueCount } 提供时校验行号范围
  */
-export function validateSpec(spec, { cueCount = null } = {}) {
+export function validateSpec(spec, opts = {}) {
+  const cueCount = opts.cueCount ?? null;
   if (!spec || typeof spec !== 'object') throw new Error('spec 必须为对象');
   if (!Number.isInteger(spec.day) || spec.day < 1) throw new Error('spec.day 必须为正整数');
   const opener = spec.opener;
@@ -54,6 +59,7 @@ export function validateSpec(spec, { cueCount = null } = {}) {
   validateActor(opener.actorB, 'opener.actorB');
   validateOpenerActors([opener.actorA, opener.actorB]);
   for (const [i, p] of (opener.foregroundProps || []).entries()) validatePropRef(p, `opener.foregroundProps[${i}]`);
+  assertOpenerUncrowded(spec);
   if (opener.stampWord) {
     if (!Number.isInteger(opener.stampWord.line) || !opener.stampWord.char) throw new Error('opener.stampWord 须含 line（整数）与 char');
     if (cueCount != null && (opener.stampWord.line < 1 || opener.stampWord.line > cueCount)) throw new Error('opener.stampWord.line 超出台词行数');
@@ -77,13 +83,31 @@ export function validateSpec(spec, { cueCount = null } = {}) {
       if (!PROP_REGISTRY[it.propId]) throw new Error(`${where}.interactions[${j}] 未知道具 ${it.propId}`);
       if (it.wordChar != null && (typeof it.wordChar !== 'string' || it.wordChar.length !== 1)) throw new Error(`${where}.interactions[${j}] wordChar 须为单字`);
       if (it.verb === 'drop_bonk' && !Array.isArray(it.land)) throw new Error(`${where}.interactions[${j}] drop_bonk 必须声明 land 落点`);
+      if (it.verb === 'sink_drop' && !Array.isArray(it.land) && !Array.isArray(it.at)) throw new Error(`${where}.interactions[${j}] sink_drop 必须声明 land 落点`);
+      if (NEEDS_AT.has(it.verb) && !Array.isArray(it.at) && !Array.isArray(it.land)) throw new Error(`${where}.interactions[${j}] ${it.verb} 必须声明 at 落点`);
+      if (it.verb === 'handoff' && !Number.isInteger(it.toActor)) throw new Error(`${where}.interactions[${j}] handoff 必须声明 toActor`);
+      if (it.text && ARABIC.test(it.text)) throw new Error(`${where}.interactions[${j}] 道具文案不得含阿拉伯数字`);
+      if (cueCount != null && opts.cues) {
+        const lineNo = it.wordLine ?? shot.fromLine;
+        const text = opts.cues[lineNo - 1]?.text || '';
+        if (it.wordChar && !text.includes(it.wordChar)) throw new Error(`${where}.interactions[${j}] 词点「${it.wordChar}」不在第 ${lineNo} 行`);
+      }
     }
     for (const [j, p] of (shot.companionProps || []).entries()) validatePropRef(p, `${where}.companionProps[${j}]`);
     if ((shot.interactions || []).length && !(shot.companionProps || []).length && !shot.allowNoCompanion) {
       throw new Error(`${where} 有主交互时须至少一件配套物（companionProps），反应特写可声明 allowNoCompanion`);
     }
+    assertShotDensity(shot, where);
   });
   if (spec.shots[0].fromLine !== 1) throw new Error('首镜 fromLine 必须为 1（第 0 帧直接进入正片）');
+  if (cueCount != null) {
+    let expect = 1;
+    for (const shot of spec.shots) {
+      if (shot.fromLine !== expect) throw new Error(`镜 ${shot.id} 行号不连续，期望从第 ${expect} 行起`);
+      expect = shot.toLine + 1;
+    }
+    if (expect !== cueCount + 1) throw new Error(`分镜未覆盖全部台词（停在 ${expect - 1}，共 ${cueCount} 行）`);
+  }
   return spec;
 }
 

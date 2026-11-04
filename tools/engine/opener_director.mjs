@@ -8,6 +8,7 @@ const { paint, rrPts, ellPts, glow } = CORE;
 export const OPENER_END = 3.2;      // 导演接管至 min(shot0.end, 3.20s)
 export const BANNER_END = 2.8;      // 顶部横幅收起时刻
 export const TITLE_LEN = 0;         // 无独立片头卡：第 0 帧直接正片
+export const PLATES_DEFAULT_AT = 0.85; // 身份铭牌默认入场，避开第 0 帧横幅
 
 const KEYS = [
   { t: 0.0, z: 1.42, cx: 640, cy: 372 },
@@ -104,11 +105,11 @@ export function drawOpenerSpotlights(ctx, t, focusX = 640) {
 }
 
 /** 角色头顶场景身份铭牌（屏幕/场景空间，绝不贴到头发或衣服上）。 */
-export function drawRolePlates(ctx, plates, t) {
-  // plates: [{text, x, y, dir}] x/y 为头顶锚点；铭牌浮在头部外侧（dir -1 左 / +1 右），
-  // 避开顶部横幅区，也不压头发与本体。
+export function drawRolePlates(ctx, plates, t, enterAt = 0.85) {
+  // plates: [{text, x, y, dir, enterAt?}] x/y 为头顶锚点；铭牌浮在头部外侧（dir -1 左 / +1 右）。
+  // 默认 0.85s 后才入场，避免与第 0 帧横幅、主道具挤在同一屏。
   for (const p of plates) {
-    const pop = easeOutBack((t - 0.05) / 0.3);
+    const pop = easeOutBack((t - (p.enterAt ?? enterAt)) / 0.28);
     if (pop <= 0) continue;
     ctx.save();
     ctx.translate(p.x + (p.dir || 0) * 150, p.y + 58);
