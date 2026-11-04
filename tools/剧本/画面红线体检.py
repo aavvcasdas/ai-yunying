@@ -31,6 +31,8 @@ def discover(day=None):
     files = [p for d in (REPO/'tools').glob(pattern) for p in d.rglob('*.mjs')
              if not p.name.endswith('.test.mjs') and '源码快照' not in str(p)]
     files.extend(p for p in (REPO/'tools/场景').rglob('*.mjs') if not p.name.endswith('.test.mjs'))
+    # 通用引擎同样属于共享生产代码，一并扫描，防止违规逻辑藏进引擎逃检（历史单集判定不变）
+    files.extend(p for p in (REPO/'tools/engine').rglob('*.mjs') if not p.name.endswith('.test.mjs'))
     folders = [REPO/f'Day{day}'] if day else (REPO.glob('Day*'))
     for d in folders:
         files.extend(d.glob('Day*配音台词.txt'))

@@ -73,6 +73,9 @@ def main():
                 ok=run('渲染器自检',['node',paths['renderer'],'--voice',paths['voice'],'--alignment',paths['alignment'],'--subtitle-file',paths['subs'],'--test']) and ok
             else:
                 ok=run('通用媒体终验',[py,ROOT/'tools/验收/verify_episode.py',*sum(([f'--{k}',paths[v]] for k,v in [('video','video'),('voice','voice'),('alignment','alignment'),('subs','subs'),('script','script')]),[]),'--report',ROOT/f'tools/day{args.day}制作/gate_media_report.json']) and ok
+                # 前2秒防枯燥体检：仅新集（day>=11 或显式启用通用引擎）追加，历史单集门禁行为不变
+                if args.day>=11 or cfg.get('use_unified_engine'):
+                    ok=run('开场视觉',[py,ROOT/'tools/验收/check_opener_visual.py','--video',paths['video'],'--report',ROOT/f'tools/day{args.day}制作/gate_opener_visual_report.json']) and ok
         except (ValueError,OSError,KeyError,subprocess.CalledProcessError) as e:
             report['checks'].append(dict(name=stage,exit_code=1,error=str(e)));print(f'[{stage}] 失败：{e}');ok=False
     report['passed']=ok
