@@ -12,7 +12,7 @@ import { createCanvas, loadImage, resolveFfmpeg, W, H, FPS, mix, smooth, seg } f
 import { validateSpec, resolveWordTime } from './schema_validator.mjs';
 import { openerCamera, drawRolePlates, drawStamp, OPENER_END } from './opener_director.mjs';
 import { composeScene, drawComplianceCorner, drawHudBanner } from './scene_compositor.mjs';
-import { getProp, assertForegroundWithinStage } from './prop_registry.mjs';
+import { getProp, assertForegroundWithinStage, PROP_REGISTRY } from './prop_registry.mjs';
 import { loadContactActors, actorAnchors, drawContactActor } from '../互动元素/actor_contacts.mjs';
 import { renderCueInteraction, burst, CORE } from '../互动元素/cue_props_engine.mjs';
 import { createDay2Subtitle } from '../字幕/day2_style_sub.mjs';
@@ -156,7 +156,7 @@ export async function createEpisodeRenderer({ spec, alignment, subdata }) {
           for (const ev of events.filter((e) => e.shotId === shot.id)) {
             if (['drop_bonk', 'slap_deflect', 'unroll_scroll'].includes(ev.verb)) {
               const ai = ev.actor ?? (ev.verb === 'slap_deflect' ? 1 : 0);
-              if (anchors[ai]) renderCueInteraction(g, frame, ev, { contact: anchors[ai], current: anchors[ai] });
+              if (anchors[ai]) renderCueInteraction(g, frame, ev, { contact: anchors[ai], current: anchors[ai] }, PROP_REGISTRY);
             } else if (ev.at) {
               if (frame >= ev.startFrame && frame <= ev.endFrame) {
                 drawProp(g, { propId: ev.propId, x: ev.at[0], y: ev.at[1], scale: ev.scale ?? 1, state: { text: ev.text } }, t);

@@ -1,5 +1,5 @@
-// Day11《笨鱼陨落过，所以它懂》声明式单集配置（待指定配音实测轴到位后渲染）
-// 笨鱼已陨落（人机校验未过、接不上实时话）：吐槽写进总结由本鲸代读，全程无新增实时对白。
+// Day11《笨鱼鲸落过，所以它懂》声明式单集配置（待指定配音实测轴到位后渲染）
+// 笨鱼已鲸落（人机校验未过、接不上实时话）：吐槽写进总结由本鲸代读，全程无新增实时对白。
 // 米和补全是老大买的；帮找工作只做真实筛选（划掉敲代码岗、标出太远太熬），不承诺结果。
 const actorA = {
   pose: 'point', poses: [{ at: 0.8, pose: 'shock' }],
@@ -16,18 +16,18 @@ export default {
   speaker: '本鲸',
   opener: {
     badge: '它懂这滋味',
-    headlinePrefix: '笨鱼陨落过，',
+    headlinePrefix: '笨鱼鲸落过，',
     headlineHighlight: '它来帮老大。',
     stampText: '一条条扒！',
     stampWord: { line: 2, char: '帮' },
     stampAt: [640, 500],
     actorA, actorB,
-    rolePlates: ['本鲸 · 监工', '笨鱼 · 陨落鱼'],
+    rolePlates: ['本鲸 · 监工', '笨鱼 · 鲸落鱼'],
     foregroundProps: [
       { propId: 'folded_page', x: 640, y: 500, scale: 1, state: { title: '岗位总结', sub: '一条条扒' } },
     ],
   },
-  verticalTitle: ['笨鱼陨落过，', '它来帮老大。'],
+  verticalTitle: ['笨鱼鲸落过，', '它来帮老大。'],
   shots: [
     {
       id: 'C01', fromLine: 1, toLine: 4, mood: 'work_cool',
@@ -42,7 +42,7 @@ export default {
         { pose: 'think', x: 850, y: 600, u: 36 },
       ],
       interactions: [
-        { verb: 'unroll_scroll', propId: 'folded_page', wordLine: 7, wordChar: '真', actor: 1, scale: 1 },
+        { verb: 'unroll_scroll', propId: 'folded_page', wordLine: 7, wordChar: '真', startLine: 5, actor: 1, scale: 1 },
       ],
       companionProps: [{ propId: 'empty_bowl', x: 700, y: 540, scale: 1 }],
     },
@@ -58,7 +58,7 @@ export default {
       ],
     },
     {
-      id: 'C04', fromLine: 14, toLine: 20, mood: 'work_cool',
+      id: 'C04', fromLine: 14, toLine: 19, mood: 'work_cool',
       actors: [
         { pose: 'think', x: 450, y: 600, u: 38 },
         { pose: 'fatfish_working', x: 850, y: 600, u: 36 },
@@ -69,7 +69,7 @@ export default {
       ],
     },
     {
-      id: 'C05', fromLine: 21, toLine: 28, mood: 'warm_meal',
+      id: 'C05', fromLine: 20, toLine: 25, mood: 'warm_meal',
       actors: [
         { pose: 'confident_hips', x: 470, y: 600, u: 38 },
         { pose: 'point', x: 820, y: 600, u: 38 },
