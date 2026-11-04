@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { openerCamera, openerBannerState, stampState, validateOpenerActors, TITLE_LEN as OT } from './opener_director.mjs';
 import { validateSpec } from './schema_validator.mjs';
 import { PROP_REGISTRY, propBottom, assertForegroundWithinStage } from './prop_registry.mjs';
-import { TITLE_LEN, buildShots, buildEvents } from './render_episode.mjs';
+import { TITLE_LEN, buildShots, buildEvents, livingBody, lifeAnim, ambientCamera, resolveActor } from './render_episode.mjs';
 import { VERTICAL_LAYOUTS, verticalTitleLines } from './export_vertical.mjs';
 
 const A = { pose: 'shock', poses: [{ at: 0.8, pose: 'point' }], x: 430, y: 600, u: 40 };
@@ -106,6 +106,21 @@ test('镜号/词点事件由实测轴帧号生成', () => {
   const events = buildEvents(goodSpec(), shots, cues);
   assert.equal(events[0].contactFrame, 0);
   assert.equal(events[0].word_id, 'L01:诶');
+});
+
+test('人物不全程罚站：呼吸位移和镜头慢晃都会变', () => {
+  const a = livingBody(0.2, 0.4);
+  const b = livingBody(0.7, 0.4);
+  assert.ok(Math.hypot(a.dx - b.dx, a.dy - b.dy) > 2, '半秒内身体要有可见位移');
+  assert.notEqual(lifeAnim(0.1).bones.tail.rot, lifeAnim(0.5).bones.tail.rot);
+  const c0 = ambientCamera(1, { z: 1.08, cx: 640, cy: 378 });
+  const c1 = ambientCamera(2.2, { z: 1.08, cx: 640, cy: 378 });
+  assert.ok(Math.abs(c0.cx - c1.cx) > 4, '镜头中心要跟着晃');
+  const stood = resolveActor({ pose: 'point', x: 400, y: 600 }, 0.2, 1, []);
+  const later = resolveActor({ pose: 'point', x: 400, y: 600 }, 0.9, 1, []);
+  assert.ok(Math.abs(stood.x - later.x) + Math.abs(stood.y - later.y) > 2);
+  const walked = resolveActor({ pose: 'point', x: 500, y: 600, walk: { from: 300, to: 500, start: 0, duration: 2 } }, 1, 1, []);
+  assert.ok(walked.x > 350 && walked.x < 520);
 });
 
 test('竖屏布局：双画幅尺寸与安全区正确', () => {

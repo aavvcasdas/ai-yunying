@@ -13,5 +13,5 @@
   "seconds": 60,
   "event_cue": "L01",
   "use_unified_engine": true,
-  "note": "通用引擎新集：干声母版过 verify_episode，BGM 成片另由 mix_episode_bgm.py 验收，竖屏版为渠道附加交付物。"
+  "note": "通用引擎新集：干声母版过 verify_episode，BGM 成片另由 mix_episode_bgm.py 验收。Day11 不导出 9:16。"
 }

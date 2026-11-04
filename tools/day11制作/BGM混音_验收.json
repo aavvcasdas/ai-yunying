@@ -3,7 +3,7 @@
   "base": "/home/user/ai-yunying/Day11/成片/Day11_配音对齐版.mp4",
   "output": "/home/user/ai-yunying/Day11/成片/Day11_配音BGM版.mp4",
   "bgm_stem": "Day11/配音/Day11_伴奏含音效_stem.flac",
-  "bgm_sha256": "72c8b99a287177d3a4911afd95a709ab740c7199c25da77d741e5bdeb400cef9",
+  "bgm_sha256": "67b15dd85b9b8e0a5c2e89f34acdba1c70f85eaad504df8c32de816460bb6bef",
   "source_voice_sha256": "8f4124cbe21e0d93bfb9c458cd77bcfa789f8a114e765837b95b8fa1c930fe5c",
   "settings": {
     "bpm": 128,
@@ -17,84 +17,18 @@
         "kind": "alert_pop",
         "time": 0.02,
         "reason": "opener_banner"
-      },
-      {
-        "kind": "stamp_thud",
-        "time": 2.76,
-        "line": 2,
-        "char": "帮"
-      },
-      {
-        "kind": "whoosh",
-        "time": 0.57,
-        "line": 1,
-        "char": "翻"
-      },
-      {
-        "kind": "whoosh",
-        "time": 8.13,
-        "line": 4,
-        "char": "扒"
-      },
-      {
-        "kind": "bonk",
-        "time": 18.09,
-        "line": 9,
-        "char": "石"
-      },
-      {
-        "kind": "whoosh",
-        "time": 25.65,
-        "line": 13,
-        "char": "嫌"
-      },
-      {
-        "kind": "knock",
-        "time": 29.52,
-        "line": 15,
-        "char": "标"
-      },
-      {
-        "kind": "knock",
-        "time": 34.68,
-        "line": 17,
-        "char": "划"
-      },
-      {
-        "kind": "knock",
-        "time": 35.76,
-        "line": 18,
-        "char": "标"
-      },
-      {
-        "kind": "knock",
-        "time": 36.96,
-        "line": 19,
-        "char": "熬"
-      },
-      {
-        "kind": "whoosh",
-        "time": 44.668,
-        "line": 22,
-        "char": "递"
-      },
-      {
-        "kind": "knock",
-        "time": 47.94,
-        "line": 23,
-        "char": "吃"
       }
     ]
   },
   "duration": 55.566667,
   "frames": 1667,
   "video_stream_unchanged": true,
-  "mixture_reconstruction_zero_offset_correlation": 0.9999378555567817,
-  "known_stem_subtraction_voice_correlation": 0.9999368526525578,
-  "recovered_voice_gain": 0.9993645605158432,
-  "voice_active_bgm_below_voice_db": 20.941603070075082,
-  "expected_peak": 0.6979260444641113,
-  "decoded_peak": 0.6987024545669556,
+  "mixture_reconstruction_zero_offset_correlation": 0.9999396421710705,
+  "known_stem_subtraction_voice_correlation": 0.9999386964328926,
+  "recovered_voice_gain": 0.9993658636944169,
+  "voice_active_bgm_below_voice_db": 21.09244195646184,
+  "expected_peak": 0.7103161811828613,
+  "decoded_peak": 0.7089819312095642,
   "stem_first_250ms_rms": 0.017577691803559812,
   "full_decode_exit": 0
 }

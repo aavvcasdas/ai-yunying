@@ -30,6 +30,41 @@ export function gaitAnim(t, start, dur) {
   return { bones: { legL: { rot: a * 0.055, dy: -Math.max(0, a) * 10 }, legR: { rot: -a * 0.055, dy: -Math.max(0, -a) * 10 } } };
 }
 
+/** 量化到 8 拍，避免每帧重蒙皮把缓存打穿。头发、尾巴、头随拍摆，不贴假眼睛。 */
+export function lifeAnim(t, seed = 0) {
+  const phase = Math.floor((t + seed) * 5) % 8;
+  const a = Math.sin((phase * Math.PI) / 4);
+  const b = Math.cos((phase * Math.PI) / 4);
+  return {
+    bones: {
+      spine: { rot: a * 0.022 },
+      head: { rot: b * 0.032 },
+      tail: { rot: a * 0.14 },
+      hairL: { rot: b * 0.07 },
+      hairR: { rot: -b * 0.06 },
+    },
+  };
+}
+
+/** 外层呼吸、重心左右晃。不进蒙皮缓存，所以可以连续。 */
+export function livingBody(t, seed = 0) {
+  const s = t + seed;
+  return {
+    dx: Math.sin(s * 0.85) * 7,
+    dy: Math.sin(s * 2.15) * 8,
+    lean: Math.sin(s * 1.05) * 0.055,
+    squash: Math.sin(s * 2.15) * 0.7,
+  };
+}
+
+export function ambientCamera(t, base) {
+  return {
+    z: base.z + Math.sin(t * 0.42) * 0.05,
+    cx: base.cx + Math.sin(t * 0.31) * 26,
+    cy: base.cy + Math.cos(t * 0.24) * 12,
+  };
+}
+
 export async function loadSpec(specPath) {
   const mod = await import(pathToFileURL(path.resolve(specPath)).href);
   const spec = mod.default || mod.SPEC || mod.spec;
@@ -83,7 +118,10 @@ export function resolveActor(plan, t, line, cues = []) {
     if ((p.line != null && line >= p.line) || (p.at != null && t >= p.at)) pose = p.pose;
   }
   for (const p of plan.poseChanges || []) if (t >= p.at) pose = p.pose;
-  let x = plan.x; let anim = { ...(plan.anim || {}) };
+  let x = plan.x;
+  const seed = (plan.x || 0) / 380;
+  const life = lifeAnim(t, seed);
+  let anim = { bones: { ...(plan.anim?.bones || {}), ...life.bones } };
   if (plan.walk) {
     const start = plan.walk.start != null
       ? plan.walk.start
@@ -91,9 +129,15 @@ export function resolveActor(plan, t, line, cues = []) {
     const duration = plan.walk.duration ?? 1;
     const p = smooth((t - start) / duration);
     x = mix(plan.walk.from, plan.walk.to, p);
-    if (t >= start && t <= start + duration) anim = { ...anim, ...gaitAnim(t, start, duration) };
+    if (t >= start && t <= start + duration) {
+      anim = { bones: { ...anim.bones, ...gaitAnim(t, start, duration).bones } };
+    }
   }
-  return { pose, x, y: plan.y, u: plan.u ?? 38, flip: !!plan.flip, lean: plan.lean ?? 0, anim };
+  const body = livingBody(t, seed);
+  return {
+    pose, x: x + body.dx, y: (plan.y ?? 600) + body.dy, u: plan.u ?? 38,
+    flip: !!plan.flip, lean: (plan.lean ?? 0) + body.lean, squash: body.squash, anim,
+  };
 }
 
 function holdFrame(frame, events, shotId) {
@@ -128,9 +172,18 @@ export async function createEpisodeRenderer({ spec, alignment, subdata }) {
     return plans.map((p) => resolveActor(p, t, line, cues));
   }
 
+  function swayCam(cam, t) {
+    return {
+      z: cam.z + Math.sin(t * 0.8) * 0.018,
+      cx: cam.cx + Math.sin(t * 0.62) * 12,
+      cy: cam.cy + Math.cos(t * 0.5) * 7,
+      shake: cam.shake,
+    };
+  }
+
   function cameraFor(shot, t, isOpener) {
-    if (isOpener) return openerCamera(t, { stampTime: stamp?.time, end: Math.min(shot.end, OPENER_END) });
-    const base = { z: 1.08, cx: 640, cy: 378, ...(shot.camera || {}) };
+    if (isOpener) return swayCam(openerCamera(t, { stampTime: stamp?.time, end: Math.min(shot.end, OPENER_END) }), t);
+    const base = ambientCamera(t, { z: 1.08, cx: 640, cy: 378, ...(shot.camera || {}) });
     const pushes = shot.pushes || (shot.push ? [shot.push] : []);
     let cam = base;
     for (const push of pushes) {
@@ -143,7 +196,13 @@ export async function createEpisodeRenderer({ spec, alignment, subdata }) {
         cy: mix(cam.cy, push.cy ?? cam.cy, p),
       };
     }
-    return cam;
+    // 推完也不锁死：留下慢晃，画面一直在动。
+    return {
+      z: cam.z + Math.sin(t * 0.8) * 0.018,
+      cx: cam.cx + Math.sin(t * 0.62) * 12,
+      cy: cam.cy + Math.cos(t * 0.5) * 7,
+      shake: cam.shake,
+    };
   }
 
   function drawProp(ctx, ref, t, pop = 1) {

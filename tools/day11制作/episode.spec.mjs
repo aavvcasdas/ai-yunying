@@ -37,9 +37,10 @@ export default {
     {
       id: 'C01', fromLine: 1, toLine: 3, mood: 'work_cool',
       actors: [
-        { pose: 'shock', poses: [{ line: 3, pose: 'point' }], x: 400, y: 600, u: 40 },
-        { pose: 'fatfish_working', poses: [{ line: 3, pose: 'think' }], x: 860, y: 600, u: 36 },
+        { pose: 'shock', poses: [{ line: 3, pose: 'point' }], x: 470, y: 600, u: 40, walk: { from: 330, to: 470, startLine: 1, duration: 6 } },
+        { pose: 'fatfish_working', poses: [{ line: 3, pose: 'think' }], x: 800, y: 600, u: 36, walk: { from: 900, to: 800, startLine: 3, duration: 2.2 } },
       ],
+      push: { line: 1, z: 1.18, cx: 560, cy: 390, duration: 0.7 },
       interactions: [
         { verb: 'tug_grab', propId: 'folded_page', wordLine: 1, wordChar: '翻', actor: 1, at: pageAt, scale: 0.92, title: '岗位', sub: '先翻开' },
       ],
@@ -50,9 +51,10 @@ export default {
     {
       id: 'C02', fromLine: 4, toLine: 6, mood: 'work_cool',
       actors: [
-        { pose: 'shock', poses: [{ line: 6, pose: 'think' }], x: 410, y: 600, u: 38 },
-        { pose: 'fatfish_working', poses: [{ line: 5, pose: 'point' }], x: 850, y: 600, u: 36 },
+        { pose: 'shock', poses: [{ line: 6, pose: 'think' }], x: 360, y: 600, u: 38, walk: { from: 480, to: 360, startLine: 4, duration: 5 } },
+        { pose: 'fatfish_working', poses: [{ line: 5, pose: 'point' }], x: 920, y: 600, u: 36, walk: { from: 800, to: 920, startLine: 5, duration: 3.2 } },
       ],
+      push: { line: 4, z: 1.16, cx: 620, cy: 370, duration: 0.6 },
       interactions: [
         { verb: 'unroll_scroll', propId: 'folded_page', wordLine: 4, wordChar: '扒', startLine: 4, actor: 1, at: pageAt, scale: 1, title: '岗位总结', sub: '一条条扒' },
       ],
@@ -63,10 +65,10 @@ export default {
     {
       id: 'C03', fromLine: 7, toLine: 9, mood: 'panic_alert',
       actors: [
-        { pose: 'point', poses: [{ line: 9, pose: 'shock' }], x: 420, y: 600, u: 38 },
-        { pose: 'think', poses: [{ line: 8, pose: 'fatfish_working' }], x: 860, y: 600, u: 36 },
+        { pose: 'point', poses: [{ line: 9, pose: 'shock' }], x: 500, y: 600, u: 38, walk: { from: 360, to: 500, startLine: 7, duration: 4.2 } },
+        { pose: 'think', poses: [{ line: 8, pose: 'fatfish_working' }], x: 820, y: 600, u: 36, walk: { from: 940, to: 820, startLine: 7, duration: 3.4 } },
       ],
-      push: { line: 9, z: 1.22, cx: 640, cy: 400, duration: 0.4 },
+      push: { line: 9, z: 1.24, cx: 640, cy: 400, duration: 0.55 },
       interactions: [
         { verb: 'sink_drop', propId: 'folded_page', wordLine: 9, wordChar: '石', startLine: 7, actor: 1, at: pageAt, land: pageAt, scale: 0.95, title: '简历', sub: '沉进海里' },
       ],
@@ -77,9 +79,10 @@ export default {
     {
       id: 'C04', fromLine: 10, toLine: 13, mood: 'panic_alert',
       actors: [
-        { pose: 'shock', poses: [{ line: 12, pose: 'playful_fists' }], x: 430, y: 600, u: 38 },
-        { pose: 'point', poses: [{ line: 13, pose: 'playful_fists' }], x: 860, y: 600, u: 36 },
+        { pose: 'shock', poses: [{ line: 12, pose: 'playful_fists' }], x: 470, y: 600, u: 38, walk: { from: 360, to: 470, startLine: 10, duration: 5.5 } },
+        { pose: 'point', poses: [{ line: 13, pose: 'playful_fists' }], x: 830, y: 600, u: 36, walk: { from: 960, to: 830, startLine: 10, duration: 5.5 } },
       ],
+      push: { line: 13, z: 1.2, cx: 700, cy: 400, duration: 0.5 },
       interactions: [
         { verb: 'slap_deflect', propId: 'speech_missile', wordLine: 13, wordChar: '嫌', startLine: 11, actor: 1, scale: 0.82, text: '什么都要会' },
       ],
@@ -90,9 +93,10 @@ export default {
     {
       id: 'C05', fromLine: 14, toLine: 16, mood: 'work_cool',
       actors: [
-        { pose: 'playful_fists', poses: [{ line: 14, pose: 'think' }], x: 400, y: 600, u: 38 },
-        { pose: 'point', poses: [{ line: 16, pose: 'fatfish_working' }], x: 860, y: 600, u: 36, walk: { from: 940, to: 800, startLine: 15, duration: 0.85 } },
+        { pose: 'playful_fists', poses: [{ line: 14, pose: 'think' }], x: 500, y: 600, u: 38, walk: { from: 380, to: 500, startLine: 14, duration: 4.5 } },
+        { pose: 'point', poses: [{ line: 16, pose: 'fatfish_working' }], x: 780, y: 600, u: 36, walk: { from: 960, to: 780, startLine: 14, duration: 3.2 } },
       ],
+      push: { line: 15, z: 1.18, cx: 640, cy: 340, duration: 0.5 },
       interactions: [
         { verb: 'mark_strike', propId: 'notice_board', wordLine: 15, wordChar: '标', startLine: 15, actor: 1, at: boardAt, text: '偷偷标', slot: 0 },
       ],
@@ -103,8 +107,8 @@ export default {
     {
       id: 'C06', fromLine: 17, toLine: 19, mood: 'work_cool',
       actors: [
-        { pose: 'think', poses: [{ line: 18, pose: 'point' }], x: 410, y: 600, u: 38 },
-        { pose: 'fatfish_working', poses: [{ line: 17, pose: 'point' }], x: 820, y: 600, u: 36 },
+        { pose: 'think', poses: [{ line: 18, pose: 'point' }], x: 500, y: 600, u: 38, walk: { from: 380, to: 500, startLine: 17, duration: 4 } },
+        { pose: 'fatfish_working', poses: [{ line: 17, pose: 'point' }], x: 760, y: 600, u: 36, walk: { from: 900, to: 760, startLine: 17, duration: 3.5 } },
       ],
       push: { line: 17, z: 1.2, cx: 700, cy: 340, duration: 0.45 },
       interactions: [
@@ -120,9 +124,10 @@ export default {
     {
       id: 'C07', fromLine: 20, toLine: 22, mood: 'warm_meal',
       actors: [
-        { pose: 'point', poses: [{ line: 21, pose: 'confident_hips' }], x: 620, y: 600, u: 38, walk: { from: 540, to: 640, startLine: 22, duration: 0.7 } },
-        { pose: 'point', poses: [{ line: 20, pose: 'think' }], x: 920, y: 600, u: 34, flip: true },
+        { pose: 'point', poses: [{ line: 21, pose: 'confident_hips' }], x: 640, y: 600, u: 38, walk: { from: 460, to: 640, startLine: 20, duration: 4.2 } },
+        { pose: 'point', poses: [{ line: 20, pose: 'think' }], x: 880, y: 600, u: 34, flip: true, walk: { from: 1000, to: 880, startLine: 20, duration: 3.6 } },
       ],
+      push: { line: 22, z: 1.16, cx: 700, cy: 390, duration: 0.55 },
       interactions: [
         { verb: 'handoff', propId: 'folded_page', wordLine: 22, wordChar: '递', startLine: 21, actor: 1, toActor: 0, at: [720, 456], scale: 0.9, title: '挑好的', sub: '递过去' },
       ],
@@ -134,9 +139,10 @@ export default {
     {
       id: 'C08', fromLine: 23, toLine: 25, mood: 'warm_meal',
       actors: [
-        { pose: 'confident_hips', poses: [{ line: 23, pose: 'eat' }], x: 560, y: 600, u: 38 },
-        { pose: 'think', poses: [{ line: 25, pose: 'playful_fists' }], x: 900, y: 600, u: 34 },
+        { pose: 'confident_hips', poses: [{ line: 23, pose: 'eat' }], x: 520, y: 600, u: 38, walk: { from: 620, to: 520, startLine: 23, duration: 2.4 } },
+        { pose: 'think', poses: [{ line: 25, pose: 'playful_fists' }], x: 980, y: 600, u: 34, walk: { from: 840, to: 980, startLine: 24, duration: 3.8 } },
       ],
+      push: { line: 23, z: 1.2, cx: 520, cy: 400, duration: 0.6 },
       interactions: [
         { verb: 'knock_bowl', propId: 'rice_jar_guard', wordLine: 23, wordChar: '吃', startLine: 23, actor: 0, at: [200, 468], scale: 0.95 },
       ],

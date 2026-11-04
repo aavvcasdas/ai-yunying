@@ -96,16 +96,12 @@ python3 tools/音频/mix_episode_bgm.py --base Day11/成片/Day11_配音对齐�
   --stem Day11/配音/Day11_伴奏含音效_stem.flac \
   --report tools/day11制作/BGM混音_验收.json
 
-# 7) 抖音竖屏满铺版（渠道附加交付物；gate 的 video 仍指向 16:9 干声母版）
-node tools/engine/export_vertical.mjs --spec tools/day11制作/episode.spec.mjs \
-  --audio Day11/成片/Day11_配音BGM版.mp4 --voice Day11/配音/Day11配音.wav \
-  --alignment tools/day11制作/voice_alignment.json \
-  --subtitle-file tools/day11制作/subtitle_timing.json --ratio 9:16 \
-  --out Day11/成片/Day11_抖音9比16版.mp4
+# 7) Day11 不导出 9:16（舞台不适配，会裁掉人和桌子）。封面用代码出 3:4 与 4:3：
+node tools/day11制作/make_day11_cover.mjs
 
 # 8) 四阶段总门禁（含新增开场视觉体检）
 python3 tools/gate.py --day 11 --stage final
 ```
 
 注意：第 5 步干声版只作基片与终验对象，正式交付是第 6 步 BGM 成片（agent.md 第 22 条）；
-第 7 步竖屏版不替代母版验收。自动检查不替代人工动态观影。
+Day11 的 9:16 竖屏版已停，不替代母版，也不再作为交付物。自动检查不替代人工动态观影。

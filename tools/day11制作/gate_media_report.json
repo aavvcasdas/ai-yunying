@@ -1,7 +1,7 @@
 {
   "video": "/home/user/ai-yunying/Day11/成片/Day11_配音对齐版.mp4",
   "source_sha256": "8f4124cbe21e0d93bfb9c458cd77bcfa789f8a114e765837b95b8fa1c930fe5c",
-  "video_sha256": "b704185c2b498c3a767715e7f54985d4518754e809f49e4f1149db58ebe57d45",
+  "video_sha256": "ed10f1496597bb67915bea62e0cb6c62427dc5c9760148a49c87e21efe93b6a0",
   "duration": 55.566667,
   "tail_pad": 0.2466670000000022,
   "frames": 1667,
@@ -195,14 +195,14 @@
         "time": 15.366666666666667,
         "expected": true,
         "visible": true,
-        "cyan_pixels": 179,
+        "cyan_pixels": 180,
         "label": "L07"
       },
       {
         "time": 17.1,
         "expected": true,
         "visible": true,
-        "cyan_pixels": 174,
+        "cyan_pixels": 176,
         "label": "L08"
       },
       {
@@ -216,21 +216,21 @@
         "time": 20.6,
         "expected": true,
         "visible": true,
-        "cyan_pixels": 175,
+        "cyan_pixels": 174,
         "label": "L10"
       },
       {
         "time": 22.333333333333332,
         "expected": true,
         "visible": true,
-        "cyan_pixels": 175,
+        "cyan_pixels": 174,
         "label": "L11"
       },
       {
         "time": 24.233333333333334,
         "expected": true,
         "visible": true,
-        "cyan_pixels": 174,
+        "cyan_pixels": 173,
         "label": "L12"
       },
       {
@@ -244,28 +244,28 @@
         "time": 27.633333333333333,
         "expected": true,
         "visible": true,
-        "cyan_pixels": 176,
+        "cyan_pixels": 175,
         "label": "L14"
       },
       {
         "time": 29.766666666666666,
         "expected": true,
         "visible": true,
-        "cyan_pixels": 175,
+        "cyan_pixels": 176,
         "label": "L15"
       },
       {
         "time": 31.1,
         "expected": true,
         "visible": true,
-        "cyan_pixels": 175,
+        "cyan_pixels": 176,
         "label": "L15"
       },
       {
         "time": 32.46666666666667,
         "expected": true,
         "visible": true,
-        "cyan_pixels": 175,
+        "cyan_pixels": 176,
         "label": "L16"
       },
       {
@@ -349,14 +349,14 @@
         "time": 46.86666666666667,
         "expected": true,
         "visible": true,
-        "cyan_pixels": 176,
+        "cyan_pixels": 175,
         "label": "L23"
       },
       {
         "time": 48.2,
         "expected": true,
         "visible": true,
-        "cyan_pixels": 176,
+        "cyan_pixels": 175,
         "label": "L23"
       },
       {
@@ -370,7 +370,7 @@
         "time": 51.7,
         "expected": true,
         "visible": true,
-        "cyan_pixels": 176,
+        "cyan_pixels": 175,
         "label": "L25"
       },
       {
@@ -384,7 +384,7 @@
         "time": 54.7,
         "expected": true,
         "visible": true,
-        "cyan_pixels": 176,
+        "cyan_pixels": 175,
         "label": "L25"
       },
       {
@@ -454,14 +454,14 @@
         "time": 36.766666666666666,
         "expected": false,
         "visible": false,
-        "cyan_pixels": 32,
+        "cyan_pixels": 14,
         "label": "气口"
       },
       {
         "time": 39.333333333333336,
         "expected": false,
         "visible": false,
-        "cyan_pixels": 32,
+        "cyan_pixels": 16,
         "label": "气口"
       },
       {

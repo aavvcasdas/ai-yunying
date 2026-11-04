@@ -3,17 +3,17 @@
   "frames_checked": 60,
   "checks": {
     "motion_central_mean_diff": {
-      "value": 4.682826995849609,
+      "value": 6.020735740661621,
       "min": 0.8,
       "passed": true
     },
     "top_band_bright_ratio": {
-      "value": 0.22679215315934065,
+      "value": 0.23055460164835165,
       "min": 0.05,
       "passed": true
     },
     "frame_bright_ratio": {
-      "value": 0.22153059895833332,
+      "value": 0.22537160011574073,
       "min": 0.18,
       "passed": true
     }
