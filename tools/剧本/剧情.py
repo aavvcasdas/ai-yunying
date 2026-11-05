@@ -18,7 +18,6 @@ RETIRED_LENGTH_GATES = (12, 15, 18, 20, 25, 201)
 GUESTS = ("豆包", "大小姐", "千问", "Kimi", "Gemini", "智谱", "Grok", "龙娘")
 PARTICLES = set("呀啦吧嘛诶呜呢哦哇啊哼嘿")
 GENERIC = {"本鲸能闲着", "也帮着留意", "这份力", "换它出", "它懂"}
-FRIEND_ACTION = re.compile(r"(?:找|请|邀|叫|拉).{0,8}(?:朋友|帮手|外援)")
 GUEST_ENTRY = re.compile(r"来(?:了|到|帮)|进门|走进|入场|到场|加入|出现|接话|开口")
 
 
@@ -61,58 +60,46 @@ def han_len(line):
     return len(re.sub(r"[^\u4e00-\u9fff]", "", line))
 
 
-def first_index(lines, pred, start=0):
-    for index in range(start, len(lines)):
-        if pred(lines[index]):
-            return index
-    return None
-
-
 def _day12_checks(curr, guest):
-    """检查用户指定的 Day12 事件链，允许前集事实提前出现。"""
+    """检查用户当前指定的录取通知事件链；同义表达仍需人工复核。"""
     errors = []
+    text = "\n".join(curr)
+    opening = "\n".join(curr[:4])[:200]
     if guest and guest != "豆包":
         errors.append("Day12 的当日客人应是豆包")
-    friend_at = first_index(curr, lambda line: bool(FRIEND_ACTION.search(line)))
-    opening = "\n".join(curr[:4])
-    if friend_at is None or friend_at > 2 or not re.search(r"帮|分担|搭把手|外援", opening):
-        errors.append("Day12 开头未识别到找新朋友来帮忙")
-    guest_at = first_index(curr, lambda line: "豆包" in line, friend_at or 0)
-    if guest_at is None or guest_at > 5:
-        errors.append("Day12 须在找帮手后尽早点出豆包")
-    start = guest_at if guest_at is not None else 0
-    meme_at = first_index(curr, lambda line: bool(re.search(r"找不到工作|找工作|求职", line)), start)
-    if meme_at is None:
-        errors.append("Day12 未识别到与豆包相关的求职梗")
-    meme_start = meme_at if meme_at is not None else start
-    passport_at = first_index(curr, lambda line: "护照" in line, meme_start)
-    passport_zone = curr[meme_start:passport_at + 1] if passport_at is not None else []
-    if passport_at is None or not any("山姆" in line for line in passport_zone):
-        errors.append("Day12 求职梗之后未识别到山姆护照跑偏")
-    if passport_at is not None:
-        correction_at = first_index(
-            curr,
-            lambda line: bool(re.search(r"本鲸.{0,10}(?:筛|挑)|没让.{0,8}(?:办证|办护照)|不是.{0,5}逛|跑偏|对题", line)),
-            passport_at + 1,
-        )
-        if correction_at is None:
-            errors.append("Day12 护照跑偏后未识别到本鲸纠偏")
-        apology_at = first_index(
-            curr, lambda line: bool(re.search(r"认错|对不起|抱歉|我错了", line)),
-            correction_at + 1 if correction_at is not None else passport_at + 1,
-        )
-        if apology_at is None:
-            errors.append("Day12 纠偏后未识别到豆包认错")
-        if apology_at is not None:
-            work_at = first_index(
-                curr, lambda line: bool(re.search(r"划掉|标出|分到|放左|放右|圈了起来|筛掉|筛出来|筛好了", line)),
-                apology_at,
-            )
-            if work_at is None:
-                errors.append("Day12 认错后未识别到继续筛岗位")
-    if not any("可能" in line for line in curr):
+    if "笨鱼" not in opening or not re.search(r"岗位|工作|招聘", opening):
+        errors.append("Day12 开头未识别到笨鱼带回前集岗位")
+    if "豆包" not in "\n".join(curr[:5])[:240]:
+        errors.append("Day12 须在开头点出豆包")
+
+    # 用字符位置而不是行号检查顺序，允许同一行里出现多个事件。
+    guest_at = text.find("豆包")
+    question = re.search(r"(?:没|没有|缺|无).{0,8}经验|能(?:不)?能投|能投|能否投", text[max(0, guest_at):])
+    if question is None:
+        errors.append("Day12 未识别到没有经验能否投岗位的问题")
+    question_end = max(0, guest_at) + question.end() if question else max(0, guest_at)
+    offer = re.search(r"录取通知|录取信|入职通知", text[question_end:])
+    if offer is None:
+        errors.append("Day12 未识别到提问后录取通知跑偏")
+    offer_end = question_end + offer.end() if offer else question_end
+    challenge = re.search(r"本鲸.{0,10}(?:追问|质疑|纠正|拦|指出|纠偏)", text[offer_end:])
+    if challenge is None:
+        errors.append("Day12 录取通知后未识别到本鲸追问或纠偏")
+    challenge_end = offer_end + challenge.end() if challenge else offer_end
+    apology = re.search(r"道歉|认错|对不起|抱歉|我错了", text[challenge_end:])
+    if apology is None:
+        errors.append("Day12 追问后未识别到豆包道歉")
+    apology_end = challenge_end + apology.end() if apology else challenge_end
+    if not re.search(r"筛.{0,6}岗位|岗位.{0,6}(?:筛|划|标|圈)|要求.{0,6}(?:对上|核对)|划掉|标着|圈出来", text[apology_end:]):
+        errors.append("Day12 道歉后未识别到回到岗位筛选")
+    if not re.search(r"(?:不确定|拿不准).{0,12}(?:圈|标)|(?:圈|标).{0,12}(?:不确定|拿不准)", text[apology_end:]):
+        errors.append("Day12 未识别到圈出不确定的岗位要求")
+    if "可能" not in text:
         errors.append("Day12 缺少老大可能换工作的事实边界")
-    opening = "\n".join(curr[:6])
+    if not re.search(r"(?:不是|并非|不等于).{0,8}录取|面试.{0,8}(?:没|未)", text):
+        errors.append("Day12 未识别到尚未面试或并未录取的事实边界")
+    if not re.search(r"(?:明天|下一集|下集).{0,12}新朋友|新朋友.{0,12}(?:明天|下一集|下集)", text):
+        errors.append("Day12 未识别到留给下一位新朋友的问题")
     if re.search(r"(?:来晚了|迟到了)", opening) and re.search(r"对不起.{0,6}(?:写上|写好|写了)", opening):
         errors.append("Day12 不使用无来源的来晚了、先写道歉作为开场原因")
     return errors
@@ -170,8 +157,10 @@ def check(curr, prev, guest=None, day=None):
             errors.append(f"L{index} 笨鱼不新增对白")
         if re.search(r"(?:我是|我叫|本鲸是)魔丸|魔丸(?:说|来了|进门)", line):
             errors.append(f"L{index} 魔丸不能成为镜头内人物或自称")
-    if day == 12 and re.search(r"老大(?:已经|肯定|一定)(?:换了?|找到|决定换)(?:新)?工作", full):
-        errors.append("Day12 把老大可能换工作写成了确定事实")
+    if day == 12 and re.search(
+        r"老大(?:已经|肯定|一定)(?:(?:换了?|找到|决定换)(?:新)?工作|(?:被)?录取|入职)", full
+    ):
+        errors.append("Day12 把老大可能换工作或录取写成了确定事实")
 
     longest = max(han_len(line) for line in curr)
     overlap = "、".join(dict.fromkeys(head_hit + tail_hit))
@@ -182,6 +171,12 @@ def check(curr, prev, guest=None, day=None):
         "客人名字和入场识别不完整；角色、人设、因果、来源及退出状态须人工复检。",
         f"最长句{longest}字。句长门禁不启用：{'/'.join(str(n) for n in RETIRED_LENGTH_GATES)}",
     ]
+    if day == 12 and re.search(r"回评论|艾特", full):
+        notes.append("回评论和艾特只见于文案；实际权限是否恢复或已操作须人工核实。")
+    if day == 12 and re.search(r"豆包.{0,12}不太聪明", full):
+        notes.append("用户稿中的模型评价与既有风格口径有冲突；不作为能力事实，发布前人工复核。")
+    if day == 12 and re.search(r"不(?:需要|吃).{0,6}米饭", full):
+        notes.append("不吃米饭是剧情表达，不能据此认定真实费用或产品能力。")
     return errors, notes
 
 

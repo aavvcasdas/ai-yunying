@@ -22,17 +22,18 @@ PREV = """老大可能换新工作。
 本鲸绝不摸鱼
 """
 
-HOOKED = """岗位太多，本鲸找了个新朋友来帮忙。
-第一个，豆包。
-最近都说找不到工作就去问豆包。
+HOOKED = """笨鱼带回昨天的岗位。
+评论拿不准，先艾特豆包。
 老大可能换新工作。
+本鲸问没相关经验，能投吗？
 这是一句故意写得很长的话，用来证明剧情生成不再因为超过二十个字就退稿，不能为了门禁把这件事切碎。
-她先办了山姆超市护照。
-本鲸让你筛岗位。
-她认错，对不起。
-敲代码的，先划掉。
-太远的放左边，太熬人的放右边。
-先吃一口饭。
+豆包给了录取通知。
+面试还没去。
+本鲸追问。
+她道歉。
+本鲸筛岗位，敲代码的先划掉。
+不确定的圈出来。
+拿不准的留给明天的新朋友。
 """
 
 
@@ -46,23 +47,38 @@ class PlotSkillTests(unittest.TestCase):
     def test_cold_open_fails_without_mentioning_length(self):
         cold = ["门响了。", "只有豆包。", "她来晚了。对不起，已经写上。"]
         errors, _notes = plot.check(cold, PREV.strip().splitlines(), "豆包", day=12)
-        self.assertTrue(any("找新朋友" in item for item in errors), errors)
+        self.assertTrue(any("笨鱼带回" in item for item in errors), errors)
         self.assertTrue(any("无来源" in item for item in errors), errors)
         self.assertFalse(any("字" in item and "超过" in item for item in errors))
 
     def test_day12_requires_causal_order(self):
-        late_friend = ["敲代码的，先划掉。", "太远的还在。", "老大可能换新工作。", "豆包才来。"]
-        errors, _notes = plot.check(late_friend, PREV.strip().splitlines(), "豆包", day=12)
-        self.assertTrue(any("找新朋友" in item for item in errors))
-        no_correction = HOOKED.replace("本鲸让你筛岗位。\n", "")
+        # 通知放在提问之前，不应误认为提问之后发生了跑偏。
+        reversed_order = HOOKED.replace("本鲸问没相关经验，能投吗？", "豆包给了录取通知。\n本鲸问没相关经验，能投吗？")
+        reversed_order = reversed_order.replace("豆包给了录取通知。\n面试还没去。", "面试还没去。")
+        errors, _notes = plot.check(reversed_order.strip().splitlines(), PREV.strip().splitlines(), "豆包", day=12)
+        self.assertTrue(any("提问后录取通知" in item for item in errors), errors)
+        no_correction = HOOKED.replace("本鲸追问。\n", "")
         errors, _notes = plot.check(no_correction.strip().splitlines(), PREV.strip().splitlines(), "豆包", day=12)
-        self.assertTrue(any("纠偏" in item for item in errors), errors)
-        no_work = HOOKED.replace("敲代码的，先划掉。", "纸收走了。")
-        no_work = no_work.replace("太远的放左边，太熬人的放右边。", "她等着。")
+        self.assertTrue(any("追问或纠偏" in item for item in errors), errors)
+        no_apology = HOOKED.replace("她道歉。\n", "")
+        errors, _notes = plot.check(no_apology.strip().splitlines(), PREV.strip().splitlines(), "豆包", day=12)
+        self.assertTrue(any("追问后" in item and "道歉" in item for item in errors), errors)
+        early_apology = HOOKED.replace("本鲸追问。\n她道歉。", "她道歉。\n本鲸追问。")
+        errors, _notes = plot.check(early_apology.strip().splitlines(), PREV.strip().splitlines(), "豆包", day=12)
+        self.assertTrue(any("追问后" in item and "道歉" in item for item in errors), errors)
+        no_work = HOOKED.replace("本鲸筛岗位，敲代码的先划掉。\n", "")
+        no_work = no_work.replace("不确定的圈出来。\n", "")
         errors, _notes = plot.check(no_work.strip().splitlines(), PREV.strip().splitlines(), "豆包", day=12)
-        self.assertTrue(any("继续筛岗位" in item for item in errors), errors)
+        self.assertTrue(any("岗位筛选" in item for item in errors), errors)
+        self.assertTrue(any("圈出不确定" in item for item in errors), errors)
 
-    def test_earlier_continuity_does_not_end_meme_zone(self):
+    def test_day12_same_line_events_keep_their_order(self):
+        # 用户原稿允许一句内有多个动作，检查不依赖固定行数。
+        one_line = "".join(HOOKED.strip().splitlines())
+        errors, _notes = plot.check([one_line], PREV.strip().splitlines(), "豆包", day=12)
+        self.assertFalse(errors, errors)
+
+    def test_earlier_continuity_can_precede_offer(self):
         errors, notes = plot.check(HOOKED.strip().splitlines(), PREV.strip().splitlines(), "豆包", day=12)
         self.assertFalse(errors, errors)
         self.assertIn("老大可能换新工作", "\n".join(notes))
@@ -81,6 +97,8 @@ class PlotSkillTests(unittest.TestCase):
         self.assertTrue(any("魔丸" in item for item in mowan))
         false_promise = plot.check(base + ["老大已经换新工作。"], PREV.strip().splitlines(), "豆包", day=12)[0]
         self.assertTrue(any("确定事实" in item for item in false_promise))
+        false_offer = plot.check(base + ["老大已经录取了。"], PREV.strip().splitlines(), "豆包", day=12)[0]
+        self.assertTrue(any("确定事实" in item for item in false_offer))
 
     def test_other_days_do_not_require_day12_guest_or_meme(self):
         next_day = [
@@ -115,17 +133,24 @@ class PlotSkillTests(unittest.TestCase):
         section = doc.split("## 口播正文", 1)[1]
         copy = section.split("```text\n", 1)[1].split("\n```", 1)[0].strip()
         self.assertEqual(copy, script)
-        for marker in ("measured=false", "当集承接卡", "找不到工作，就去问豆包？", "新帮手\n先办了张护照", "原始出处"):
+        for marker in ("measured=false", "当集承接卡", "口播正文", "标题、封面字与简介", "未验证"):
             self.assertIn(marker, doc)
 
-    def test_day12_rewrite_remains_unlocked_and_source_limited(self):
+    def test_day12_user_draft_remains_unlocked_and_unverified(self):
         doc = (ROOT / "Day12/Day12文案.md").read_text(encoding="utf-8")
         script = (ROOT / "Day12/Day12配音台词.txt").read_text(encoding="utf-8")
         status = "\n".join(doc.splitlines()[:8])
         for marker in ("未锁字", "未配音", "未渲染", "measured=false"):
             self.assertIn(marker, status)
-        self.assertIn("原始出处仍未核实", doc)
-        self.assertNotIn("最近都说", script)
+        self.assertIn("本次未核实真实权限是否恢复", doc)
+        self.assertIn("不等于真实服务免费", doc)
+        self.assertIn("用户本轮提供", doc)
+        self.assertNotIn("山姆超市护照", script)
+        prev = plot.load_lines(ROOT / "Day11/Day11配音台词.txt")
+        _errors, notes = plot.check(script.strip().splitlines(), prev, "豆包", day=12)
+        self.assertTrue(any("权限是否恢复" in note for note in notes), notes)
+        self.assertTrue(any("既有风格口径有冲突" in note for note in notes), notes)
+        self.assertTrue(any("真实费用" in note for note in notes), notes)
 
     def test_skill_is_discoverable_and_old_skill_is_retired(self):
         path = ROOT / ".claude/skills/day-series-writer/SKILL.md"
