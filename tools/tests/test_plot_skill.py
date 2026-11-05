@@ -20,8 +20,10 @@ PREV = """老大可能换新工作。
 本鲸绝不摸鱼
 """
 
-HOOKED = """豆包先到。
-这是一句故意写得很长的话，用来证明剧情生成不再因为超过二十个字就退稿，岗位还在桌上慢慢挑，不能为了门禁把这件事切碎。
+HOOKED = """找新朋友来帮忙。
+这是一句故意写得很长的话，用来证明剧情生成不再因为超过二十个字就退稿，不能为了门禁把这件事切碎。
+新朋友只来了一个。豆包。
+有人问：这个岗，没经验，能去吗。她答：录取信，办好了。
 昨天敲代码的，先划掉。太远的也还在。
 老大可能换新工作。
 先吃一口饭。
@@ -40,12 +42,12 @@ class PlotSkillTests(unittest.TestCase):
         errors, _notes = plot.check(cold, PREV.strip().splitlines(), "豆包")
         self.assertTrue(errors)
         self.assertFalse(any("字" in item and "超过" in item for item in errors))
-        self.assertTrue(any("接上" in item for item in errors))
+        self.assertTrue(any("找新朋友" in item for item in errors))
 
-    def test_guest_must_lead_then_the_table(self):
+    def test_plot_before_friend_fails(self):
         late = ["敲代码的，先划掉。", "太远的还在。", "老大可能换新工作。", "豆包才来。"]
         errors, _notes = plot.check(late, PREV.strip().splitlines(), "豆包")
-        self.assertTrue(any("没有提前" in item for item in errors))
+        self.assertTrue(any("找新朋友" in item for item in errors))
 
     def test_particle_digit_and_second_guest(self):
         base = HOOKED.strip().splitlines()

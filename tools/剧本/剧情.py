@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""剧情承接。
+"""剧情三拍。
 
-先读 agent.md。前两句先点今天这个人，把梗说成人话，再接上一集留在桌上的事。
+先读 agent.md。开头说找新朋友来帮忙，接着把求职梗说成人话，再接上一集留在桌上的事。
 不设句长门禁。12、15、18、20、25、201 这些数字不再用来退稿。
 """
 
@@ -18,8 +18,8 @@ RETIRED_LENGTH_GATES = (12, 15, 18, 20, 25, 201)
 GUESTS = ("豆包", "大小姐", "千问", "Kimi", "Gemini", "智谱", "Grok", "龙娘")
 PARTICLES = set("呀啦吧嘛诶呜呢哦哇啊哼嘿")
 GENERIC = {"本鲸能闲着", "也帮着留意", "这份力", "换它出", "它懂"}
-LEAD_LINES = 2
-FOLLOW_LINES = 18
+FOLLOW_LINES = 24
+JOB_MEME_MARKS = ("录取信", "没经验", "没有身份证", "简历", "面试", "豆包味")
 
 
 def load_lines(path):
@@ -61,37 +61,55 @@ def han_len(line):
     return len(re.sub(r"[^\u4e00-\u9fff]", "", line))
 
 
+def first_index(lines, pred):
+    for index, line in enumerate(lines):
+        if pred(line):
+            return index
+    return None
+
+
 def check(curr, prev, guest=None):
-    """返回 (errors, notes)。errors 为空才算接上。不检查句长。"""
+    """返回 (errors, notes)。三拍按顺序。不检查句长。"""
     if not curr or not prev:
         raise ValueError("上一集和本集都不能是空稿")
     errors = []
     tail = clauses(prev[-12:])
     head = clauses(prev[:6])
     full = "\n".join(curr)
-    lead = "\n".join(curr[:LEAD_LINES])
-    follow = "\n".join(curr[LEAD_LINES:LEAD_LINES + FOLLOW_LINES])
-    tail_hit = hits(follow, tail)
-    head_hit = hits(follow, head)
+    opening = "\n".join(curr[:4])
+    friend_at = first_index(curr, lambda line: "找新朋友" in line)
+    if friend_at is None or friend_at > 2 or "帮忙" not in opening:
+        errors.append("开头没有说找新朋友来帮忙")
+    story_marks = tail + head
+    story_at = first_index(curr, lambda line: hits(line, story_marks))
+    meme_zone = curr[(friend_at + 1 if friend_at is not None else 0):story_at]
+    meme_at = first_index(meme_zone, lambda line: any(mark in line for mark in JOB_MEME_MARKS))
+    if meme_at is None:
+        errors.append("找完朋友之后、接上旧剧情之前，没有说成人话的求职梗")
+    else:
+        meme_at += friend_at + 1 if friend_at is not None else 0
     present = [name for name in GUESTS if name in full]
     if len(present) > 1:
         errors.append("一天只接一个客人，口播里同时出现：" + "、".join(present))
-    if guest:
-        if guest not in GUESTS:
-            errors.append(f"不认识的客人：{guest}")
-        elif guest not in lead:
-            errors.append(f"{guest}没有提前。前两句先点她，再写别的事")
-    elif present and not any(name in lead for name in present):
-        errors.append("客人没有提前。前两句先点今天这个人，再写别的事")
+    if guest and guest not in GUESTS:
+        errors.append(f"不认识的客人：{guest}")
+    elif guest:
+        guest_zone = "\n".join(curr[friend_at:story_at] if friend_at is not None else [])
+        if guest not in guest_zone:
+            errors.append(f"{guest}要出现在找朋友和求职梗里，不要埋到旧剧情后面")
+    follow_from = (meme_at + 1) if meme_at is not None else len(curr)
+    follow = "\n".join(curr[follow_from:follow_from + FOLLOW_LINES])
+    tail_hit = hits(follow, tail)
+    head_hit = hits(follow, head)
     if len(tail_hit) < 2:
         show = "、".join(tail_hit) if tail_hit else "无"
         errors.append(
-            "点完客人之后，没有接上一日结尾留在桌上的事。"
+            "求职梗之后，没有接上一日结尾留在桌上的事。"
             f"命中：{show}。可接：{'、'.join(tail[:8]) or '无'}"
         )
     if not head_hit:
         errors.append(
-            "点完客人之后，没有接上一日开头没做完的事。"
+            "求职梗之后，没有接上一日开头没做完的事。"
             f"可接：{'、'.join(head[:6]) or '无'}"
         )
     errors.extend(text_redlines(curr))
@@ -108,7 +126,7 @@ def check(curr, prev, guest=None):
     notes = [
         "上一集开头还没做完：" + "、".join(head[:6]),
         "上一集结尾留在桌上：" + "、".join(tail[:8]),
-        "点完客人之后接上：" + ("、".join(dict.fromkeys(head_hit + tail_hit)) or "无"),
+        "求职梗之后接上：" + ("、".join(dict.fromkeys(head_hit + tail_hit)) or "无"),
         f"最长句{longest}字。句长门禁不启用：{'/'.join(str(n) for n in RETIRED_LENGTH_GATES)}",
     ]
     return errors, notes
@@ -128,7 +146,8 @@ def main(argv=None):
         print("剧情承接卡")
         print("开头没做完：" + "、".join(head[:6]))
         print("结尾留在桌上：" + "、".join(tail[:8]))
-        print("句长门禁不启用。前两句先点今天这个人，再接这些事。先读 agent.md。")
+        print("三拍：找新朋友来帮忙，再写求职梗，再接这些事。先读 agent.md。")
+        print("句长门禁不启用。")
         return 0
     if not args.txt:
         ap.error("检查本集时必须给 --txt")

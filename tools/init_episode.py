@@ -66,7 +66,7 @@ const r = spawnSync('node', [engine, '--spec', spec, ...process.argv.slice(2)], 
 process.exit(r.status ?? 1);
 """
 
-SCRIPT_TEMPLATE = "（待填。先读 agent.md。前两句点今天这个人，再接上一集留在桌上的事。）\n"
+SCRIPT_TEMPLATE = "（待填。先读 agent.md。开头说找新朋友来帮忙，再写求职梗，再接上一集留在桌上的事。）\n"
 COPY_TEMPLATE = """# Day{day} 文案：{title}
 
 先读 `agent.md`。不读不写。
@@ -75,7 +75,7 @@ COPY_TEMPLATE = """# Day{day} 文案：{title}
 
 ## 这一集
 
-待填。前两句先点今天这个人，把梗说成一句人话，再接上一集留在桌上的事。
+待填。三拍：开头说找新朋友来帮忙，再写听得懂的求职梗，再接上一集留在桌上的事。
 """
 
 
