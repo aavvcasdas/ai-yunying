@@ -55,7 +55,16 @@ def main():
     for stage in selected:
         try:
             if stage=='script':
-                ok=run('文案',[py,ROOT/'tools/剧本/呆萌体检.py','--txt',paths['script'],'--rate',str(cfg.get('rate',3.35)),'--seconds',str(cfg.get('seconds',60))]) and ok
+                if args.day >= 12:
+                    prev = ROOT / f'Day{args.day - 1}' / f'Day{args.day - 1}配音台词.txt'
+                    if not prev.is_file():
+                        raise ValueError(f'缺上一集锁定口播：{prev}')
+                    cmd = [py, ROOT/'tools/剧本/剧情.py', '--txt', paths['script'], '--prev', prev]
+                    if cfg.get('guest'):
+                        cmd += ['--guest', cfg['guest']]
+                    ok = run('剧情承接', cmd) and ok
+                else:
+                    ok=run('文案',[py,ROOT/'tools/剧本/呆萌体检.py','--txt',paths['script'],'--rate',str(cfg.get('rate',3.35)),'--seconds',str(cfg.get('seconds',60))]) and ok
             elif stage=='audio':
                 d=read_json(paths['alignment']);s=read_json(paths['subs']);lines=paths['script'].read_text().strip().splitlines()
                 validate_timing(d,s,lines,paths['voice'])
