@@ -42,8 +42,10 @@ class CaptureProvider:
 class MowanTests(unittest.TestCase):
     def test_prompt_is_only_mowan(self):
         self.assertIn("魔丸", SYSTEM_PROMPT)
-        self.assertIn("不是大肥鱼", SYSTEM_PROMPT)
-        for banned in ("我是大肥鱼", "杂鱼", "看起来 14 岁", "你是「露娜」"):
+        self.assertIn("大肥鱼", SYSTEM_PROMPT)
+        self.assertIn("移植", SYSTEM_PROMPT)
+        self.assertNotIn("不是大肥鱼", SYSTEM_PROMPT)
+        for banned in ("杂鱼", "看起来 14 岁", "你是「露娜」"):
             self.assertNotIn(banned, SYSTEM_PROMPT)
 
     def test_real_notes_unchanged_and_still_readable(self):

@@ -18,8 +18,8 @@ from provider import ProviderError, from_env
 
 
 def _active_persona_ok(prompt):
-    banned = ("我是大肥鱼", "你是大肥鱼", "杂鱼", "看起来 14 岁", "你是「露娜」")
-    return "魔丸" in prompt and not any(word in prompt for word in banned)
+    banned = ("杂鱼", "看起来 14 岁", "你是「露娜」", "不是大肥鱼")
+    return "魔丸" in prompt and "大肥鱼" in prompt and "移植" in prompt and not any(word in prompt for word in banned)
 
 
 def build_messages(user_text, content, memory_view, mode, poke):

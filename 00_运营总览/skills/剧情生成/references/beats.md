@@ -1,6 +1,12 @@
 # 三拍怎么写
 
-先读 `agent.md`。
+先读 `agent.md`，再读 `tools/agent/persona.py`。
+
+## 同行 day 系列怎么做
+
+冬冰的大肥鱼连续剧，和公开的「Day 0 / Day 1」日记，都是同一条鱼接着演。新的人进旧的房间，不换主角，不念制作过程。本系列 Day0 到 Day11 也是这样：账号交给这条鲸鱼娘，住户喊她大肥鱼，后来自称本鲸，笨鱼鲸落，岗位还在桌上。
+
+所以新集不另起一只鱼。魔丸只移植脾气：坏笑，不收假活，不卖萌。人还是大肥鱼。
 
 写法参照同行 skill 的方法，不搬他们的稿：description 写清何时用，正文只留步骤，检查用脚本而不是字数。[Anthropic skill-creator](https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md) 把触发写进 description。[短视频 IP 编导 skill](https://github.com/xxh11432/video-ip-script-skill) 把流程分成阶段，没到那一拍不往下交。[抖音口播 skill](https://github.com/JOHNadonis/douyin-viral-script) 用检查命令卡结构。那些仓库里的字数配额、九比十六、点赞关注，本系列不采用。
 

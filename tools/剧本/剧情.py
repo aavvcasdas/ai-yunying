@@ -80,6 +80,10 @@ def check(curr, prev, guest=None):
     friend_at = first_index(curr, lambda line: "找新朋友" in line)
     if friend_at is None or friend_at > 2 or "帮忙" not in opening:
         errors.append("开头没有说找新朋友来帮忙")
+    if "大肥鱼" not in opening and "本鲸" not in opening:
+        errors.append("开头没有这条大肥鱼。人设没进嘴")
+    if "不收" not in full:
+        errors.append("没有她的判断。移植过来的脾气没进嘴")
     story_marks = tail + head
     story_at = first_index(curr, lambda line: hits(line, story_marks))
     meme_zone = curr[(friend_at + 1 if friend_at is not None else 0):story_at]
