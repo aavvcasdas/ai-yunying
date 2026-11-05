@@ -14,6 +14,7 @@ class ProviderError(RuntimeError):
 
 class MockProvider:
     name = "mock"
+    model_configured = False
 
     def complete(self, messages):
         last = ""
@@ -22,11 +23,12 @@ class MockProvider:
                 last = item.get("content") or ""
         if not str(last).strip():
             return ""
-        return "按你的要求处理完了。"
+        return "模拟响应：未调用真实模型，也没有修改文件。"
 
 
 class OpenAICompatibleProvider:
     name = "openai"
+    model_configured = True
 
     def __init__(self, base, key, model, timeout=30):
         self.base = base.rstrip("/")

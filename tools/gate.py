@@ -59,7 +59,7 @@ def main():
                     prev = ROOT / f'Day{args.day - 1}' / f'Day{args.day - 1}配音台词.txt'
                     if not prev.is_file():
                         raise ValueError(f'缺上一集锁定口播：{prev}')
-                    cmd = [py, ROOT/'tools/剧本/剧情.py', '--txt', paths['script'], '--prev', prev]
+                    cmd = [py, ROOT/'tools/剧本/剧情.py', '--day', str(args.day), '--txt', paths['script'], '--prev', prev]
                     if cfg.get('guest'):
                         cmd += ['--guest', cfg['guest']]
                     ok = run('剧情承接', cmd) and ok

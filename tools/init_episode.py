@@ -66,16 +66,28 @@ const r = spawnSync('node', [engine, '--spec', spec, ...process.argv.slice(2)], 
 process.exit(r.status ?? 1);
 """
 
-SCRIPT_TEMPLATE = "（待填。先读 agent.md。开头说找新朋友来帮忙，再写求职梗，再接上一集留在桌上的事。）\n"
+SCRIPT_TEMPLATE = "（待填。先读 agent.md 和 day-series-writer Skill；承接上集状态，写当集行动、局部结果与下一步。）\n"
 COPY_TEMPLATE = """# Day{day} 文案：{title}
 
-先读 `agent.md`。不读不写。
+先读 `agent.md` 和 `.claude/skills/day-series-writer/SKILL.md`。不读不写。
 
-以后每一集都从这一句开始。锁定口播、事实和不能改的字，以 `agent.md` 为准。
+**状态：待填、未锁字、未配音。`measured=false`。**
 
-## 这一集
+## 状态与事实边界
 
-待填。三拍：开头说找新朋友来帮忙，再写听得懂的求职梗，再接上一集留在桌上的事。
+待填。先核对上一集锁定口播与当日客人梗的来源。
+
+## 当集承接卡
+
+待填：进入状态、未完成的事、当集目标、客人（如有）、冲突、纠偏、退出状态、下一步。
+
+## 口播正文
+
+待填。与 `Day{day}配音台词.txt` 一致。
+
+## 标题、封面字与简介
+
+待填。
 """
 
 
