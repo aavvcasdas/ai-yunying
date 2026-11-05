@@ -66,7 +66,17 @@ const r = spawnSync('node', [engine, '--spec', spec, ...process.argv.slice(2)], 
 process.exit(r.status ?? 1);
 """
 
-SCRIPT_TEMPLATE = "诶？出什么事啦？\n（待填：每行一句口播短句，写完先跑 gate --stage script）\n"
+SCRIPT_TEMPLATE = "（待填。先读 agent.md。前两句点今天这个人，再接上一集留在桌上的事。）\n"
+COPY_TEMPLATE = """# Day{day} 文案：{title}
+
+先读 `agent.md`。不读不写。
+
+以后每一集都从这一句开始。锁定口播、事实和不能改的字，以 `agent.md` 为准。
+
+## 这一集
+
+待填。前两句先点今天这个人，把梗说成一句人话，再接上一集留在桌上的事。
+"""
 
 
 def main(argv=None):
@@ -87,6 +97,8 @@ def main(argv=None):
     (day_dir / '字幕').mkdir(parents=True)
     make_dir.mkdir(parents=True)
     (day_dir / f'Day{args.day}配音台词.txt').write_text(SCRIPT_TEMPLATE, encoding='utf-8')
+    (day_dir / f'Day{args.day}文案.md').write_text(
+        COPY_TEMPLATE.format(day=args.day, title=args.title), encoding='utf-8')
     (make_dir / 'episode.spec.mjs').write_text(
         SPEC_TEMPLATE.format(day=args.day, title=args.title), encoding='utf-8')
     (make_dir / f'render_day{args.day}.mjs').write_text(
@@ -108,7 +120,7 @@ def main(argv=None):
     print(f'已初始化 Day{args.day}《{args.title}》：')
     print(f'  {day_dir}/（配音台词模板、配音/、成片/、字幕/）')
     print(f'  {make_dir}/（episode.spec.mjs、render_day{args.day}.mjs、gate_config.json）')
-    print('下一步：填台词 -> python3 tools/gate.py '
+    print('下一步：先读 agent.md，再填台词 -> python3 tools/gate.py '
           f'--day {args.day} --stage script（详见 tools/engine/README.md）')
     return 0
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """剧情承接。
 
-新集先接上一日留在桌上的事，再让一个客人插进来。
+先读 agent.md。前两句先点今天这个人，把梗说成人话，再接上一集留在桌上的事。
 不设句长门禁。12、15、18、20、25、201 这些数字不再用来退稿。
 """
 
@@ -18,7 +18,8 @@ RETIRED_LENGTH_GATES = (12, 15, 18, 20, 25, 201)
 GUESTS = ("豆包", "大小姐", "千问", "Kimi", "Gemini", "智谱", "Grok", "龙娘")
 PARTICLES = set("呀啦吧嘛诶呜呢哦哇啊哼嘿")
 GENERIC = {"本鲸能闲着", "也帮着留意", "这份力", "换它出", "它懂"}
-OPENING_LINES = 10
+LEAD_LINES = 2
+FOLLOW_LINES = 18
 
 
 def load_lines(path):
@@ -67,39 +68,32 @@ def check(curr, prev, guest=None):
     errors = []
     tail = clauses(prev[-12:])
     head = clauses(prev[:6])
-    opening = "\n".join(curr[:OPENING_LINES])
     full = "\n".join(curr)
-    tail_hit = hits(opening, tail)
-    head_hit = hits(opening, head)
+    lead = "\n".join(curr[:LEAD_LINES])
+    follow = "\n".join(curr[LEAD_LINES:LEAD_LINES + FOLLOW_LINES])
+    tail_hit = hits(follow, tail)
+    head_hit = hits(follow, head)
+    present = [name for name in GUESTS if name in full]
+    if len(present) > 1:
+        errors.append("一天只接一个客人，口播里同时出现：" + "、".join(present))
+    if guest:
+        if guest not in GUESTS:
+            errors.append(f"不认识的客人：{guest}")
+        elif guest not in lead:
+            errors.append(f"{guest}没有提前。前两句先点她，再写别的事")
+    elif present and not any(name in lead for name in present):
+        errors.append("客人没有提前。前两句先点今天这个人，再写别的事")
     if len(tail_hit) < 2:
         show = "、".join(tail_hit) if tail_hit else "无"
         errors.append(
-            "前十句没有接上一日结尾留在桌上的事。"
+            "点完客人之后，没有接上一日结尾留在桌上的事。"
             f"命中：{show}。可接：{'、'.join(tail[:8]) or '无'}"
         )
     if not head_hit:
         errors.append(
-            "前十句没有接上一日开头没做完的事。"
+            "点完客人之后，没有接上一日开头没做完的事。"
             f"可接：{'、'.join(head[:6]) or '无'}"
         )
-    early = [name for name in GUESTS if name in "\n".join(curr[:2])]
-    if early:
-        errors.append("前两句就点客人，昨日的事还没接上：" + "、".join(early))
-    if guest:
-        if guest not in GUESTS:
-            errors.append(f"不认识的客人：{guest}")
-        elif guest not in full:
-            errors.append(f"口播没有{guest}")
-        else:
-            for index, line in enumerate(curr):
-                if guest not in line:
-                    continue
-                if not hits("\n".join(curr[:index]), tail):
-                    errors.append(f"{guest}出现在承接之前。先写昨日留在桌上的事")
-                break
-    present = [name for name in GUESTS if name in full]
-    if len(present) > 1:
-        errors.append("一天只接一个客人，口播里同时出现：" + "、".join(present))
     errors.extend(text_redlines(curr))
     banned = sorted({word for word in BAN_WORDS for line in curr if word in line})
     if banned:
@@ -114,7 +108,7 @@ def check(curr, prev, guest=None):
     notes = [
         "上一集开头还没做完：" + "、".join(head[:6]),
         "上一集结尾留在桌上：" + "、".join(tail[:8]),
-        "本集前十句接上：" + ("、".join(dict.fromkeys(head_hit + tail_hit)) or "无"),
+        "点完客人之后接上：" + ("、".join(dict.fromkeys(head_hit + tail_hit)) or "无"),
         f"最长句{longest}字。句长门禁不启用：{'/'.join(str(n) for n in RETIRED_LENGTH_GATES)}",
     ]
     return errors, notes
@@ -134,7 +128,7 @@ def main(argv=None):
         print("剧情承接卡")
         print("开头没做完：" + "、".join(head[:6]))
         print("结尾留在桌上：" + "、".join(tail[:8]))
-        print("句长门禁不启用。先写这些事，再让一个客人插进来。")
+        print("句长门禁不启用。前两句先点今天这个人，再接这些事。先读 agent.md。")
         return 0
     if not args.txt:
         ap.error("检查本集时必须给 --txt")
